@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: antigravity_monolith
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_PATH=/app/data/database.sqlite
+      - LOG_LEVEL=info
+      - ALERT_API_URL=http://localhost:9000/api/alerts
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
