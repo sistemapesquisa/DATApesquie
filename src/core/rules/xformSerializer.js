@@ -46,6 +46,10 @@ function convertToXForm(form) {
   questions.forEach(q => {
     instanceNodesHtml += `      <${q.id}/>\n`;
   });
+  
+  // Inject internal audit nodes
+  instanceNodesHtml += `      <audit_audio/>\n`;
+  instanceNodesHtml += `      <audit_location/>\n`;
 
   // 3. Build Binds XML
   let bindsHtml = '';
@@ -63,6 +67,10 @@ function convertToXForm(form) {
 
     bindsHtml += `    <bind nodeset="/data/${q.id}" type="${typeAttr}"${relevanceAttr}/>\n`;
   });
+  
+  // Bind for internal audit and mandatory geolocation
+  bindsHtml += `    <bind nodeset="/data/audit_audio" type="binary" />\n`;
+  bindsHtml += `    <bind nodeset="/data/audit_location" type="geopoint" required="true()" />\n`;
 
   // 4. Build Body elements
   let bodyHtml = '';
@@ -81,13 +89,17 @@ function convertToXForm(form) {
     }
   });
 
+  // Add the geopoint question at the very end of the form
+  bodyHtml += `    <input ref="/data/audit_location">\n      <label>Obter localização atual (obrigatório)</label>\n      <hint>Localização via GPS para encerramento da pesquisa</hint>\n    </input>\n`;
+
   // 5. Glue together the complete OpenRosa/XForms XML template
   return `<?xml version="1.0" encoding="UTF-8"?>
 <h:html xmlns="http://www.w3.org/2002/xforms"
         xmlns:h="http://www.w3.org/1999/xhtml"
         xmlns:ev="http://www.w3.org/2001/xml-events"
         xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-        xmlns:jr="http://openrosa.org/javarosa">
+        xmlns:jr="http://openrosa.org/javarosa"
+        xmlns:odk="http://www.opendatakit.org/xforms">
   <h:head>
     <h:title>${title}</h:title>
     <model>
@@ -95,7 +107,8 @@ function convertToXForm(form) {
         <data id="${id}" version="${version}">
 ${instanceNodesHtml}        </data>
       </instance>
-${bindsHtml}    </model>
+${bindsHtml}      <odk:recordaudio event="odk-instance-load" ref="/data/audit_audio" />
+    </model>
   </h:head>
   <h:body>
 ${bodyHtml}  </h:body>

@@ -259,7 +259,22 @@ router.get('/logs', (req, res) => {
 
 // 1. ODK Form List Endpoint (OpenRosa Compliant)
 router.get(['/formList', '/odk/formList'], (req, res) => {
-  db.all('SELECT id, title, version FROM forms WHERE status = "published"', [], (err, rows) => {
+  const researcherId = req.user.id;
+  
+  let query = 'SELECT id, title, version FROM forms WHERE status = "published"';
+  let params = [];
+  
+  if (req.user.role === ROLES.RESEARCHER) {
+    query = `
+      SELECT f.id, f.title, f.version 
+      FROM forms f
+      JOIN routes r ON f.id = r.form_id
+      WHERE f.status = "published" AND r.researcher_id = ?
+    `;
+    params = [researcherId];
+  }
+
+  db.all(query, params, (err, rows) => {
     if (err) return res.status(500).send(err.message);
     
     res.set({

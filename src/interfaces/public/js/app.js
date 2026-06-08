@@ -1845,7 +1845,6 @@ function showToast(severity, message) {
   
   container.appendChild(toast);
   
-  // Auto slide out after 4 seconds
   setTimeout(() => {
     toast.style.animation = 'slideInRight 0.3s ease-out reverse forwards';
     setTimeout(() => {
@@ -1853,3 +1852,36 @@ function showToast(severity, message) {
     }, 300);
   }, 4000);
 }
+
+// ----------------- AI ANALYSIS MOCK -----------------
+window.runAiAnalysis = function() {
+  const status = document.getElementById('ai-status');
+  const container = document.getElementById('ai-results-container');
+  
+  status.innerHTML = '<span style="color:var(--accent-cyan);"><i class="fa-solid fa-spinner fa-spin"></i> Processando modelos de Machine Learning...</span>';
+  container.innerHTML = '<div style="text-align:center; padding: 2rem; border: 1px dashed var(--glass-border); border-radius: 8px; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin" style="font-size:2rem; color:var(--accent-purple); margin-bottom:1rem; display:block;"></i> Analisando assinaturas de áudio e rotas GPS...</div>';
+  
+  setTimeout(() => {
+    status.innerHTML = '<span style="color:var(--status-green);"><i class="fa-solid fa-check"></i> Análise concluída.</span>';
+    
+    // Generate mock anomaly detection results
+    container.innerHTML = `
+      <div style="background:rgba(255, 23, 68, 0.1); border-left: 4px solid var(--status-red); padding: 1rem; border-radius: 4px;">
+        <h4 style="color:var(--status-red); margin-bottom:0.5rem;"><i class="fa-solid fa-triangle-exclamation"></i> Anomalia de Velocidade Detectada</h4>
+        <p style="font-size:0.85rem; color:var(--text-secondary);">O pesquisador <strong>Bruno Pesquisador</strong> preencheu 3 questionários em menos de 2 minutos. Possível fraude. <button class="btn" style="padding:0.2rem 0.5rem; font-size:0.7rem; margin-left:1rem;">Analisar Dados</button></p>
+      </div>
+      
+      <div style="background:rgba(255, 196, 0, 0.1); border-left: 4px solid var(--status-yellow); padding: 1rem; border-radius: 4px;">
+        <h4 style="color:var(--status-yellow); margin-bottom:0.5rem;"><i class="fa-solid fa-wave-square"></i> Qualidade de Áudio Suspeita</h4>
+        <p style="font-size:0.85rem; color:var(--text-secondary);">A entrevista <strong>int_005</strong> apresenta 80% de silêncio e ruído de fundo sem vozes humanas inteligíveis. Recomendada auditoria manual imediata. <button class="btn" style="padding:0.2rem 0.5rem; font-size:0.7rem; margin-left:1rem;" onclick="switchTab('view-map')">Ouvir Gravação</button></p>
+      </div>
+
+      <div style="background:rgba(0, 230, 118, 0.1); border-left: 4px solid var(--status-green); padding: 1rem; border-radius: 4px;">
+        <h4 style="color:var(--status-green); margin-bottom:0.5rem;"><i class="fa-solid fa-location-dot"></i> Verificação de GPS Consistente</h4>
+        <p style="font-size:0.85rem; color:var(--text-secondary);">Todos os deslocamentos da <strong>Ana Pesquisadora</strong> hoje (14km) são perfeitamente consistentes com a malha viária e o tempo registrado de coleta.</p>
+      </div>
+    `;
+    
+    showToast('LOW', 'Varredura de Inteligência Artificial finalizada.');
+  }, 2500);
+};

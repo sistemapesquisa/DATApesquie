@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Antigravity Research Platform - Monolito Arquitetural</title>
+  <title>DataGoal Research Platform</title>
   
   <!-- Leaflet Map CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -14,9 +14,7 @@
 </head>
 <body>
 
-  <!-- Background glows -->
-  <div class="glow-orb orb-1"></div>
-  <div class="glow-orb orb-2"></div>
+  <!-- Background glows removed for clean light theme -->
 
   <!-- Float Security Alert Toast Container -->
   <div id="alert-toast-container" class="alert-toast-container"></div>
@@ -24,10 +22,10 @@
   <!-- HEADER -->
   <header>
     <div class="logo">
-      <div class="logo-icon">A</div>
+      <div class="logo-icon"><i class="fa-solid fa-chart-pie" style="color:#fff; font-size:1.2rem;"></i></div>
       <div>
-        <span>ANTIGRAVITY</span>
-        <div style="font-size: 0.65rem; color: var(--accent-cyan); letter-spacing: 2px;">RESEARCH MONOLITH</div>
+        <span>DATAGOAL</span>
+        <div style="font-size: 0.65rem; color: var(--accent-cyan); letter-spacing: 2px;">PLATAFORMA INTELIGENTE</div>
       </div>
     </div>
 
@@ -38,7 +36,8 @@
         <li class="nav-item" data-target="view-map"><a href="#"><i class="fa-solid fa-map-location-dot"></i> Mapa de Campo</a></li>
         <li class="nav-item" data-target="view-form-builder" id="nav-form-builder"><a href="#"><i class="fa-solid fa-cubes"></i> Construtor</a></li>
         <li class="nav-item" data-target="view-mobile-sim"><a href="#"><i class="fa-solid fa-mobile-screen"></i> Coleta (Simulador)</a></li>
-        <li class="nav-item" data-target="view-cli"><a href="#"><i class="fa-solid fa-terminal"></i> Console Redes</a></li>
+        <li class="nav-item" data-target="view-ai-analysis"><a href="#"><i class="fa-solid fa-brain"></i> Análise IA</a></li>
+        <li class="nav-item" data-target="view-cli"><a href="#"><i class="fa-solid fa-server"></i> Status do Sistema</a></li>
         <li class="nav-item" data-target="view-logs" id="nav-logs"><a href="#"><i class="fa-solid fa-shield-halved"></i> Logs Suporte (DEV)</a></li>
       </ul>
     </nav>
@@ -52,7 +51,7 @@
         <option value="Analyst">Analista (Formulários/Pagamentos)</option>
         <option value="Coordinator" selected>Coordenador (Gestão Campo)</option>
         <option value="Supervisor">Supervisor (Validação Campo)</option>
-        <option value="Researcher">Pesquisador (Freelancer)</option>
+        <option value="Researcher">Pesquisador</option>
       </select>
     </div>
   </header>
@@ -67,7 +66,7 @@
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
           <div>
             <h2 id="dashboard-welcome">Painel de Acompanhamento Geral</h2>
-            <p style="color: var(--text-secondary);">Estrutura operacional Clean Architecture ativa. Modo de operação seguro ativado.</p>
+            <p style="color: var(--text-secondary);">Visão geral do andamento da coleta de dados em campo.</p>
           </div>
           <div style="display:flex; gap: 0.8rem;">
             <button class="btn btn-primary" id="btn-export-data"><i class="fa-solid fa-file-csv"></i> Exportar Planilha (CSV)</button>
@@ -86,7 +85,7 @@
           <div class="stat-value" id="metric-total-forms">0</div>
         </div>
         <div class="glass-card stat-item green">
-          <span class="stat-label">Pesquisadores Freelancers</span>
+          <span class="stat-label">Pesquisadores em Campo</span>
           <div class="stat-value" id="metric-total-researchers">0</div>
         </div>
         <div class="glass-card stat-item yellow">
@@ -469,6 +468,37 @@
         
         <div class="log-console" id="log-console-container">
           <!-- Filled dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. VIEW: AI ANALYSIS -->
+    <section id="view-ai-analysis" class="view-panel">
+      <div class="glass-card">
+        <h3 class="card-title">
+          <span><i class="fa-solid fa-brain"></i> Motor de Inteligência Artificial (Antigravity AI)</span>
+          <span class="form-tag tag-pub" style="background: rgba(157, 78, 221, 0.15); color: #9d4edd;">BETA</span>
+        </h3>
+        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:1.5rem;">
+          Nosso módulo de IA analisa em tempo real padrões de deslocamento, tempo de resposta e qualidade do áudio para identificar fraudes, outliers ou anomalias nas entrevistas submetidas.
+        </p>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border);">
+          <div>
+            <h4 style="margin-bottom:0.3rem;">Detecção de Anomalias Baseada em Redes Neurais</h4>
+            <span style="font-size:0.8rem; color:var(--text-secondary);">Varredura profunda utilizando modelos de ML e NLP treinados com dados de campo.</span>
+          </div>
+          <div style="display:flex; align-items:center; gap: 1rem;">
+            <span id="ai-status" style="font-size:0.85rem; color:var(--text-muted); font-style:italic;">Aguardando execução manual...</span>
+            <button class="btn btn-primary" style="background: var(--accent-purple); color: #fff; padding: 0.6rem 1.2rem;" onclick="runAiAnalysis()"><i class="fa-solid fa-microchip"></i> Iniciar Varredura de IA</button>
+          </div>
+        </div>
+        
+        <div id="ai-results-container" style="display:grid; grid-template-columns: 1fr; gap:1.2rem;">
+          <!-- Empty state -->
+          <div style="text-align:center; padding: 2rem; border: 1px dashed var(--glass-border); border-radius: 8px; color: var(--text-muted);">
+            Nenhuma anomalia processada recentemente. Clique no botão acima para rodar a IA.
+          </div>
         </div>
       </div>
     </section>

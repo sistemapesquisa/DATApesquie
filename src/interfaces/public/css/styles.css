@@ -1,25 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 :root {
-  --bg-primary: #0a0c14;
-  --bg-secondary: #121526;
-  --bg-tertiary: #191c32;
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
   
-  --accent-cyan: #00f0ff;
-  --accent-purple: #9d4edd;
-  --accent-blue: #3a86c8;
+  --accent-cyan: #0284c7;
+  --accent-purple: #7c3aed;
+  --accent-blue: #2563eb;
   
-  --status-green: #00e676;
-  --status-red: #ff3d00;
-  --status-yellow: #ffc400;
+  --status-green: #10b981;
+  --status-red: #ef4444;
+  --status-yellow: #f59e0b;
   
-  --text-primary: #f8f9fa;
-  --text-secondary: #9092a1;
-  --text-muted: #5e6175;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
   
-  --glass-bg: rgba(18, 21, 38, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-shadow: rgba(0, 0, 0, 0.4);
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-shadow: rgba(0, 0, 0, 0.05);
   
   --font-sans: 'Outfit', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;

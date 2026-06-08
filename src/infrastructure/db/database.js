@@ -73,6 +73,15 @@ function initDb() {
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
       )`);
 
+      // 5. Routes Table (Assignments for Researchers)
+      db.run(`CREATE TABLE IF NOT EXISTS routes (
+        id TEXT PRIMARY KEY,
+        researcher_id TEXT NOT NULL,
+        form_id TEXT NOT NULL,
+        city TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`);
+
       // Seed Users if empty
       db.get("SELECT COUNT(*) as count FROM users", (err, row) => {
         if (err) return reject(err);
@@ -237,7 +246,23 @@ function initDb() {
           
           stmt.finalize();
         }
-        resolve();
+        
+        // Seed Routes if empty
+        db.get("SELECT COUNT(*) as count FROM routes", (err, row) => {
+          if (err) return reject(err);
+          if (row.count === 0) {
+            jsonLogger.info('Seeding routes table...');
+            const stmt = db.prepare("INSERT INTO routes (id, researcher_id, form_id, city) VALUES (?, ?, ?, ?)");
+            
+            stmt.run("route_1", "researcher_1", "form_censo", "Petrolina");
+            stmt.run("route_2", "researcher_2", "form_censo", "Juazeiro");
+            stmt.run("route_3", "researcher_3", "form_saneamento", "Sobral");
+            stmt.run("route_4", "researcher_4", "form_saneamento", "Canudos");
+            
+            stmt.finalize();
+          }
+          resolve();
+        });
       });
     });
   });
