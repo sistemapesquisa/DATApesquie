@@ -6,6 +6,8 @@
   <title>DATApesquise — Plataforma de Pesquisa de Campo</title>
   <meta name="description" content="Plataforma inteligente de gestão de pesquisas de campo">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
@@ -28,16 +30,17 @@
         </div>
       </div>
       <nav class="sidebar-nav">
-        <a class="nav-item active" data-target="view-dashboard" id="nav-dashboard"><i class="fa-solid fa-house"></i><span>Início</span></a>
-        <a class="nav-item" data-target="view-map" id="nav-map"><i class="fa-solid fa-map-location-dot"></i><span>Mapa de Campo</span></a>
+        <a class="nav-item active" data-target="view-dashboard" id="nav-dashboard"><i class="fa-solid fa-layer-group"></i><span>Projetos</span></a>
         <a class="nav-item" data-target="view-form-builder" id="nav-form-builder"><i class="fa-solid fa-clipboard-list"></i><span>Formulários</span></a>
-        <a class="nav-item" data-target="view-reports" id="nav-reports"><i class="fa-solid fa-table-list"></i><span>Relatórios de Coleta</span></a>
         <a class="nav-item" data-target="view-mobile-sim" id="nav-mobile-sim"><i class="fa-solid fa-mobile-screen"></i><span>Coletar Dados</span></a>
-        <a class="nav-item" data-target="view-ai-analysis" id="nav-ai"><i class="fa-solid fa-magnifying-glass-chart"></i><span>Análise Inteligente</span></a>
         <div class="nav-divider"></div>
-        <a class="nav-item" data-target="view-team-routes" id="nav-team-routes"><i class="fa-solid fa-users-gear"></i><span>Equipe e Rotas</span></a>
+        <a class="nav-item" data-target="view-team-routes" id="nav-team-routes"><i class="fa-solid fa-users-gear"></i><span>Equipe e Acessos</span></a>
+        <a class="nav-item" data-target="view-roles" id="nav-roles"><i class="fa-solid fa-user-shield"></i><span>Cargos e Permissões</span></a>
         <a class="nav-item" data-target="view-equipment" id="nav-equipment"><i class="fa-solid fa-server"></i><span>Equipamentos</span></a>
-        <a class="nav-item" data-target="view-logs" id="nav-logs"><i class="fa-solid fa-shield-halved"></i><span>Registros</span></a>
+        <a class="nav-item" data-target="view-logs" id="nav-logs"><i class="fa-solid fa-shield-halved"></i><span>Auditoria de Logs</span></a>
+        
+        <!-- Hidden target for active state when inside a project -->
+        <a class="nav-item" data-target="view-project-details" id="nav-project-details" style="display:none;"></a>
       </nav>
       <div class="sidebar-footer">
         <div class="sidebar-user-info">
@@ -77,91 +80,26 @@
         </div>
       </div>
 
-      <!-- ===== VIEW: DASHBOARD ===== -->
+      <!-- ===== VIEW: DASHBOARD (PROJECTS) ===== -->
       <section id="view-dashboard" class="view-panel active">
         <div class="page-header">
-          <h1 class="page-title" id="dashboard-welcome">Bom dia! 👋</h1>
-          <p class="page-subtitle">Acompanhe o andamento das pesquisas de campo em tempo real.</p>
+          <h1 class="page-title" id="dashboard-welcome">Projetos Ativos 👋</h1>
+          <p class="page-subtitle">Selecione um projeto para visualizar o mapa de coleta, gerenciar dados e metadados.</p>
         </div>
 
-        <div class="stats-grid">
-          <div class="card stat-card blue">
-            <div class="stat-icon"><i class="fa-solid fa-clipboard-check"></i></div>
-            <div class="stat-value" id="metric-total-interviews">0</div>
-            <div class="stat-label">Entrevistas Realizadas</div>
-          </div>
-          <div class="card stat-card green">
-            <div class="stat-icon"><i class="fa-solid fa-file-lines"></i></div>
-            <div class="stat-value" id="metric-total-forms">0</div>
-            <div class="stat-label">Formulários Ativos</div>
-          </div>
-          <div class="card stat-card orange">
-            <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
-            <div class="stat-value" id="metric-total-researchers">0</div>
-            <div class="stat-label">Pesquisadores em Campo</div>
-          </div>
-          <div class="card stat-card red">
-            <div class="stat-icon"><i class="fa-solid fa-shield-halved"></i></div>
-            <div class="stat-value" id="metric-blocked-commands">0</div>
-            <div class="stat-label">Alertas de Segurança</div>
-          </div>
+        <div class="projects-grid" id="projects-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+          <!-- Projects cards will be injected here via JS -->
         </div>
 
-        <div class="dashboard-grid">
-          <div class="card">
-            <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-bullseye"></i> Metas de Coleta</h3></div>
-            <div class="quotas-list">
-              <div class="quota-item">
-                <div class="quota-header"><span>Censo Populacional do Sertão (Petrolina)</span><span class="quota-pct">68%</span></div>
-                <div class="progress-bar"><div class="progress-fill blue" style="width:68%"></div></div>
-              </div>
-              <div class="quota-item">
-                <div class="quota-header"><span>Pesquisa Saneamento (Sobral)</span><span class="quota-pct purple">42%</span></div>
-                <div class="progress-bar"><div class="progress-fill purple" style="width:42%"></div></div>
-              </div>
-              <div class="quota-item">
-                <div class="quota-header"><span>Meta Diária Geral (Hoje)</span><span class="quota-pct green">90%</span></div>
-                <div class="progress-bar"><div class="progress-fill green" style="width:90%"></div></div>
-              </div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-chart-pie"></i> Status das Entrevistas</h3></div>
-            <div class="chart-container"><canvas id="chart-statuses"></canvas></div>
-          </div>
-        </div>
-
-        <div class="card">
+        <div class="card" id="odk-guide-section" style="margin-top: 2rem;">
           <div class="card-header">
-            <h3 class="card-title"><i class="fa-solid fa-download"></i> Exportar Dados</h3>
-            <button class="btn btn-primary" id="btn-export-data"><i class="fa-solid fa-file-csv"></i> Baixar Planilha (CSV)</button>
-          </div>
-          <p class="text-muted">Exporte todas as entrevistas coletadas em formato CSV para análise externa.</p>
-        </div>
-
-        <div class="card" id="odk-guide-section">
-          <div class="card-header">
-            <h3 class="card-title"><i class="fa-solid fa-mobile-screen-button"></i> Como Conectar o Celular</h3>
-            <span class="badge badge-success">Ativo</span>
+            <h3 class="card-title"><i class="fa-solid fa-mobile-screen-button"></i> Como Conectar o Celular (ODK Collect)</h3>
           </div>
           <p class="text-muted">Os pesquisadores podem usar o aplicativo ODK Collect no Android para realizar entrevistas offline e enviar os dados ao servidor.</p>
           <div class="steps-grid">
             <div class="step-card"><div class="step-number">1</div><h4>Instale o App</h4><p>Baixe o ODK Collect na Google Play Store no celular do pesquisador.</p></div>
-            <div class="step-card"><div class="step-number">2</div><h4>Configure o Servidor</h4><p>No app, insira o endereço: <code id="odk-server-url">http://localhost:3000/api</code> <button class="btn btn-sm" onclick="copyOdkUrl()" title="Copiar endereço"><i class="fa-solid fa-copy"></i></button><br><br><small><b>Usuário:</b> seu e-mail cadastrado<br><b>Senha:</b> sua senha de acesso (ex: pesq123)</small></p></div>
-            <div class="step-card"><div class="step-number">3</div><h4>Sincronize</h4><p>O app carregará os formulários. As respostas aparecem no Mapa de Campo!</p></div>
-          </div>
-        </div>
-
-        <div class="card" id="financial-dashboard-section">
-          <div class="card-header">
-            <h3 class="card-title"><i class="fa-solid fa-coins"></i> Pagamentos de Pesquisadores</h3>
-            <span class="badge badge-info">Financeiro</span>
-          </div>
-          <div class="table-wrapper">
-            <table class="data-table" id="financials-table">
-              <thead><tr><th>Pesquisador</th><th>Entrevistas</th><th>Aprovadas</th><th>Rejeições</th><th>Valor (R$)</th><th>Status</th></tr></thead>
-              <tbody id="financials-tbody"></tbody>
-            </table>
+            <div class="step-card"><div class="step-number">2</div><h4>Configure o Servidor</h4><p>No app, insira o endereço: <code id="odk-server-url">http://localhost:3000/api</code> <button class="btn btn-sm" onclick="copyOdkUrl()" title="Copiar endereço"><i class="fa-solid fa-copy"></i></button><br><br><small><b>Usuário:</b> seu e-mail cadastrado<br><b>Senha:</b> sua senha</small></p></div>
+            <div class="step-card"><div class="step-number">3</div><h4>Sincronize</h4><p>O app carregará os formulários da sua conta. As respostas aparecem na Visão do Projeto!</p></div>
           </div>
         </div>
       </section>
@@ -228,6 +166,87 @@
             <div id="skip-logic-errors" class="validation-banner"></div>
             <div class="questions-header"><h4>Perguntas</h4><button class="btn btn-sm" id="btn-add-question"><i class="fa-solid fa-plus"></i> Adicionar Pergunta</button></div>
             <div id="builder-questions-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== VIEW: PROJECT DETAILS ===== -->
+      <section id="view-project-details" class="view-panel">
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <button class="btn btn-sm" style="margin-bottom:0.5rem;" onclick="switchTab('view-dashboard')"><i class="fa-solid fa-arrow-left"></i> Voltar aos Projetos</button>
+            <h1 class="page-title" id="project-details-title"><i class="fa-solid fa-clipboard-list"></i> Carregando Projeto...</h1>
+            <p class="page-subtitle" id="project-details-subtitle">Visão unificada de dados, métricas e mapa.</p>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn btn-primary" id="btn-export-data"><i class="fa-solid fa-file-csv"></i> Exportar Dados</button>
+            <button class="btn btn-danger" id="btn-clear-tests" onclick="clearTestInterviews()"><i class="fa-solid fa-broom"></i> Limpar Base</button>
+          </div>
+        </div>
+
+        <!-- Project Sub-Tabs -->
+        <div class="tabs" style="display:flex; gap:1rem; border-bottom:1px solid var(--border); margin-bottom:1.5rem;">
+          <div class="tab-link active" data-tab="proj-tab-data" style="padding:0.5rem 1rem; cursor:pointer; font-weight:600; border-bottom:2px solid var(--primary); color:var(--primary);"><i class="fa-solid fa-table"></i> Dados e Entrevistas</div>
+          <div class="tab-link" data-tab="proj-tab-map" style="padding:0.5rem 1rem; cursor:pointer; font-weight:600; border-bottom:2px solid transparent; color:var(--text-secondary);"><i class="fa-solid fa-map"></i> Mapa de Coleta</div>
+          <div class="tab-link" data-tab="proj-tab-audio" style="padding:0.5rem 1rem; cursor:pointer; font-weight:600; border-bottom:2px solid transparent; color:var(--text-secondary);"><i class="fa-solid fa-microphone"></i> Gravações</div>
+        </div>
+
+        <div class="tab-content active" id="proj-tab-data">
+          <div class="card">
+            <div class="table-wrapper" style="max-height:600px;overflow-y:auto;">
+              <table class="data-table" id="reports-table">
+                <thead><tr><th style="width:40px;"><input type="checkbox" id="check-all-interviews"></th><th>ID</th><th>Pesquisador</th><th>Dispositivo</th><th>Data/Hora</th><th>Ações</th></tr></thead>
+                <tbody id="reports-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="proj-tab-map" style="display:none;">
+          <div class="card" style="padding:0; overflow:hidden;">
+            <div id="map" class="map-container" style="height:600px; border:none; border-radius:var(--radius-lg);"></div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="proj-tab-audio" style="display:none;">
+          <div class="card" id="audio-review-list"></div>
+        </div>
+      </section>
+
+      <!-- ===== VIEW: CUSTOM ROLES ===== -->
+      <section id="view-roles" class="view-panel">
+        <div class="page-header">
+          <h1 class="page-title"><i class="fa-solid fa-user-shield"></i> Cargos e Permissões</h1>
+          <p class="page-subtitle">Crie perfis personalizados e defina o que cada um pode fazer no sistema.</p>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 350px; gap: 1.5rem; align-items: start;">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Perfis Existentes</h3></div>
+            <table class="data-table">
+              <thead><tr><th>Cargo</th><th>Permissões Ativas</th><th>Ações</th></tr></thead>
+              <tbody id="roles-tbody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Criar Novo Cargo</h3></div>
+            <div class="form-group">
+              <label class="form-label">Nome do Cargo</label>
+              <input type="text" class="form-input" id="role-form-name" placeholder="Ex: Supervisor de Campo">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Permissões (Marque o que for permitido)</label>
+              <div style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.5rem; padding:1rem; background:var(--bg-page); border-radius:var(--radius-sm); font-size:0.85rem;">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;"><input type="checkbox" class="role-perm-cb" value="view_projects"> Ver Projetos</label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;"><input type="checkbox" class="role-perm-cb" value="view_map"> Ver Mapa e GPS</label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;"><input type="checkbox" class="role-perm-cb" value="export_data"> Exportar Base (CSV)</label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;"><input type="checkbox" class="role-perm-cb" value="delete_data"> Apagar/Limpar Testes</label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;"><input type="checkbox" class="role-perm-cb" value="manage_forms"> Criar Formulários</label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;"><input type="checkbox" class="role-perm-cb" value="manage_users"> Gerenciar Equipe</label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;"><input type="checkbox" class="role-perm-cb" value="submit_data"> Enviar Pesquisas (Coletor)</label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;"><input type="checkbox" class="role-perm-cb" value="all"> Controle Total (Administrador)</label>
+              </div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;" onclick="saveNewRole()">Salvar Cargo</button>
           </div>
         </div>
       </section>
@@ -375,27 +394,19 @@
         <div class="modal-box" style="max-width:700px;width:95%;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;border-bottom:1px solid var(--border);padding-bottom:1rem;">
             <h3 class="modal-title" style="margin-bottom:0;text-align:left;"><i class="fa-solid fa-file-invoice"></i> Detalhes da Coleta</h3>
-            <span class="badge" id="interview-modal-status"></span>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;font-size:0.85rem;background:var(--bg-page);padding:1rem;border-radius:var(--radius-sm);">
             <div><strong style="color:var(--text-muted);">Formulário:</strong> <br><span id="interview-modal-form"></span></div>
             <div><strong style="color:var(--text-muted);">Pesquisador:</strong> <br><span id="interview-modal-researcher"></span></div>
             <div><strong style="color:var(--text-muted);">Data/Hora:</strong> <br><span id="interview-modal-date"></span></div>
-            <div><strong style="color:var(--text-muted);">Localização:</strong> <br><span id="interview-modal-gps"></span></div>
+            <div><strong style="color:var(--text-muted);">Dispositivo:</strong> <br><span id="interview-modal-device"></span></div>
+            <div style="grid-column: span 2;"><strong style="color:var(--text-muted);">Localização GPS:</strong> <br><span id="interview-modal-gps"></span></div>
           </div>
-          <h4 style="font-size:0.9rem;margin-bottom:1rem;color:var(--text-secondary);text-transform:uppercase;">Respostas</h4>
+          <h4 style="font-size:0.9rem;margin-bottom:1rem;color:var(--text-secondary);text-transform:uppercase;">Respostas do Questionário</h4>
           <div id="interview-modal-answers" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1.5rem;">
           </div>
-          <div class="form-group" style="margin-bottom:1.5rem;">
-            <label class="form-label">Observações da Auditoria</label>
-            <textarea class="form-input" id="interview-modal-notes" rows="2" placeholder="Descreva os motivos de aprovação/rejeição..."></textarea>
-          </div>
-          <div class="modal-actions" style="justify-content:space-between;">
+          <div class="modal-actions" style="justify-content:flex-end;">
             <button class="btn" onclick="document.getElementById('interview-modal').classList.remove('active')">Fechar</button>
-            <div style="display:flex;gap:0.75rem;">
-              <button class="btn btn-danger" id="btn-interview-reject"><i class="fa-solid fa-xmark"></i> Rejeitar</button>
-              <button class="btn btn-success" id="btn-interview-approve"><i class="fa-solid fa-check"></i> Aprovar</button>
-            </div>
           </div>
         </div>
       </div>
@@ -404,6 +415,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="js/app.js"></script>
 </body>

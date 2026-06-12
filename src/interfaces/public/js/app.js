@@ -105,6 +105,12 @@ const virtualDb = {
         { id: 'route_2', researcher_id: 'researcher_2', form_id: 'form_censo', city: 'Juazeiro', created_at: new Date().toISOString() }
       ]);
     }
+    if (this._getStore('vdb_roles').length === 0) {
+      this._setStore('vdb_roles', [
+        { id: 'role_coord', name: 'Coordenador Master', permissions: 'view_projects,view_map,export_data,delete_data,manage_forms,manage_users', created_at: new Date().toISOString() },
+        { id: 'role_super', name: 'Supervisor de Campo', permissions: 'view_projects,view_map,submit_data', created_at: new Date().toISOString() }
+      ]);
+    }
   }
 };
 
@@ -138,6 +144,21 @@ function simulateOfflineApi(endpoint, options = {}) {
     users = users.map(u => u.id === uid ? {...u, status:'deleted'} : u);
     virtualDb._setStore('vdb_users', users);
     return { success:true };
+  }
+  if (endpoint === '/api/roles' && method === 'GET') return virtualDb._getStore('vdb_roles');
+  if (endpoint === '/api/roles' && method === 'POST') {
+    const roles = virtualDb._getStore('vdb_roles');
+    const newRole = { id: 'role_'+Math.random().toString(36).substr(2,8), name: body.name, permissions: body.permissions, created_at: new Date().toISOString() };
+    roles.push(newRole);
+    virtualDb._setStore('vdb_roles', roles);
+    return { success: true, role: newRole };
+  }
+  if (endpoint.match(/\/api\/roles\//) && method === 'DELETE') {
+    const rid = endpoint.split('/').pop();
+    let roles = virtualDb._getStore('vdb_roles');
+    roles = roles.filter(r => r.id !== rid);
+    virtualDb._setStore('vdb_roles', roles);
+    return { success: true };
   }
   if (endpoint === '/api/routes' && method === 'GET') {
     const routes = virtualDb._getStore('vdb_routes');
@@ -382,113 +403,116 @@ function updateUserUI() {
 
 // ===================== DASHBOARD =====================
 function renderDashboard() {
-  // Greeting
-  const hour = new Date().getHours();
-  let greeting = 'Boa noite';
-  if (hour >= 6 && hour < 12) greeting = 'Bom dia';
-  else if (hour >= 12 && hour < 18) greeting = 'Boa tarde';
-  const userName = MOCK_USER_NAMES[state.activeRole] || '';
-  document.getElementById('dashboard-welcome').textContent = `${greeting}, ${userName.split(' ')[0]}! 👋`;
+  const grid = document.getElementById('projects-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
 
-  // Metrics
-  document.getElementById('metric-total-interviews').textContent = state.interviews.length;
-  document.getElementById('metric-total-forms').textContent = state.forms.filter(f => f.status === 'published').length;
-  const researchers = state.users.filter(u => u.role === 'Researcher' && u.status === 'active');
-  document.getElementById('metric-total-researchers').textContent = researchers.length;
-  const blockedCount = state.logs ? state.logs.filter(l => l.severity === 'CRITICAL' || l.severity === 'HIGH').length : 0;
-  document.getElementById('metric-blocked-commands').textContent = blockedCount;
-
-  // Chart
-  renderStatusChart();
-  // Financials
-  renderFinancials();
-  // ODK URL
-  if (!IS_OFFLINE_PREVIEW) {
-    const url = document.getElementById('odk-server-url');
-    if (url) url.textContent = `${window.location.origin}/api`;
+  const publishedForms = state.forms.filter(f => f.status === 'published');
+  
+  if (publishedForms.length === 0) {
+    grid.innerHTML = '<div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3rem;"><i class="fa-solid fa-folder-open" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i><h3 style="margin-bottom: 0.5rem;">Nenhum Projeto Ativo</h3><p class="text-muted">Crie um formulário e publique para iniciar um novo projeto de coleta.</p></div>';
+    return;
   }
+
+  publishedForms.forEach(form => {
+    const ints = state.interviews.filter(i => i.form_id === form.id);
+    const lastCollect = ints.length > 0 ? new Date(ints[ints.length-1].created_at).toLocaleDateString('pt-BR') : 'Sem dados';
+    
+    grid.innerHTML += `
+      <div class="card" style="cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.2s;" onclick="openProject('${form.id}')" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 1rem;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+              <i class="fa-solid fa-clipboard-list"></i>
+            </div>
+            <span class="badge badge-success">V${form.version}</span>
+          </div>
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; line-height: 1.3;">${form.title}</h3>
+          <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 1.5rem;">Clique para gerenciar dados, exportar base ou visualizar mapa.</p>
+        </div>
+        <div style="border-top: 1px solid var(--border); padding-top: 1rem; display:flex; justify-content:space-between; align-items:center;">
+          <div><strong style="font-size: 1.25rem;">${ints.length}</strong><span class="text-muted" style="font-size: 0.75rem; display:block;">COLETAS</span></div>
+          <div style="text-align:right;"><span class="text-muted" style="font-size: 0.75rem;">ÚLTIMA</span><br><strong style="font-size: 0.85rem;">${lastCollect}</strong></div>
+        </div>
+      </div>
+    `;
+  });
 }
 
-function renderStatusChart() {
-  const approved = state.interviews.filter(i => i.status === 'approved').length;
-  const pending = state.interviews.filter(i => i.status === 'pending').length;
-  const rejected = state.interviews.filter(i => i.status === 'rejected').length;
-  const ctx = document.getElementById('chart-statuses');
-  if (!ctx) return;
-  if (state.statusChart) state.statusChart.destroy();
-  state.statusChart = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Aprovadas', 'Pendentes', 'Rejeitadas'],
-      datasets: [{ data: [approved, pending, rejected], backgroundColor: ['#059669','#d97706','#dc2626'], borderWidth: 0, borderRadius: 4 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '65%',
-      plugins: {
-        legend: { position: 'bottom', labels: { color: '#0f172a', padding: 16, font: { family: 'Inter', size: 12, weight: 500 }, usePointStyle: true, pointStyleWidth: 10 } }
+// ===================== PROJECT DETAILS =====================
+window.openProject = function(formId) {
+  state.activeProjectFormId = formId;
+  const form = state.forms.find(f => f.id === formId);
+  if (!form) return;
+
+  document.getElementById('project-details-title').innerHTML = `<i class="fa-solid fa-clipboard-list"></i> ${form.title}`;
+  switchTab('view-project-details');
+  
+  // Setup tabs
+  document.querySelectorAll('#view-project-details .tab-link').forEach(el => {
+    el.onclick = function() {
+      document.querySelectorAll('#view-project-details .tab-link').forEach(t => {
+        t.style.borderBottomColor = 'transparent'; t.style.color = 'var(--text-secondary)';
+      });
+      this.style.borderBottomColor = 'var(--primary)'; this.style.color = 'var(--primary)';
+      document.querySelectorAll('#view-project-details .tab-content').forEach(c => c.style.display = 'none');
+      document.getElementById(this.dataset.tab).style.display = 'block';
+      if (this.dataset.tab === 'proj-tab-map' && state.map) {
+        setTimeout(() => state.map.invalidateSize(), 150);
       }
-    }
+    };
   });
-}
 
-function renderFinancials() {
-  const tbody = document.getElementById('financials-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-  const researchers = state.users.filter(u => u.role === 'Researcher' && u.status === 'active');
-  researchers.forEach(r => {
-    const rInts = state.interviews.filter(i => i.researcher_id === r.id);
-    const approved = rInts.filter(i => i.status === 'approved').length;
-    const rejected = rInts.filter(i => i.status === 'rejected').length;
-    const payment = approved * 15;
-    const statusBadge = approved > 0 ? '<span class="badge badge-success">Pago</span>' : '<span class="badge badge-warning">Pendente</span>';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td><strong>${r.name}</strong></td><td>${rInts.length}</td><td>${approved}</td><td>${rejected}</td><td>R$ ${payment.toFixed(2)}</td><td>${statusBadge}</td>`;
-    tbody.appendChild(tr);
-  });
-}
+  renderReportsTable();
+  if (!state.map) initMap();
+  else renderMapMarkers();
+  renderAudioReviewList();
+};
 
 // ===================== MAP =====================
 function initMap() {
   if (state.map) return;
   state.map = L.map('map').setView([-9.3833, -40.5], 7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 18 }).addTo(state.map);
+  
+  state.markerCluster = L.markerClusterGroup({
+    chunkedLoading: true,
+    maxClusterRadius: 50
+  });
+  state.map.addLayer(state.markerCluster);
+  
   renderMapMarkers();
-  // Filter listeners
-  ['map-filter-researcher','map-filter-status','map-filter-date'].forEach(id => {
-    document.getElementById(id).addEventListener('change', renderMapMarkers);
-  });
-  document.getElementById('btn-clear-map-filters').addEventListener('click', () => {
-    document.getElementById('map-filter-researcher').value = 'all';
-    document.getElementById('map-filter-status').value = 'all';
-    document.getElementById('map-filter-date').value = '';
-    renderMapMarkers();
-  });
 }
 
 function renderMapMarkers() {
-  state.mapMarkers.forEach(m => state.map.removeLayer(m));
-  state.mapMarkers = [];
-  const rFilter = document.getElementById('map-filter-researcher').value;
-  const sFilter = document.getElementById('map-filter-status').value;
-  const dFilter = document.getElementById('map-filter-date').value;
+  if (!state.map || !state.markerCluster) return;
+  
+  state.markerCluster.clearLayers();
+  
+  // Filter only for the active project
   let filtered = state.interviews.filter(i => i.latitude && i.longitude);
-  if (rFilter !== 'all') filtered = filtered.filter(i => i.researcher_id === rFilter);
-  if (sFilter !== 'all') filtered = filtered.filter(i => i.status === sFilter);
-  if (dFilter) filtered = filtered.filter(i => i.created_at && i.created_at.startsWith(dFilter));
+  if (state.activeProjectFormId) {
+    filtered = filtered.filter(i => i.form_id === state.activeProjectFormId);
+  }
+
+  const markers = [];
   filtered.forEach(item => {
     const color = RESEARCHER_COLORS[item.researcher_id] || '#6366f1';
     const researcher = state.users.find(u => u.id === item.researcher_id);
     const researcherName = researcher ? researcher.name : item.researcher_id;
     const form = state.forms.find(f => f.id === item.form_id);
     const formTitle = form ? form.title : item.form_id;
-    const statusLabel = STATUS_LABELS[item.status] || item.status;
-    const statusClass = item.status === 'approved' ? 'badge-success' : item.status === 'rejected' ? 'badge-danger' : 'badge-warning';
+    
     const icon = L.divIcon({ className:'custom-marker', html:`<div style="width:14px;height:14px;background:${color};border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`, iconSize:[14,14], iconAnchor:[7,7] });
-    const popup = `<div style="font-family:Inter,sans-serif;min-width:200px;"><strong style="font-size:0.9rem;">${formTitle}</strong><br><span style="font-size:0.78rem;color:#64748b;">Pesquisador: ${researcherName}</span><br><span style="font-size:0.78rem;color:#64748b;">Data: ${new Date(item.created_at).toLocaleDateString('pt-BR')}</span><br><span class="badge ${statusClass}" style="margin-top:4px;">${statusLabel}</span></div>`;
-    const marker = L.marker([item.latitude, item.longitude], { icon }).addTo(state.map).bindPopup(popup);
-    state.mapMarkers.push(marker);
+    const popup = `<div style="font-family:Inter,sans-serif;min-width:200px;"><strong style="font-size:0.9rem;">${formTitle}</strong><br><span style="font-size:0.78rem;color:#64748b;">Pesquisador: ${researcherName}</span><br><span style="font-size:0.78rem;color:#64748b;">Data: ${new Date(item.created_at).toLocaleDateString('pt-BR')}</span><br><span style="font-size:0.78rem;color:#64748b;">Dispositivo: ${item.device_id || 'unknown'}</span><br><div style="margin-top:8px;"><button class="btn btn-sm btn-primary" onclick="openInterviewDetails('${item.id}')" style="width:100%;font-size:0.75rem;">Ver Dados</button></div></div>`;
+    const marker = L.marker([item.latitude, item.longitude], { icon }).bindPopup(popup);
+    markers.push(marker);
   });
+  
+  state.markerCluster.addLayers(markers);
+  if (markers.length > 0) {
+    state.map.fitBounds(state.markerCluster.getBounds(), { padding: [50, 50] });
+  }
 }
 
 // ===================== REPORTS =====================
@@ -496,47 +520,28 @@ window.renderReportsTable = function() {
   const tbody = document.getElementById('reports-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
-  
-  // Update select filters
-  const fSelect = document.getElementById('report-filter-form');
-  const rSelect = document.getElementById('report-filter-researcher');
-  if (fSelect.options.length === 1) {
-    state.forms.forEach(f => fSelect.insertAdjacentHTML('beforeend', `<option value="${f.id}">${f.title}</option>`));
-  }
-  if (rSelect.options.length === 1) {
-    state.users.filter(u => u.role === 'Researcher').forEach(u => rSelect.insertAdjacentHTML('beforeend', `<option value="${u.id}">${u.name}</option>`));
-  }
-
-  const fFilter = document.getElementById('report-filter-form').value;
-  const rFilter = document.getElementById('report-filter-researcher').value;
-  const sFilter = document.getElementById('report-filter-status').value;
-  const dFilter = document.getElementById('report-filter-date').value;
 
   let filtered = [...state.interviews].reverse(); // newest first
-  if (fFilter !== 'all') filtered = filtered.filter(i => i.form_id === fFilter);
-  if (rFilter !== 'all') filtered = filtered.filter(i => i.researcher_id === rFilter);
-  if (sFilter !== 'all') filtered = filtered.filter(i => i.status === sFilter);
-  if (dFilter) filtered = filtered.filter(i => i.created_at && i.created_at.startsWith(dFilter));
+  if (state.activeProjectFormId) {
+    filtered = filtered.filter(i => i.form_id === state.activeProjectFormId);
+  }
 
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;">Nenhum relatório encontrado com os filtros atuais.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;">Nenhuma coleta encontrada neste projeto.</td></tr>';
     return;
   }
 
   filtered.forEach(int => {
     const researcher = state.users.find(u => u.id === int.researcher_id) || {name: int.researcher_id};
-    const form = state.forms.find(f => f.id === int.form_id) || {title: int.form_id};
     const date = new Date(int.created_at).toLocaleString('pt-BR');
-    const statusLabel = STATUS_LABELS[int.status] || int.status;
-    const statusClass = int.status === 'approved' ? 'badge-success' : int.status === 'rejected' ? 'badge-danger' : 'badge-warning';
     
     const tr = document.createElement('tr');
     tr.innerHTML = `
+      <td><input type="checkbox" class="cb-interview-select" value="${int.id}"></td>
       <td>${int.id.substring(0,8)}</td>
       <td>${researcher.name}</td>
-      <td>${form.title}</td>
+      <td>${int.device_id || 'N/A'}</td>
       <td>${date}</td>
-      <td><span class="badge ${statusClass}">${statusLabel}</span></td>
       <td><button class="btn btn-sm btn-primary" onclick="openInterviewDetails('${int.id}')"><i class="fa-solid fa-eye"></i> Ver</button></td>
     `;
     tbody.appendChild(tr);
@@ -549,11 +554,10 @@ window.openInterviewDetails = function(id) {
   const researcher = state.users.find(u => u.id === int.researcher_id) || {name: int.researcher_id};
   const form = state.forms.find(f => f.id === int.form_id) || {title: int.form_id, questions: []};
   
-  document.getElementById('interview-modal-status').className = 'badge ' + (int.status === 'approved' ? 'badge-success' : int.status === 'rejected' ? 'badge-danger' : 'badge-warning');
-  document.getElementById('interview-modal-status').textContent = STATUS_LABELS[int.status] || int.status;
   document.getElementById('interview-modal-form').textContent = form.title;
   document.getElementById('interview-modal-researcher').textContent = researcher.name;
   document.getElementById('interview-modal-date').textContent = new Date(int.created_at).toLocaleString('pt-BR');
+  document.getElementById('interview-modal-device').textContent = int.device_id || 'N/A';
   document.getElementById('interview-modal-gps').textContent = (int.latitude && int.longitude) ? `${int.latitude}, ${int.longitude}` : 'Não registrada';
   
   const answersDiv = document.getElementById('interview-modal-answers');
@@ -568,80 +572,62 @@ window.openInterviewDetails = function(id) {
     answersDiv.innerHTML += `<div style="margin-top:1rem;border-top:1px solid var(--border);padding-top:1rem;"><strong style="display:block;margin-bottom:0.5rem;"><i class="fa-solid fa-microphone"></i> Gravação de Áudio</strong><audio controls style="width:100%;height:36px;"><source src="${int.audio_url}"></audio></div>`;
   }
   
-  document.getElementById('interview-modal-notes').value = int.notes || '';
-  
-  document.getElementById('btn-interview-approve').onclick = () => auditInterviewFromModal(id, 'approved');
-  document.getElementById('btn-interview-reject').onclick = () => auditInterviewFromModal(id, 'rejected');
-  
   document.getElementById('interview-modal').classList.add('active');
 };
 
-async function auditInterviewFromModal(id, newStatus) {
-  const notes = document.getElementById('interview-modal-notes').value;
-  try {
-    await apiFetch(`/api/interviews/${id}/status`, { method: 'PUT', body: JSON.stringify({ status: newStatus, notes }) });
-    showToast('success', 'Avaliação registrada com sucesso!');
-    document.getElementById('interview-modal').classList.remove('active');
-    await loadServerData();
-    if (document.getElementById('view-reports').classList.contains('active')) renderReportsTable();
-    if (document.getElementById('view-map').classList.contains('active')) renderMapMarkers();
-    renderDashboard();
-    renderAudioReviewList();
-  } catch(err) { showToast('error', err.message); }
-}
+window.clearTestInterviews = function() {
+  const checkboxes = document.querySelectorAll('.cb-interview-select:checked');
+  const ids = Array.from(checkboxes).map(cb => cb.value);
+  if (ids.length === 0) {
+    showToast('warning', 'Selecione pelo menos uma entrevista para apagar.');
+    return;
+  }
+
+  showConfirm('Limpar Testes', `Tem certeza que deseja apagar permanentemente ${ids.length} entrevista(s)? Essa ação não pode ser desfeita.`, async () => {
+    try {
+      const res = await apiFetch('/api/interviews/clear', { method: 'DELETE', body: JSON.stringify({ ids }) });
+      if (res.success) {
+        showToast('success', `${res.deletedCount} entrevistas removidas com sucesso.`);
+        await loadServerData();
+        renderReportsTable();
+        renderMapMarkers();
+        renderAudioReviewList();
+      }
+    } catch(err) { showToast('error', err.message); }
+  }, { type:'danger', confirmText:'Apagar Dados' });
+};
 
 // ===================== AUDIO REVIEW =====================
 function renderAudioReviewList() {
   const container = document.getElementById('audio-review-list');
   if (!container) return;
   container.innerHTML = '';
-  const auditable = state.interviews.filter(i => i.audio_url);
+  
+  let auditable = state.interviews.filter(i => i.audio_url);
+  if (state.activeProjectFormId) {
+    auditable = auditable.filter(i => i.form_id === state.activeProjectFormId);
+  }
+
   if (auditable.length === 0) {
-    container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-headphones"></i><h4>Nenhuma gravação encontrada</h4><p>As gravações de áudio aparecerão aqui quando os pesquisadores enviarem entrevistas.</p></div>';
+    container.innerHTML = '<div class="empty-state" style="padding:3rem;"><i class="fa-solid fa-headphones"></i><h4>Nenhuma gravação encontrada neste projeto</h4><p>As gravações de áudio aparecerão aqui quando os pesquisadores as enviarem.</p></div>';
     return;
   }
+  
   auditable.forEach(item => {
     const researcher = state.users.find(u => u.id === item.researcher_id);
     const researcherName = researcher ? researcher.name : item.researcher_id;
-    const form = state.forms.find(f => f.id === item.form_id);
-    const formTitle = form ? form.title : item.form_id;
-    const statusLabel = STATUS_LABELS[item.status] || item.status;
-    const statusClass = item.status === 'approved' ? 'badge-success' : item.status === 'rejected' ? 'badge-danger' : 'badge-warning';
     const div = document.createElement('div');
-    div.className = 'audio-review-item';
+    div.style = "padding:1rem; border-bottom:1px solid var(--border);";
     div.innerHTML = `
-      <div class="audio-info">
-        <h4>${formTitle}</h4>
-        <div class="audio-meta">Pesquisador: <strong>${researcherName}</strong> · ${new Date(item.created_at).toLocaleDateString('pt-BR')} · <span class="badge ${statusClass}">${statusLabel}</span></div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+        <div><strong>Pesquisador:</strong> ${researcherName}</div>
+        <div class="text-muted">${new Date(item.created_at).toLocaleString('pt-BR')}</div>
       </div>
-      <div class="audio-actions">
-        <div class="audio-btns">
-          <button class="btn btn-success btn-sm" onclick="auditInterview('${item.id}','approved')"><i class="fa-solid fa-check"></i> Aprovar</button>
-          <button class="btn btn-danger btn-sm" onclick="confirmRejectInterview('${item.id}')"><i class="fa-solid fa-xmark"></i> Rejeitar</button>
-        </div>
-        <input type="text" class="form-input audio-notes" id="notes-${item.id}" placeholder="Observações..." value="${item.notes || ''}" />
-      </div>`;
+      <audio controls style="width:100%;height:36px;"><source src="${item.audio_url}"></audio>
+    `;
     container.appendChild(div);
   });
 }
-
-window.auditInterview = async function(id, status) {
-  const notesField = document.getElementById(`notes-${id}`);
-  const notes = notesField ? notesField.value : '';
-  try {
-    const result = await apiFetch(`/api/interviews/${id}/status`, { method:'PUT', body:JSON.stringify({ status, notes }) });
-    if (result.success) {
-      showToast('success', `Entrevista ${status === 'approved' ? 'aprovada' : 'rejeitada'} com sucesso!`);
-      await loadServerData();
-      renderDashboard();
-      renderAudioReviewList();
-    }
-  } catch (err) { showToast('error', 'Erro ao classificar entrevista: ' + err.message); }
-};
-
-window.confirmRejectInterview = function(id) {
-  showConfirm('Rejeitar Entrevista', 'Tem certeza que deseja rejeitar esta entrevista? O pesquisador será notificado.', () => auditInterview(id, 'rejected'), { type:'danger', confirmText:'Rejeitar' });
-};
 
 // ===================== FORM BUILDER =====================
 function initFormBuilder() {
@@ -724,7 +710,7 @@ function renderBuilderQuestions() {
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;margin-bottom:0.5rem;">
         <div class="form-group"><label class="form-label">Texto da Pergunta</label><input type="text" class="form-input" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="Escreva a pergunta aqui..." /></div>
-        <div class="form-group"><label class="form-label">Tipo de Entrada <span class="tooltip-trigger"><span class="tooltip-icon">?</span><span class="tooltip-text">Escolha como o pesquisador vai responder esta pergunta.</span></span></label><select class="form-select" onchange="updateQType(${idx},this.value)"><option value="text" ${q.type==='text'?'selected':''}>Texto Livre</option><option value="single_choice" ${q.type==='single_choice'?'selected':''}>Seleção Única</option><option value="multiple_choice" ${q.type==='multiple_choice'?'selected':''}>Múltipla Escolha</option><option value="number" ${q.type==='number'?'selected':''}>Numérico</option><option value="audio_record" ${q.type==='audio_record'?'selected':''}>Gravação de Áudio</option></select></div>
+        <div class="form-group"><label class="form-label">Tipo de Entrada <span class="tooltip-trigger"><span class="tooltip-icon">?</span><span class="tooltip-text">Escolha como o pesquisador vai responder esta pergunta.</span></span></label><select class="form-select" onchange="updateQType(${idx},this.value)"><option value="text" ${q.type==='text'?'selected':''}>Texto Livre</option><option value="single_choice" ${q.type==='single_choice'?'selected':''}>Seleção Única</option><option value="multiple_choice" ${q.type==='multiple_choice'?'selected':''}>Múltipla Escolha</option><option value="number" ${q.type==='number'?'selected':''}>Numérico</option><option value="audio_record" ${q.type==='audio_record'?'selected':''}>Gravação de Áudio</option><option value="geopoint" ${q.type==='geopoint'?'selected':''}>Ponto de GPS</option></select></div>
       </div>
       ${optionsHtml}
       <div style="margin-top:0.75rem;padding-top:0.6rem;border-top:1px solid var(--border);">
@@ -984,12 +970,17 @@ async function fetchLogs() {
 // ===================== DATA EXPORTER =====================
 function initDataExporter() {
   document.getElementById('btn-export-data').addEventListener('click', () => {
-    if (state.interviews.length === 0) { showToast('warning', 'Nenhum dado disponível para exportar.'); return; }
-    let csv = 'ID,FormId,Versao,Pesquisador,Latitude,Longitude,AudioUrl,Status,DataCriacao,AprovadoPor,Notas,RespostasJSON\r\n';
-    state.interviews.forEach(i => {
+    let toExport = state.interviews;
+    if (state.activeProjectFormId) {
+      toExport = toExport.filter(i => i.form_id === state.activeProjectFormId);
+    }
+    
+    if (toExport.length === 0) { showToast('warning', 'Nenhum dado disponível para exportar neste projeto.'); return; }
+    
+    let csv = 'ID,FormId,Versao,Pesquisador,DeviceID,Latitude,Longitude,AudioUrl,DataCriacao,AprovadoPor,RespostasJSON\r\n';
+    toExport.forEach(i => {
       const ans = JSON.stringify(i.data).replace(/"/g, '""');
-      const notes = (i.notes || '').replace(/"/g, '""');
-      csv += `"${i.id}","${i.form_id}",${i.form_version},"${i.researcher_id}",${i.latitude||''},${i.longitude||''},"${i.audio_url||''}","${i.status}","${i.created_at}","${i.approved_by||''}","${notes}","${ans}"\r\n`;
+      csv += `"${i.id}","${i.form_id}",${i.form_version},"${i.researcher_id}","${i.device_id||''}","${i.latitude||''}","${i.longitude||''}","${i.audio_url||''}","${i.created_at}","${i.approved_by||''}","${ans}"\r\n`;
     });
     const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -1147,6 +1138,65 @@ window.copyOdkUrl = function() {
   navigator.clipboard.writeText(url).then(() => showToast('success', 'Endereço copiado!')).catch(() => showToast('info', 'Copie manualmente: ' + url));
 };
 
+// ===================== ROLES & PERMISSIONS =====================
+async function loadRoles() {
+  const tbody = document.getElementById('roles-tbody');
+  if (!tbody) return;
+  try {
+    const roles = await apiFetch('/api/roles');
+    tbody.innerHTML = '';
+    if (roles.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Nenhum cargo customizado criado.</td></tr>';
+      return;
+    }
+    roles.forEach(role => {
+      const perms = role.permissions.split(',').map(p => `<span class="badge badge-info" style="margin:2px;">${p}</span>`).join('');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${role.name}</strong></td>
+        <td>${perms}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteRole('${role.id}')"><i class="fa-solid fa-trash"></i></button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    showToast('error', 'Erro ao carregar cargos: ' + err.message);
+  }
+}
+
+window.saveNewRole = async function() {
+  const name = document.getElementById('role-form-name').value;
+  const checkboxes = document.querySelectorAll('.role-perm-cb:checked');
+  const permissions = Array.from(checkboxes).map(cb => cb.value).join(',');
+  
+  if (!name || !permissions) {
+    showToast('warning', 'Preencha o nome do cargo e selecione pelo menos uma permissão.');
+    return;
+  }
+  
+  try {
+    await apiFetch('/api/roles', { method: 'POST', body: JSON.stringify({ name, permissions }) });
+    showToast('success', 'Cargo criado com sucesso!');
+    document.getElementById('role-form-name').value = '';
+    document.querySelectorAll('.role-perm-cb').forEach(cb => cb.checked = false);
+    loadRoles();
+  } catch (err) {
+    showToast('error', 'Erro ao salvar cargo: ' + err.message);
+  }
+};
+
+window.deleteRole = function(id) {
+  showConfirm('Excluir Cargo', 'Tem certeza que deseja apagar este cargo? Usuários com este cargo perderão os acessos.', async () => {
+    try {
+      await apiFetch(`/api/roles/${id}`, { method: 'DELETE' });
+      showToast('success', 'Cargo apagado com sucesso!');
+      loadRoles();
+    } catch(err) {
+      showToast('error', 'Erro ao apagar cargo: ' + err.message);
+    }
+  }, { type: 'danger', confirmText: 'Apagar' });
+};
+
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', async () => {
   // Navigation
@@ -1209,4 +1259,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Try loading logs quietly
   try { state.logs = await apiFetch('/api/logs'); } catch {}
   renderDashboard();
+  
+  // Load roles panel if accessible
+  const rolesNav = document.querySelector('.nav-item[data-target="view-roles"]');
+  if (rolesNav) {
+    rolesNav.addEventListener('click', () => loadRoles());
+  }
 });

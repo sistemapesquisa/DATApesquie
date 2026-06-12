@@ -347,9 +347,10 @@ router.post('/interviews', async (req, res) => {
   const now = new Date().toISOString();
 
   db.run(
-    `INSERT INTO interviews (id, form_id, form_version, researcher_id, data_json, latitude, longitude, audio_url, status, created_at)
+  db.run(
+    `INSERT INTO interviews (id, form_id, form_version, researcher_id, data_json, latitude, longitude, audio_url, device_id, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [interviewId, formId, parseInt(formVersion), req.user.id, qJson, parseFloat(latitude) || null, parseFloat(longitude) || null, audioUrl, 'pending', now],
+    [interviewId, formId, parseInt(formVersion), req.user.id, qJson, parseFloat(latitude) || null, parseFloat(longitude) || null, audioUrl, 'simulator', now],
     (err) => {
       if (err) {
         jsonLogger.error('Failed to save interview response', { error: err.message });
@@ -361,31 +362,68 @@ router.post('/interviews', async (req, res) => {
   );
 });
 
-// Update interview status (Approve/Reject)
-router.put('/interviews/:id/status', (req, res) => {
-  const interviewId = req.params.id;
-  const { status, notes } = req.body; // 'approved' or 'rejected'
-
-  const canApprovePayments = checkPermission(req.user.role, PERMISSIONS.APPROVE_PAYMENT);
-  const canAuditAudio = checkPermission(req.user.role, PERMISSIONS.AUDIT_INTERVIEW_AUDIO);
-
-  if (!canApprovePayments && !canAuditAudio) {
-    return res.status(403).json({ error: 'Acesso negado: perfil sem direitos de auditoria ou aprovação.' });
+// Clear Test Interviews
+router.delete('/interviews/clear', (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'Nenhum ID fornecido.' });
   }
 
-  if (!['approved', 'rejected', 'pending'].includes(status)) {
-    return res.status(400).json({ error: 'Status de avaliação inválido.' });
+  // Permission check
+  const isCoordinator = checkPermission(req.user.role, PERMISSIONS.MANAGE_FORMS);
+  const isAdmin = checkPermission(req.user.role, PERMISSIONS.MANAGE_COORDINATORS);
+  
+  if (!isCoordinator && !isAdmin) {
+    return res.status(403).json({ error: 'Acesso negado: permissões insuficientes.' });
   }
 
+  const placeholders = ids.map(() => '?').join(',');
+  db.run(`DELETE FROM interviews WHERE id IN (${placeholders})`, ids, (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    jsonLogger.info(`Deleted ${ids.length} test interviews by ${req.user.id}`);
+    res.json({ success: true, deletedCount: ids.length });
+  });
+});
+
+// --- CUSTOM ROLES MANAGEMENT ---
+router.get('/roles', (req, res) => {
+  db.all('SELECT * FROM custom_roles', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows.map(r => ({ ...r, permissions: JSON.parse(r.permissions_json) })));
+  });
+});
+
+router.post('/roles', (req, res) => {
+  const { name, permissions } = req.body;
+  const isAdmin = checkPermission(req.user.role, PERMISSIONS.MANAGE_COORDINATORS);
+  if (!isAdmin) return res.status(403).json({ error: 'Acesso negado: apenas Administradores.' });
+  
+  if (!name || !Array.isArray(permissions)) return res.status(400).json({ error: 'Nome e permissões obrigatórios.' });
+
+  const roleId = 'role_' + crypto.randomBytes(4).toString('hex');
   db.run(
-    'UPDATE interviews SET status = ?, approved_by = ?, notes = ? WHERE id = ?',
-    [status, req.user.id, notes || '', interviewId],
+    'INSERT INTO custom_roles (id, name, permissions_json) VALUES (?, ?, ?)',
+    [roleId, name, JSON.stringify(permissions)],
     (err) => {
       if (err) return res.status(500).json({ error: err.message });
-      jsonLogger.info(`Interview [${interviewId}] status changed to [${status}] by auditor [${req.user.id}]`);
-      res.json({ success: true });
+      jsonLogger.info(`Custom role created: ${name}`);
+      res.json({ success: true, role: { id: roleId, name, permissions } });
     }
   );
+});
+
+router.delete('/roles/:id', (req, res) => {
+  const roleId = req.params.id;
+  const isAdmin = checkPermission(req.user.role, PERMISSIONS.MANAGE_COORDINATORS);
+  if (!isAdmin) return res.status(403).json({ error: 'Acesso negado: apenas Administradores.' });
+  
+  // Prevent deleting default critical roles if needed
+  if (['role_dev', 'role_admin'].includes(roleId)) return res.status(403).json({ error: 'Papéis primários não podem ser deletados.' });
+
+  db.run('DELETE FROM custom_roles WHERE id = ?', [roleId], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true });
+  });
 });
 
 // --- READ-ONLY NETWORK COMMAND CONSOLE ---
@@ -552,18 +590,19 @@ router.post(['/submission', '/odk/submission'], upload.any(), (req, res) => {
   const now = new Date().toISOString();
   // Read submission collector ID
   const researcherId = req.headers['x-user-id'] || 'researcher_1';
+  const deviceId = req.query.deviceID || 'unknown';
 
   db.run(
-    `INSERT INTO interviews (id, form_id, form_version, researcher_id, data_json, latitude, longitude, audio_url, status, created_at)
+    `INSERT INTO interviews (id, form_id, form_version, researcher_id, data_json, latitude, longitude, audio_url, device_id, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [interviewId, formId, formVersion, researcherId, JSON.stringify(parsedAnswers), latitude, longitude, audioUrl, 'pending', now],
+    [interviewId, formId, formVersion, researcherId, JSON.stringify(parsedAnswers), latitude, longitude, audioUrl, deviceId, now],
     (err) => {
       if (err) {
         jsonLogger.error('ODK DB Save failed', { error: err.message });
         return res.status(500).send('Erro interno ao salvar ODK no banco.');
       }
       
-      jsonLogger.info(`ODK submission successfully processed: ${interviewId} (Form: ${formId} V${formVersion})`);
+      jsonLogger.info(`ODK submission successfully processed: ${interviewId} (Form: ${formId} V${formVersion} Device: ${deviceId})`);
       
       res.set({
         'Content-Type': 'text/xml; charset=utf-8',

@@ -57,10 +57,15 @@ function initDb() {
         latitude REAL,
         longitude REAL,
         audio_url TEXT,
-        status TEXT NOT NULL DEFAULT 'pending',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        approved_by TEXT,
-        notes TEXT
+        device_id TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`);
+
+      // 3.1 Custom Roles Table
+      db.run(`CREATE TABLE IF NOT EXISTS custom_roles (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        permissions_json TEXT NOT NULL
       )`);
 
       // 4. Security Logs Table
@@ -192,8 +197,8 @@ function initDb() {
         if (row.count === 0) {
           jsonLogger.info('Seeding interviews table...');
           const stmt = db.prepare(`INSERT INTO interviews 
-            (id, form_id, form_version, researcher_id, data_json, latitude, longitude, audio_url, status, created_at, approved_by, notes) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+            (id, form_id, form_version, researcher_id, data_json, latitude, longitude, audio_url, device_id, created_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
           // Petrolina, Juazeiro, Sobral, Canudos coordinates (realistic interior of Northeast Brazil)
           // Ana (researcher_1), Bruno (researcher_2), Carla (researcher_3), Daniel (researcher_4)
@@ -201,33 +206,50 @@ function initDb() {
           stmt.run(
             "int_001", "form_censo", 2, "researcher_1",
             JSON.stringify({ Q1: "18 a 35 anos", Q2: "Sim", Q3: "Rede pública", Q4: "Falta de pavimentação nas ruas", Q5: "audio_001.mp3" }),
-            -9.3833, -40.5000, "audio_001.mp3", "approved", "2026-06-01T10:30:00Z", "analyst_user", "Entrevista bem estruturada e áudio claro."
+            -9.3833, -40.5000, "audio_001.mp3", "collect:7j0qiz3jPzk", "2026-06-01T10:30:00Z"
           );
 
           stmt.run(
             "int_002", "form_censo", 2, "researcher_1",
             JSON.stringify({ Q1: "36 a 60 anos", Q2: "Não", Q4: "Acesso à saúde é muito demorado", Q5: "audio_002.mp3" }),
-            -9.4122, -40.5134, "audio_002.mp3", "pending", "2026-06-02T14:15:00Z", null, ""
+            -9.4122, -40.5134, "audio_002.mp3", "collect:7j0qiz3jPzk", "2026-06-02T14:15:00Z"
           );
 
           stmt.run(
             "int_003", "form_censo", 2, "researcher_2",
             JSON.stringify({ Q1: "Mais de 60 anos", Q2: "Sim", Q3: "Painel Solar", Q4: "Segurança no período da noite", Q5: "audio_003.mp3" }),
-            -3.6888, -40.3498, "audio_003.mp3", "pending", "2026-06-02T11:00:00Z", null, ""
+            -3.6888, -40.3498, "audio_003.mp3", "collect:8x1qiz3jAab", "2026-06-02T11:00:00Z"
           );
 
           stmt.run(
             "int_004", "form_saneamento", 1, "researcher_3",
             JSON.stringify({ S1: "Não", S2: "Caminhão pipa", S3: "Regular" }),
-            -9.8970, -38.6941, "audio_004.mp3", "approved", "2026-05-30T16:45:00Z", "analyst_user", "Validada."
+            -9.8970, -38.6941, "audio_004.mp3", "collect:1k3qiz3jLop", "2026-05-30T16:45:00Z"
           );
 
           stmt.run(
             "int_005", "form_saneamento", 1, "researcher_4",
             JSON.stringify({ S1: "Sim", S3: "Excelente" }),
-            -8.8123, -38.5678, "audio_005.mp3", "rejected", "2026-06-01T09:20:00Z", null, "Áudio com chiado excessivo e sem voz inteligível."
+            -8.8123, -38.5678, "audio_005.mp3", "collect:9j2qiz3jXyz", "2026-06-01T09:20:00Z"
           );
 
+          stmt.finalize();
+        }
+      });
+
+      // Seed Custom Roles if empty
+      db.get("SELECT COUNT(*) as count FROM custom_roles", (err, row) => {
+        if (err) return reject(err);
+        if (row.count === 0) {
+          jsonLogger.info('Seeding custom roles table...');
+          const stmt = db.prepare("INSERT INTO custom_roles (id, name, permissions_json) VALUES (?, ?, ?)");
+          
+          stmt.run("role_dev", "Suporte Técnico", JSON.stringify(["all"]));
+          stmt.run("role_admin", "Administrador", JSON.stringify(["all"]));
+          stmt.run("role_coord", "Coordenador", JSON.stringify(["view_projects", "view_map", "manage_forms", "export_data", "delete_data", "manage_users", "assign_routes"]));
+          stmt.run("role_super", "Supervisor", JSON.stringify(["view_projects", "view_map", "export_data"]));
+          stmt.run("role_researcher", "Pesquisador", JSON.stringify(["submit_data", "view_own_data"]));
+          
           stmt.finalize();
         }
       });
