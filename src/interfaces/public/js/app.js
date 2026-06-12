@@ -1,6 +1,9 @@
-// Antigravity SPA Core Engine
+/* =========================================================
+   DATApesquise — Plataforma de Pesquisa de Campo
+   app.js — Core Application Logic
+   ========================================================= */
 
-// State Management
+// ===================== STATE =====================
 const state = {
   activeRole: 'Coordinator',
   activeUserId: 'coord_user',
@@ -8,17 +11,7 @@ const state = {
   interviews: [],
   users: [],
   logs: [],
-  
-  // Form Builder Active Workarea
-  activeForm: {
-    id: '',
-    title: '',
-    status: 'draft',
-    version: 1,
-    questions: []
-  },
-  
-  // Mobile Simulator state
+  activeForm: { id: '', title: '', status: 'draft', version: 1, questions: [] },
   simSelectedFormId: '',
   simActiveForm: null,
   simAnswers: {},
@@ -27,630 +20,371 @@ const state = {
   simIsOnline: true,
   simAudioFile: null,
   simIsRecording: false,
-  
-  // Leaflet map instance
   map: null,
   mapMarkers: [],
-  
-  // Chart.js instance
   statusChart: null
 };
 
-// Mock User Mapping for headers
 const MOCK_USER_IDS = {
-  DEV: 'dev_user',
-  Admin: 'admin_user',
-  Analyst: 'analyst_user',
-  Coordinator: 'coord_user',
-  Supervisor: 'super_user',
-  Researcher: 'researcher_1'
+  DEV: 'dev_user', Admin: 'admin_user', Analyst: 'analyst_user',
+  Coordinator: 'coord_user', Supervisor: 'super_user', Researcher: 'researcher_1'
 };
-
-// Researcher Pins Color Map
+const MOCK_USER_NAMES = {
+  DEV: 'Gustavo Dev', Admin: 'Clara Admin', Analyst: 'Felipe Analista',
+  Coordinator: 'Helena Coordenadora', Supervisor: 'Marcos Supervisor', Researcher: 'Ana Pesquisadora'
+};
+const ROLE_LABELS = {
+  DEV: 'Suporte Técnico', Admin: 'Administrador', Analyst: 'Analista',
+  Coordinator: 'Coordenador', Supervisor: 'Supervisor', Researcher: 'Pesquisador'
+};
 const RESEARCHER_COLORS = {
-  researcher_1: '#ff3d00', // Ana (Red-Orange)
-  researcher_2: '#9d4edd', // Bruno (Purple)
-  researcher_3: '#00e676', // Carla (Green)
-  researcher_4: '#00e5ff'  // Daniel (Cyan)
+  researcher_1: '#ef4444', researcher_2: '#7c3aed',
+  researcher_3: '#059669', researcher_4: '#0284c7'
 };
+const STATUS_LABELS = { approved: 'Aprovada', pending: 'Pendente', rejected: 'Rejeitada' };
 
-const DEFAULT_PIN_COLOR = '#ffc400';
-
-// Detection of local static run (direct index.html load in browser)
+// ===================== OFFLINE DETECTION =====================
 const IS_OFFLINE_PREVIEW = window.location.protocol === 'file:' || window.location.hostname === '';
 
-// Virtual Database for Offline Preview mode
+// ===================== VIRTUAL DATABASE =====================
 const virtualDb = {
-  initialized: false,
-  
-  init() {
-    if (this.initialized) return;
-    
-    // Seed initial users if not present
-    if (!localStorage.getItem('vdb_users')) {
-      const initialUsers = [
-        { id: "dev_user", name: "Gustavo Dev", email: "dev@antigravity.corp", role: "DEV", status: "active", created_at: new Date().toISOString() },
-        { id: "admin_user", name: "Clara Admin", email: "admin@cliente.com", role: "Admin", status: "active", created_at: new Date().toISOString() },
-        { id: "analyst_user", name: "Felipe Analista", email: "analyst@cliente.com", role: "Analyst", status: "active", created_at: new Date().toISOString() },
-        { id: "coord_user", name: "Helena Coordenadora", email: "coordinator@cliente.com", role: "Coordinator", status: "active", created_at: new Date().toISOString() },
-        { id: "super_user", name: "Marcos Supervisor", email: "supervisor@cliente.com", role: "Supervisor", status: "active", created_at: new Date().toISOString() },
-        { id: "researcher_1", name: "Ana Pesquisadora", email: "ana@freelancer.com", role: "Researcher", status: "active", created_at: new Date().toISOString() },
-        { id: "researcher_2", name: "Bruno Pesquisador", email: "bruno@freelancer.com", role: "Researcher", status: "active", created_at: new Date().toISOString() },
-        { id: "researcher_3", name: "Carla Pesquisadora", email: "carla@freelancer.com", role: "Researcher", status: "active", created_at: new Date().toISOString() },
-        { id: "researcher_4", name: "Daniel Pesquisador", email: "daniel@freelancer.com", role: "Researcher", status: "active", created_at: new Date().toISOString() }
-      ];
-      localStorage.setItem('vdb_users', JSON.stringify(initialUsers));
-    }
-
-    // Seed initial forms if not present
-    if (!localStorage.getItem('vdb_forms')) {
-      const initialForms = [
-        {
-          id: "form_censo",
-          title: "Censo Sócio-Econômico do Sertão",
-          version: 2,
-          status: "published",
-          questions_json: JSON.stringify([
-            { id: "Q1", text: "Qual a sua faixa etária?", type: "single_choice", options: ["Menos de 18 anos", "18 a 35 anos", "36 a 60 anos", "Mais de 60 anos"], skipRules: [] },
-            { id: "Q2", text: "Você possui acesso à energia elétrica estável?", type: "single_choice", options: ["Sim", "Não"], skipRules: [{ conditionValue: "Não", targetQuestionId: "Q4" }] },
-            { id: "Q3", text: "Qual a principal fonte de energia usada em sua casa?", type: "single_choice", options: ["Rede pública", "Painel Solar", "Gerador próprio", "Outros"], skipRules: [] },
-            { id: "Q4", text: "Descreva brevemente os principais desafios na sua região.", type: "text", options: [], skipRules: [] },
-            { id: "Q5", text: "Por favor, grave o depoimento final do entrevistado.", type: "audio_record", options: [], skipRules: [] }
-          ])
-        },
-        {
-          id: "form_saneamento",
-          title: "Pesquisa Saneamento Interiorano",
-          version: 1,
-          status: "published",
-          questions_json: JSON.stringify([
-            { id: "S1", text: "Tem água encanada?", type: "single_choice", options: ["Sim", "Não"], skipRules: [{ conditionValue: "Sim", targetQuestionId: "S3" }] },
-            { id: "S2", text: "Como você obtém água?", type: "single_choice", options: ["Poço artesiano", "Caminhão pipa", "Chuva/Cisterna", "Rio/Lago"], skipRules: [] },
-            { id: "S3", text: "Qualidade percebida da água?", type: "single_choice", options: ["Excelente", "Boa", "Regular", "Ruim"], skipRules: [] }
-          ])
-        }
-      ];
-      localStorage.setItem('vdb_forms', JSON.stringify(initialForms));
-    }
-
-    // Seed initial interviews if not present
-    if (!localStorage.getItem('vdb_interviews')) {
-      const initialInterviews = [
-        {
-          id: "int_001", form_id: "form_censo", form_version: 2, researcher_id: "researcher_1",
-          data_json: JSON.stringify({ Q1: "18 a 35 anos", Q2: "Sim", Q3: "Rede pública", Q4: "Falta de pavimentação nas ruas", Q5: "audio_001.mp3" }),
-          latitude: -9.3833, longitude: -40.5000, audio_url: "/audio-vault/audio_001.mp3", status: "approved", created_at: "2026-06-01T10:30:00Z", approved_by: "analyst_user", notes: "Entrevista bem estruturada e áudio claro."
-        },
-        {
-          id: "int_002", form_id: "form_censo", form_version: 2, researcher_id: "researcher_1",
-          data_json: JSON.stringify({ Q1: "36 a 60 anos", Q2: "Não", Q4: "Acesso à saúde é muito demorado", Q5: "audio_002.mp3" }),
-          latitude: -9.4122, longitude: -40.5134, audio_url: "/audio-vault/audio_002.mp3", status: "pending", created_at: "2026-06-02T14:15:00Z", approved_by: null, notes: ""
-        },
-        {
-          id: "int_003", form_id: "form_censo", form_version: 2, researcher_id: "researcher_2",
-          data_json: JSON.stringify({ Q1: "Mais de 60 anos", Q2: "Sim", Q3: "Painel Solar", Q4: "Segurança no período da noite", Q5: "audio_003.mp3" }),
-          latitude: -3.6888, longitude: -40.3498, audio_url: "/audio-vault/audio_003.mp3", status: "pending", created_at: "2026-06-02T11:00:00Z", approved_by: null, notes: ""
-        },
-        {
-          id: "int_004", form_id: "form_saneamento", form_version: 1, researcher_id: "researcher_3",
-          data_json: JSON.stringify({ S1: "Não", S2: "Caminhão pipa", S3: "Regular" }),
-          latitude: -9.8970, longitude: -38.6941, audio_url: "/audio-vault/audio_004.mp3", status: "approved", created_at: "2026-05-30T16:45:00Z", approved_by: "analyst_user", notes: "Validada."
-        },
-        {
-          id: "int_005", form_id: "form_saneamento", form_version: 1, researcher_id: "researcher_4",
-          data_json: JSON.stringify({ S1: "Sim", S3: "Excelente" }),
-          latitude: -8.8123, longitude: -38.5678, audio_url: "/audio-vault/audio_005.mp3", status: "rejected", created_at: "2026-06-01T09:20:00Z", approved_by: null, notes: "Áudio com chiado excessivo e sem voz inteligível."
-        }
-      ];
-      localStorage.setItem('vdb_interviews', JSON.stringify(initialInterviews));
-    }
-
-    // Seed initial security logs if not present
-    if (!localStorage.getItem('vdb_logs')) {
-      const initialLogs = [
-        { id: "log_001", type: "COMMAND_EXECUTION", severity: "LOW", command_requested: "show version", user_role: "DEV", timestamp: "2026-06-02T18:00:00Z" },
-        { id: "log_002", type: "DESTRUCTIVE_COMMAND_BLOCKED", severity: "CRITICAL", command_requested: "reboot", user_role: "Coordinator", timestamp: "2026-06-02T19:15:00Z" },
-        { id: "log_003", type: "DESTRUCTIVE_COMMAND_BLOCKED", severity: "HIGH", command_requested: "/interface disable ether1", user_role: "Admin", timestamp: "2026-06-02T19:30:00Z" },
-        { id: "log_004", type: "UNAUTHORIZED_ACCESS", severity: "MEDIUM", command_requested: "view financials", user_role: "Researcher", timestamp: "2026-06-02T19:45:00Z" }
-      ];
-      localStorage.setItem('vdb_logs', JSON.stringify(initialLogs));
-    }
-
-    this.initialized = true;
+  _getStore(key) {
+    try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; }
   },
-
-  get(key) {
-    this.init();
-    return JSON.parse(localStorage.getItem('vdb_' + key) || '[]');
-  },
-
-  set(key, val) {
-    this.init();
-    localStorage.setItem('vdb_' + key, JSON.stringify(val));
+  _setStore(key, data) { localStorage.setItem(key, JSON.stringify(data)); },
+  ensureSeeded() {
+    if (this._getStore('vdb_users').length === 0) {
+      this._setStore('vdb_users', [
+        { id:'dev_user', name:'Gustavo Dev', email:'dev@corp.com', role:'DEV', status:'active', created_at:new Date().toISOString() },
+        { id:'admin_user', name:'Clara Admin', email:'admin@cliente.com', role:'Admin', status:'active', created_at:new Date().toISOString() },
+        { id:'analyst_user', name:'Felipe Analista', email:'analyst@cliente.com', role:'Analyst', status:'active', created_at:new Date().toISOString() },
+        { id:'coord_user', name:'Helena Coordenadora', email:'coord@cliente.com', role:'Coordinator', status:'active', created_at:new Date().toISOString() },
+        { id:'super_user', name:'Marcos Supervisor', email:'super@cliente.com', role:'Supervisor', status:'active', created_at:new Date().toISOString() },
+        { id:'researcher_1', name:'Ana Pesquisadora', email:'ana@freelancer.com', role:'Researcher', status:'active', created_at:new Date().toISOString() },
+        { id:'researcher_2', name:'Bruno Pesquisador', email:'bruno@freelancer.com', role:'Researcher', status:'active', created_at:new Date().toISOString() },
+        { id:'researcher_3', name:'Carla Pesquisadora', email:'carla@freelancer.com', role:'Researcher', status:'active', created_at:new Date().toISOString() },
+        { id:'researcher_4', name:'Daniel Pesquisador', email:'daniel@freelancer.com', role:'Researcher', status:'active', created_at:new Date().toISOString() }
+      ]);
+    }
+    if (this._getStore('vdb_forms').length === 0) {
+      this._setStore('vdb_forms', [
+        { id:'form_censo', title:'Censo Sócio-Econômico do Sertão', version:2, status:'published', questions:[
+          { id:'Q1', text:'Qual a sua faixa etária?', type:'single_choice', options:['Menos de 18 anos','18 a 35 anos','36 a 60 anos','Mais de 60 anos'], skipRules:[] },
+          { id:'Q2', text:'Você possui acesso à energia elétrica estável?', type:'single_choice', options:['Sim','Não'], skipRules:[{conditionValue:'Não',targetQuestionId:'Q4'}] },
+          { id:'Q3', text:'Qual a principal fonte de energia usada em sua casa?', type:'single_choice', options:['Rede pública','Painel Solar','Gerador próprio','Outros'], skipRules:[] },
+          { id:'Q4', text:'Descreva brevemente os principais desafios na sua região.', type:'text', options:[], skipRules:[] },
+          { id:'Q5', text:'Por favor, grave o depoimento final do entrevistado.', type:'audio_record', options:[], skipRules:[] }
+        ]},
+        { id:'form_saneamento', title:'Pesquisa Saneamento Interiorano', version:1, status:'published', questions:[
+          { id:'S1', text:'Tem água encanada?', type:'single_choice', options:['Sim','Não'], skipRules:[{conditionValue:'Sim',targetQuestionId:'S3'}] },
+          { id:'S2', text:'Como você obtém água?', type:'single_choice', options:['Poço artesiano','Caminhão pipa','Chuva/Cisterna','Rio/Lago'], skipRules:[] },
+          { id:'S3', text:'Qualidade percebida da água?', type:'single_choice', options:['Excelente','Boa','Regular','Ruim'], skipRules:[] }
+        ]}
+      ]);
+    }
+    if (this._getStore('vdb_interviews').length === 0) {
+      this._setStore('vdb_interviews', [
+        { id:'int_001', form_id:'form_censo', form_version:2, researcher_id:'researcher_1', data:{Q1:'18 a 35 anos',Q2:'Sim',Q3:'Rede pública',Q4:'Falta de pavimentação nas ruas',Q5:'audio_001.mp3'}, latitude:-9.3833, longitude:-40.5, audio_url:'audio_001.mp3', status:'approved', created_at:'2026-06-01T10:30:00Z', approved_by:'analyst_user', notes:'Entrevista bem estruturada e áudio claro.' },
+        { id:'int_002', form_id:'form_censo', form_version:2, researcher_id:'researcher_1', data:{Q1:'36 a 60 anos',Q2:'Não',Q4:'Acesso à saúde é muito demorado',Q5:'audio_002.mp3'}, latitude:-9.4122, longitude:-40.5134, audio_url:'audio_002.mp3', status:'pending', created_at:'2026-06-02T14:15:00Z', approved_by:null, notes:'' },
+        { id:'int_003', form_id:'form_censo', form_version:2, researcher_id:'researcher_2', data:{Q1:'Mais de 60 anos',Q2:'Sim',Q3:'Painel Solar',Q4:'Segurança no período da noite',Q5:'audio_003.mp3'}, latitude:-3.6888, longitude:-40.3498, audio_url:'audio_003.mp3', status:'pending', created_at:'2026-06-02T11:00:00Z', approved_by:null, notes:'' },
+        { id:'int_004', form_id:'form_saneamento', form_version:1, researcher_id:'researcher_3', data:{S1:'Não',S2:'Caminhão pipa',S3:'Regular'}, latitude:-9.897, longitude:-38.6941, audio_url:'audio_004.mp3', status:'approved', created_at:'2026-05-30T16:45:00Z', approved_by:'analyst_user', notes:'Validada.' },
+        { id:'int_005', form_id:'form_saneamento', form_version:1, researcher_id:'researcher_4', data:{S1:'Sim',S3:'Excelente'}, latitude:-8.8123, longitude:-38.5678, audio_url:'audio_005.mp3', status:'rejected', created_at:'2026-06-01T09:20:00Z', approved_by:null, notes:'Áudio com chiado excessivo.' }
+      ]);
+    }
+    if (this._getStore('vdb_logs').length === 0) {
+      this._setStore('vdb_logs', [
+        { id:'log_001', type:'COMMAND_EXECUTION', severity:'LOW', command_requested:'show version', user_role:'DEV', timestamp:new Date().toISOString() },
+        { id:'log_002', type:'DESTRUCTIVE_COMMAND_BLOCKED', severity:'CRITICAL', command_requested:'reboot', user_role:'Coordinator', timestamp:new Date().toISOString() },
+        { id:'log_003', type:'DESTRUCTIVE_COMMAND_BLOCKED', severity:'HIGH', command_requested:'/interface disable ether1', user_role:'Admin', timestamp:new Date().toISOString() },
+        { id:'log_004', type:'UNAUTHORIZED_ACCESS', severity:'MEDIUM', command_requested:'view financials', user_role:'Researcher', timestamp:new Date().toISOString() }
+      ]);
+    }
   }
 };
 
-// API Fetch helper containing role headers or client virtual DB fallback
-async function apiFetch(url, options = {}) {
-  // If we run in Offline direct html double click preview, simulate server client-side
-  if (IS_OFFLINE_PREVIEW) {
-    return simulateOfflineApi(url, options);
+function simulateOfflineApi(endpoint, options = {}) {
+  virtualDb.ensureSeeded();
+  const method = (options.method || 'GET').toUpperCase();
+  const body = options.body ? JSON.parse(options.body) : {};
+
+  if (endpoint === '/api/users' && method === 'GET') return virtualDb._getStore('vdb_users');
+  if (endpoint === '/api/forms' && method === 'GET') return virtualDb._getStore('vdb_forms');
+  if (endpoint === '/api/interviews' && method === 'GET') return virtualDb._getStore('vdb_interviews');
+  if (endpoint === '/api/logs' && method === 'GET') return virtualDb._getStore('vdb_logs');
+
+  if (endpoint === '/api/users' && method === 'POST') {
+    const users = virtualDb._getStore('vdb_users');
+    const newUser = { id:'user_'+Math.random().toString(36).substr(2,8), name:body.name, email:body.email, role:body.role, status:'active', created_at:new Date().toISOString() };
+    users.push(newUser);
+    virtualDb._setStore('vdb_users', users);
+    return { success:true, user:newUser };
   }
-
-  try {
-    const headers = {
-      'Content-Type': 'application/json',
-      'x-user-role': state.activeRole,
-      'x-user-id': state.activeUserId,
-      ...(options.headers || {})
-    };
-    
-    const response = await fetch(url, { ...options, headers });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (err) {
-    // Failover silently to offline simulation to keep user experience wowed even if Node is not running
-    console.warn("Backend server not reached. Bypassing to Client-Side Local Storage database simulation.");
-    return simulateOfflineApi(url, options);
+  if (endpoint.match(/\/api\/users\//) && method === 'DELETE') {
+    const uid = endpoint.split('/').pop();
+    let users = virtualDb._getStore('vdb_users');
+    users = users.map(u => u.id === uid ? {...u, status:'deleted'} : u);
+    virtualDb._setStore('vdb_users', users);
+    return { success:true };
   }
-}
-
-// Client-Side Virtual Monolith API Routing Simulation
-function simulateOfflineApi(url, options) {
-  const method = options.method || 'GET';
-  const body = options.body ? JSON.parse(options.body) : null;
-  const userRole = state.activeRole;
-  const userId = state.activeUserId;
-
-  // 1. GET /api/forms
-  if (url === '/api/forms' && method === 'GET') {
-    const list = virtualDb.get('forms');
-    return list.map(f => ({ ...f, questions: JSON.parse(f.questions_json) }));
-  }
-
-  // 2. POST /api/forms (FormBuilder save)
-  if (url === '/api/forms' && method === 'POST') {
-    const list = virtualDb.get('forms');
-    const questions = body.questions;
-    let target = list.find(f => f.id === body.id);
-    
-    // Evaluate logic warnings client side
-    const validation = [];
-    const idToIndex = new Map();
-    questions.forEach((q, idx) => idToIndex.set(q.id, idx));
-    
-    questions.forEach((q, idx) => {
-      (q.skipRules || []).forEach(rule => {
-        if (!rule.targetQuestionId) {
-          validation.push({ type: 'ERROR', message: `Questão "${q.id}" possui regra de pulo sem questão de destino.` });
-        } else {
-          const targetIdx = idToIndex.get(rule.targetQuestionId);
-          if (targetIdx === undefined) {
-            validation.push({ type: 'ERROR', message: `Questão "${q.id}" pula para "${rule.targetQuestionId}", que não existe.` });
-          } else if (rule.targetQuestionId === q.id) {
-            validation.push({ type: 'ERROR', message: `Questão "${q.id}" pula para ela mesma (loop).` });
-          } else if (targetIdx < idx) {
-            validation.push({ type: 'WARNING', message: `Questão "${q.id}" pula para trás para "${rule.targetQuestionId}" (risco de loop).` });
-          }
-        }
-      });
-    });
-
-    let savedForm;
-    if (target) {
-      let version = target.version;
-      const qChanged = target.questions_json !== JSON.stringify(questions);
-      if (target.status === 'published' && qChanged) {
-        version++;
-      }
-      target.title = body.title;
-      target.status = body.status;
-      target.version = version;
-      target.questions_json = JSON.stringify(questions);
-      savedForm = target;
+  if (endpoint === '/api/forms' && method === 'POST') {
+    const forms = virtualDb._getStore('vdb_forms');
+    const id = body.id || 'form_'+Math.random().toString(36).substr(2,8);
+    const existing = forms.find(f => f.id === id);
+    const validation = validateSkipLogicLocal(body.questions || []);
+    if (existing) {
+      let ver = existing.version;
+      if (existing.status === 'published' && JSON.stringify(existing.questions) !== JSON.stringify(body.questions)) ver++;
+      existing.title = body.title; existing.questions = body.questions; existing.status = body.status; existing.version = ver;
+      virtualDb._setStore('vdb_forms', forms);
+      return { success:true, form:existing, validation };
     } else {
-      const newForm = {
-        id: 'form_' + Math.random().toString(36).substring(2, 8),
-        title: body.title,
-        status: body.status,
-        version: 1,
-        questions_json: JSON.stringify(questions)
-      };
-      list.push(newForm);
-      savedForm = newForm;
+      const newForm = { id, title:body.title, version:1, status:body.status||'draft', questions:body.questions||[] };
+      forms.push(newForm);
+      virtualDb._setStore('vdb_forms', forms);
+      return { success:true, form:newForm, validation };
     }
-    
-    virtualDb.set('forms', list);
-    return {
-      success: true,
-      form: { ...savedForm, questions },
-      validation
-    };
   }
-
-  // 3. GET /api/interviews
-  if (url === '/api/interviews' && method === 'GET') {
-    const list = virtualDb.get('interviews');
-    return list.map(i => ({ ...i, data: JSON.parse(i.data_json) }));
+  if (endpoint === '/api/interviews' && method === 'POST') {
+    const interviews = virtualDb._getStore('vdb_interviews');
+    const intId = 'int_'+Math.random().toString(36).substr(2,8);
+    const newInt = { id:intId, form_id:body.formId, form_version:body.formVersion, researcher_id:body.researcherId||state.activeUserId, data:body.data, latitude:body.latitude, longitude:body.longitude, audio_url:body.audioFileName?'/audio-vault/'+body.audioFileName:null, status:'pending', created_at:new Date().toISOString(), approved_by:null, notes:'' };
+    interviews.push(newInt);
+    virtualDb._setStore('vdb_interviews', interviews);
+    return { success:true, interviewId:intId };
   }
-
-  // 4. POST /api/interviews
-  if (url === '/api/interviews' && method === 'POST') {
-    const list = virtualDb.get('interviews');
-    const interviewId = 'int_' + Math.random().toString(36).substring(2, 8);
-    const audioUrl = body.audioFileName ? `/audio-vault/${body.audioFileName}` : null;
-    
-    const newInterview = {
-      id: interviewId,
-      form_id: body.formId,
-      form_version: parseInt(body.formVersion),
-      researcher_id: userId || 'researcher_1',
-      data_json: JSON.stringify(body.data),
-      latitude: parseFloat(body.latitude) || null,
-      longitude: parseFloat(body.longitude) || null,
-      audio_url: audioUrl,
-      status: 'pending',
-      created_at: new Date().toISOString(),
-      approved_by: null,
-      notes: ''
-    };
-    
-    list.push(newInterview);
-    virtualDb.set('interviews', list);
-    return { success: true, interviewId, audioUrl };
+  if (endpoint.match(/\/api\/interviews\/.*\/status/) && method === 'PUT') {
+    const iid = endpoint.split('/')[3];
+    let interviews = virtualDb._getStore('vdb_interviews');
+    interviews = interviews.map(i => i.id === iid ? {...i, status:body.status, approved_by:state.activeUserId, notes:body.notes||''} : i);
+    virtualDb._setStore('vdb_interviews', interviews);
+    return { success:true };
   }
-
-  // 5. PUT /api/interviews/:id/status (Approval)
-  if (url.startsWith('/api/interviews/') && url.endsWith('/status') && method === 'PUT') {
-    const interviewId = url.split('/')[3];
-    const list = virtualDb.get('interviews');
-    const target = list.find(i => i.id === interviewId);
-    if (target) {
-      target.status = body.status;
-      target.notes = body.notes;
-      target.approved_by = userId;
-      virtualDb.set('interviews', list);
-    }
-    return { success: true };
-  }
-
-  // 6. GET /api/users
-  if (url === '/api/users' && method === 'GET') {
-    return virtualDb.get('users');
-  }
-
-  // 7. POST /api/users (Freelancer creation)
-  if (url === '/api/users' && method === 'POST') {
-    const list = virtualDb.get('users');
-    const newId = 'researcher_' + (list.length + 1);
-    const newUser = {
-      id: newId,
-      name: body.name,
-      email: body.email,
-      role: body.role,
-      status: 'active',
-      created_at: new Date().toISOString()
-    };
-    list.push(newUser);
-    virtualDb.set('users', list);
-    return { success: true, user: newUser };
-  }
-
-  // 8. DELETE /api/users/:id (Freelancer soft delete)
-  if (url.startsWith('/api/users/') && method === 'DELETE') {
-    const uid = url.split('/')[3];
-    const list = virtualDb.get('users');
-    const target = list.find(u => u.id === uid);
-    if (target) {
-      target.status = 'deleted';
-      virtualDb.set('users', list);
-    }
-    return { success: true };
-  }
-
-  // 9. GET /api/logs
-  if (url === '/api/logs' && method === 'GET') {
-    return virtualDb.get('logs');
-  }
-
-  // 10. POST /api/network/command (Read-only Command guard simulation)
-  if (url === '/api/network/command' && method === 'POST') {
-    const command = body.command.trim();
-    const list = virtualDb.get('logs');
-    
-    // Command evaluator matching rules
-    let severity = 'LOW';
-    let allowed = false;
-    let message = '';
-    let suggestion = '';
-    
-    const isDestructive = /reboot|reset|shutdown|format/i.test(command) || 
-                          /\/system reset/i.test(command) || 
-                          /\/interface disable/i.test(command) || 
-                          /\/ip route remove/i.test(command);
-    
+  if (endpoint === '/api/network/command' && method === 'POST') {
+    const cmd = (body.command || '').trim();
+    const destructive = [/reset/i, /reboot/i, /shutdown/i, /format/i, /\/interface disable/i];
+    const isDestructive = destructive.some(p => p.test(cmd));
     if (isDestructive) {
-      severity = /reboot|reset|shutdown|format/i.test(command) ? 'CRITICAL' : 'HIGH';
-      message = `Bloqueado: Comando destrutivo detectado.`;
-      suggestion = `AÇÃO PROIBIDA. Solicite aprovação física e intervenção manual local se for realmente necessário.`;
-    } else {
-      const isConfig = /set|add|remove|enable|disable/i.test(command);
-      severity = isConfig ? 'MEDIUM' : 'LOW';
-      message = `Bloqueado: Sistema opera em modo estritamente READ-ONLY para equipamentos.`;
-      suggestion = `Sugestão para operador: Execute manualmente o comando no terminal do equipamento:\n  > ${command}`;
+      const logId = 'sec_'+Math.random().toString(36).substr(2,8);
+      const logs = virtualDb._getStore('vdb_logs');
+      logs.unshift({ id:logId, type:'DESTRUCTIVE_COMMAND_BLOCKED', severity:'CRITICAL', command_requested:cmd, user_role:state.activeRole, timestamp:new Date().toISOString() });
+      virtualDb._setStore('vdb_logs', logs);
+      return { allowed:false, severity:'CRITICAL', message:'Bloqueado: Comando destrutivo detectado.', suggestion:'Esta ação precisa ser feita presencialmente no equipamento.' };
     }
-    
-    // Add audit log
-    const logId = 'sec_' + Math.random().toString(36).substring(2, 10);
-    const newLog = {
-      id: logId,
-      type: isDestructive ? 'DESTRUCTIVE_COMMAND_BLOCKED' : 'COMMAND_READ_ONLY_BLOCKED',
-      severity,
-      command_requested: command,
-      user_role: userRole,
-      timestamp: new Date().toISOString()
-    };
-    list.unshift(newLog);
-    virtualDb.set('logs', list);
-    
-    return { allowed, severity, message, suggestion };
+    if (/show version/i.test(cmd)) return { allowed:false, severity:'LOW', message:'RouterOS v7.12 (stable) - Firmware: 7.12 - Uptime: 14d 03:22:15\nBoard: RB750Gr3 (hEX) - Serial: HEX-2024-BR-4491\nMemória: 256MB RAM - Armazenamento: 16MB Flash', suggestion:'Equipamento operando normalmente.' };
+    if (/ping/i.test(cmd)) return { allowed:false, severity:'LOW', message:'PING 8.8.8.8: 56 bytes - seq=1 ttl=118 time=23.4ms\nPING 8.8.8.8: 56 bytes - seq=2 ttl=118 time=21.8ms\nPING 8.8.8.8: 56 bytes - seq=3 ttl=118 time=22.1ms\n--- 3 pacotes transmitidos, 3 recebidos, 0% perda ---', suggestion:'Conexão com internet estável.' };
+    if (/ip address/i.test(cmd)) return { allowed:false, severity:'LOW', message:'#0 | 192.168.88.1/24  | ether1 (LAN)\n#1 | 10.0.0.2/30      | ether2 (WAN)\n#2 | 172.16.0.1/16    | bridge-local', suggestion:'Interfaces de rede configuradas.' };
+    if (/show status/i.test(cmd)) return { allowed:false, severity:'LOW', message:'Latência média de sincronização: 145ms\nÚltimo sync bem-sucedido: há 3 minutos\nQualidade do sinal: EXCELENTE (-42 dBm)\nClientes conectados: 7', suggestion:'Sincronização funcionando corretamente.' };
+    const isConfig = /set|add|remove|enable|disable|configure/i.test(cmd);
+    return { allowed:false, severity:isConfig?'MEDIUM':'LOW', message:'Sistema opera em modo somente leitura.', suggestion:isConfig?'Este comando altera configurações. Execute manualmente no equipamento.':'Execute o comando diretamente no terminal do equipamento.' };
   }
-
-  return Promise.reject(new Error('Endpoint virtual não encontrado'));
+  return { error:'Endpoint não encontrado na simulação offline.' };
 }
 
+function validateSkipLogicLocal(questions) {
+  const feedback = [];
+  const idToIdx = new Map();
+  questions.forEach((q, i) => idToIdx.set(q.id, i));
+  questions.forEach((q, idx) => {
+    if (!q.skipRules) return;
+    q.skipRules.forEach(rule => {
+      if (!rule.targetQuestionId) { feedback.push({ type:'ERROR', message:`Pergunta "${q.id}" tem regra de pulo sem destino.` }); return; }
+      if (!idToIdx.has(rule.targetQuestionId)) { feedback.push({ type:'ERROR', message:`Pergunta "${q.id}" pula para "${rule.targetQuestionId}" que não existe.` }); return; }
+      if (rule.targetQuestionId === q.id) { feedback.push({ type:'ERROR', message:`Pergunta "${q.id}" pula para ela mesma (loop infinito).` }); }
+      if (idToIdx.get(rule.targetQuestionId) < idx) { feedback.push({ type:'WARNING', message:`Pergunta "${q.id}" pula para trás. Pode causar loops.` }); }
+      if ((q.type==='single_choice'||q.type==='multiple_choice') && rule.conditionValue && !q.options.includes(rule.conditionValue)) {
+        feedback.push({ type:'WARNING', message:`Regra em "${q.id}" depende da opção "${rule.conditionValue}" que não existe.` });
+      }
+    });
+  });
+  return feedback;
+}
 
-// Initial Bootstrapping
-window.addEventListener('DOMContentLoaded', async () => {
-  initRoleSwitcher();
-  initNavigation();
-  initMap();
-  
-  // Load initial data
-  await loadServerData();
-  
-  // Init other parts
-  initFormBuilder();
-  initMobileSimulator();
-  initCliConsole();
-  initDataExporter();
-  
-  // Render Dashboard
-  renderDashboard();
-
-  // Set ODK server url based on current host
-  const odkUrlEl = document.getElementById('odk-server-url');
-  if (odkUrlEl) {
-    if (window.location.protocol === 'file:') {
-      odkUrlEl.innerText = `http://[IP_SEU_SERVIDOR]:3000/api`;
-    } else {
-      odkUrlEl.innerText = `${window.location.protocol}//${window.location.host}/api`;
+async function apiFetch(endpoint, options = {}) {
+  if (IS_OFFLINE_PREVIEW) return simulateOfflineApi(endpoint, options);
+  try {
+    const headers = { 'Content-Type':'application/json', 'x-user-role':state.activeRole, 'x-user-id':state.activeUserId, ...(options.headers||{}) };
+    const res = await fetch(endpoint, { ...options, headers });
+    if (!res.ok) {
+      if (res.status === 403) throw new Error('Você não tem permissão para esta ação.');
+      if (res.status >= 500) throw new Error('Ocorreu um erro interno. Tente novamente.');
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Algo deu errado.');
     }
+    return await res.json();
+  } catch (err) {
+    if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+      console.warn('Backend indisponível, usando modo offline.');
+      return simulateOfflineApi(endpoint, options);
+    }
+    throw err;
   }
-  
-  // Background interval for logs (if DEV)
-  setInterval(() => {
-    if (state.activeRole === 'DEV') {
-      fetchLogsQuietly();
-    }
-  }, 5000);
-});
+}
 
-// Load Forms, Interviews, and Users from API
+// ===================== TOAST SYSTEM =====================
+function showToast(type, message) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  const iconMap = { success:'fa-circle-check', error:'fa-circle-xmark', warning:'fa-triangle-exclamation', info:'fa-circle-info' };
+  // Map old severity names
+  if (type === 'LOW') type = 'info';
+  else if (type === 'MEDIUM') type = 'warning';
+  else if (type === 'HIGH' || type === 'CRITICAL') type = 'error';
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<i class="fa-solid ${iconMap[type]||iconMap.info} toast-icon"></i><span class="toast-msg">${message}</span><button class="toast-close" onclick="this.parentElement.remove()">&times;</button>`;
+  container.appendChild(toast);
+  setTimeout(() => { toast.classList.add('toast-out'); setTimeout(() => toast.remove(), 300); }, 4500);
+}
+
+// ===================== CONFIRM MODAL =====================
+function showConfirm(title, message, onConfirm, options = {}) {
+  const overlay = document.getElementById('confirm-modal');
+  const iconEl = document.getElementById('confirm-modal-icon');
+  const titleEl = document.getElementById('confirm-modal-title');
+  const msgEl = document.getElementById('confirm-modal-message');
+  const confirmBtn = document.getElementById('confirm-modal-confirm');
+  const cancelBtn = document.getElementById('confirm-modal-cancel');
+
+  titleEl.textContent = title;
+  msgEl.textContent = message;
+  const type = options.type || 'warning';
+  iconEl.className = `modal-icon ${type}`;
+  const icons = { warning:'fa-triangle-exclamation', danger:'fa-trash', info:'fa-circle-info' };
+  iconEl.innerHTML = `<i class="fa-solid ${icons[type]||icons.warning}"></i>`;
+  confirmBtn.textContent = options.confirmText || 'Confirmar';
+  confirmBtn.className = type === 'danger' ? 'btn btn-danger-solid' : 'btn btn-primary';
+  cancelBtn.textContent = options.cancelText || 'Cancelar';
+  overlay.classList.add('active');
+
+  const cleanup = () => { overlay.classList.remove('active'); confirmBtn.onclick = null; cancelBtn.onclick = null; };
+  confirmBtn.onclick = () => { cleanup(); onConfirm(); };
+  cancelBtn.onclick = cleanup;
+}
+
+function setButtonLoading(btn, loading) {
+  if (loading) { btn.classList.add('loading'); btn.disabled = true; }
+  else { btn.classList.remove('loading'); btn.disabled = false; }
+}
+
+// ===================== DATA LOADING =====================
 async function loadServerData() {
   try {
-    state.forms = await apiFetch('/api/forms');
-    state.interviews = await apiFetch('/api/interviews');
-    state.users = await apiFetch('/api/users');
-    
-    // Render builder lists & maps
-    renderFormBuilderList();
-    renderMapInterviews();
-    renderSupervisorReviewList();
-    renderFinancials();
-  } catch (err) {
-    console.error('Failed to load server data:', err);
-    showToast('HIGH', 'Falha ao carregar dados do servidor: ' + err.message);
-  }
+    const [users, forms, interviews] = await Promise.all([
+      apiFetch('/api/users'), apiFetch('/api/forms'), apiFetch('/api/interviews')
+    ]);
+    state.users = users || [];
+    state.forms = forms || [];
+    state.interviews = interviews || [];
+  } catch (err) { console.error('Erro ao carregar dados:', err); }
 }
 
-// ----------------- ROLE & PERMISSIONS CONTROL -----------------
-function initRoleSwitcher() {
-  const select = document.getElementById('role-select');
-  select.value = state.activeRole;
-  
-  select.addEventListener('change', async (e) => {
-    state.activeRole = e.target.value;
-    state.activeUserId = MOCK_USER_IDS[state.activeRole] || 'anonymous';
-    
-    // Reset mobile simulator answers to prevent leaks
-    state.simAnswers = {};
-    state.simCurrentQuestionIdx = 0;
-    
-    // Update active prompt CLI prefix
-    document.getElementById('cli-prompt-label').innerText = `${state.activeRole}@node01:~$`;
-    
-    // Sync state
-    await loadServerData();
-    applyRbacRestrictions();
-    renderDashboard();
-    
-    showToast('LOW', `Perfil Operacional alterado para: ${state.activeRole}`);
-  });
-
-  applyRbacRestrictions();
-}
-
-function applyRbacRestrictions() {
-  const role = state.activeRole;
-  
-  // 1. Logs Tab Visibility
-  const navLogs = document.getElementById('nav-logs');
-  const viewLogs = document.getElementById('view-logs');
-  if (role === 'DEV') {
-    navLogs.style.display = 'block';
-    viewLogs.classList.remove('disabled');
-    fetchLogs();
-  } else {
-    navLogs.style.display = 'none';
-    viewLogs.classList.add('disabled');
-    if (viewLogs.classList.contains('active')) {
-      switchTab('view-dashboard');
-    }
-  }
-
-  // 2. Financials Section Visibility (DEV/Admin/Analyst)
-  const finSection = document.getElementById('financial-dashboard-section');
-  if (role === 'DEV' || role === 'Admin' || role === 'Analyst') {
-    finSection.classList.remove('disabled');
-  } else {
-    finSection.classList.add('disabled');
-  }
-
-  // 3. Form Builder Tab Visibility (Analyst/Admin/DEV)
-  const navBuilder = document.getElementById('nav-form-builder');
-  const viewBuilder = document.getElementById('view-form-builder');
-  if (role === 'Analyst' || role === 'Admin' || role === 'DEV') {
-    navBuilder.style.display = 'block';
-    viewBuilder.classList.remove('disabled');
-  } else {
-    navBuilder.style.display = 'none';
-    viewBuilder.classList.add('disabled');
-    if (viewBuilder.classList.contains('active')) {
-      switchTab('view-dashboard');
-    }
-  }
-
-  // 4. Supervisor Review Panel Visibility (Supervisor/Analyst/Admin/DEV)
-  const superPanel = document.getElementById('supervisor-validation-panel');
-  if (role === 'Supervisor' || role === 'Analyst' || role === 'Admin' || role === 'DEV') {
-    superPanel.classList.remove('disabled');
-  } else {
-    superPanel.classList.add('disabled');
-  }
-}
-
-// Navigation Tabs
-function initNavigation() {
-  const navItems = document.querySelectorAll('#main-nav .nav-item');
-  navItems.forEach(item => {
-    item.addEventListener('click', (e) => {
-      e.preventDefault();
-      const target = item.getAttribute('data-target');
-      
-      // If disabled view, do not navigate
-      const viewPanel = document.getElementById(target);
-      if (viewPanel.classList.contains('disabled')) return;
-      
-      switchTab(target);
-    });
-  });
-}
-
+// ===================== NAVIGATION =====================
 function switchTab(targetId) {
-  // Toggle nav classes
-  const navItems = document.querySelectorAll('#main-nav .nav-item');
-  navItems.forEach(item => {
-    if (item.getAttribute('data-target') === targetId) {
-      item.classList.add('active');
-    } else {
-      item.classList.remove('active');
-    }
-  });
-
-  // Toggle view panels
-  const panels = document.querySelectorAll('.view-panel');
-  panels.forEach(panel => {
-    if (panel.id === targetId) {
-      panel.classList.add('active');
-      
-      // If map is selected, recalculate size
-      if (targetId === 'view-map' && state.map) {
-        setTimeout(() => state.map.invalidateSize(), 200);
-      }
-    } else {
-      panel.classList.remove('active');
-    }
-  });
+  document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-nav .nav-item').forEach(n => n.classList.remove('active'));
+  const panel = document.getElementById(targetId);
+  if (panel) panel.classList.add('active');
+  const navItem = document.querySelector(`.nav-item[data-target="${targetId}"]`);
+  if (navItem) navItem.classList.add('active');
+  // Close mobile sidebar
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  // Leaflet resize fix
+  if (targetId === 'view-map' && state.map) setTimeout(() => state.map.invalidateSize(), 150);
+  // Load logs when switching to logs tab
+  if (targetId === 'view-logs') fetchLogs();
 }
 
-// ----------------- DASHBOARD RENDER & CHARTS -----------------
+// ===================== RBAC =====================
+const NAV_PERMISSIONS = {
+  'nav-form-builder': ['DEV','Admin','Analyst'],
+  'nav-logs': ['DEV'],
+  'nav-ai': ['DEV','Admin','Analyst','Supervisor','Coordinator'],
+  'nav-equipment': ['DEV','Admin','Coordinator'],
+};
+const SECTION_PERMISSIONS = {
+  'financial-dashboard-section': ['DEV','Admin','Analyst'],
+  'supervisor-validation-panel': ['DEV','Admin','Analyst','Supervisor'],
+  'odk-guide-section': ['DEV','Admin','Coordinator','Analyst'],
+};
+
+function applyRoleRestrictions() {
+  const role = state.activeRole;
+  // Nav items
+  Object.entries(NAV_PERMISSIONS).forEach(([navId, roles]) => {
+    const el = document.getElementById(navId);
+    if (el) el.style.display = roles.includes(role) ? '' : 'none';
+  });
+  // Show all nav items not in permissions map
+  ['nav-dashboard','nav-map','nav-mobile-sim'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = '';
+  });
+  // Dashboard sections
+  Object.entries(SECTION_PERMISSIONS).forEach(([secId, roles]) => {
+    const el = document.getElementById(secId);
+    if (el) el.style.display = roles.includes(role) ? '' : 'none';
+  });
+  // If current view is hidden, switch to dashboard
+  const activePanel = document.querySelector('.view-panel.active');
+  if (activePanel) {
+    const activeNav = document.querySelector(`.nav-item[data-target="${activePanel.id}"]`);
+    if (activeNav && activeNav.style.display === 'none') switchTab('view-dashboard');
+  }
+}
+
+function updateUserUI() {
+  const name = MOCK_USER_NAMES[state.activeRole] || state.activeRole;
+  const roleLabel = ROLE_LABELS[state.activeRole] || state.activeRole;
+  document.getElementById('current-user-name').textContent = name;
+  document.getElementById('current-user-role-label').textContent = roleLabel;
+  document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
+}
+
+// ===================== DASHBOARD =====================
 function renderDashboard() {
-  document.getElementById('dashboard-welcome').innerText = `Painel de Acompanhamento - Perfil: ${state.activeRole}`;
-  
-  // Set metric totals
-  document.getElementById('metric-total-interviews').innerText = state.interviews.length;
-  document.getElementById('metric-total-forms').innerText = state.forms.length;
-  
-  // Filter active freelancers (users with Researcher role and status active)
-  const freelancers = state.users.filter(u => u.role === 'Researcher' && u.status === 'active');
-  document.getElementById('metric-total-researchers').innerText = freelancers.length;
-  
-  // Count blocked security logs
-  dbCountBlockedSecurityLogs();
-  
-  // Draw Status chart
-  renderStatusChart();
-}
+  // Greeting
+  const hour = new Date().getHours();
+  let greeting = 'Boa noite';
+  if (hour >= 6 && hour < 12) greeting = 'Bom dia';
+  else if (hour >= 12 && hour < 18) greeting = 'Boa tarde';
+  const userName = MOCK_USER_NAMES[state.activeRole] || '';
+  document.getElementById('dashboard-welcome').textContent = `${greeting}, ${userName.split(' ')[0]}! 👋`;
 
-function dbCountBlockedSecurityLogs() {
-  // Count items from log array
-  let blockedCount = 0;
-  // Fallback if logs not loaded: fetch counts from server if DEV
-  if (state.activeRole === 'DEV') {
-    blockedCount = state.logs.filter(l => l.type === 'DESTRUCTIVE_COMMAND_BLOCKED').length;
-    document.getElementById('metric-blocked-commands').innerText = blockedCount;
-  } else {
-    // Mock simulation counter based on interviews and default
-    document.getElementById('metric-blocked-commands').innerText = 3;
+  // Metrics
+  document.getElementById('metric-total-interviews').textContent = state.interviews.length;
+  document.getElementById('metric-total-forms').textContent = state.forms.filter(f => f.status === 'published').length;
+  const researchers = state.users.filter(u => u.role === 'Researcher' && u.status === 'active');
+  document.getElementById('metric-total-researchers').textContent = researchers.length;
+  const blockedCount = state.logs ? state.logs.filter(l => l.severity === 'CRITICAL' || l.severity === 'HIGH').length : 0;
+  document.getElementById('metric-blocked-commands').textContent = blockedCount;
+
+  // Chart
+  renderStatusChart();
+  // Financials
+  renderFinancials();
+  // ODK URL
+  if (!IS_OFFLINE_PREVIEW) {
+    const url = document.getElementById('odk-server-url');
+    if (url) url.textContent = `${window.location.origin}/api`;
   }
 }
 
 function renderStatusChart() {
-  const ctx = document.getElementById('chart-statuses').getContext('2d');
-  
-  // Aggregate counts
-  let pending = 0;
-  let approved = 0;
-  let rejected = 0;
-  
-  state.interviews.forEach(i => {
-    if (i.status === 'pending') pending++;
-    else if (i.status === 'approved') approved++;
-    else if (i.status === 'rejected') rejected++;
-  });
-  
-  if (state.statusChart) {
-    state.statusChart.destroy();
-  }
-  
+  const approved = state.interviews.filter(i => i.status === 'approved').length;
+  const pending = state.interviews.filter(i => i.status === 'pending').length;
+  const rejected = state.interviews.filter(i => i.status === 'rejected').length;
+  const ctx = document.getElementById('chart-statuses');
+  if (!ctx) return;
+  if (state.statusChart) state.statusChart.destroy();
   state.statusChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['Aprovada para Pagamento', 'Pendente', 'Rejeitada'],
-      datasets: [{
-        data: [approved, pending, rejected],
-        backgroundColor: ['#00e676', '#ffc400', '#ff3d00'],
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.08)'
-      }]
+      labels: ['Aprovadas', 'Pendentes', 'Rejeitadas'],
+      datasets: [{ data: [approved, pending, rejected], backgroundColor: ['#059669','#d97706','#dc2626'], borderWidth: 0, borderRadius: 4 }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
       plugins: {
-        legend: {
-          position: 'right',
-          labels: {
-            color: '#f8f9fa',
-            font: { family: 'Outfit' }
-          }
-        }
+        legend: { position: 'bottom', labels: { color: '#0f172a', padding: 16, font: { family: 'Inter', size: 12, weight: 500 }, usePointStyle: true, pointStyleWidth: 10 } }
       }
     }
   });
@@ -658,1230 +392,530 @@ function renderStatusChart() {
 
 function renderFinancials() {
   const tbody = document.getElementById('financials-tbody');
+  if (!tbody) return;
   tbody.innerHTML = '';
-  
-  // Group metrics by researcher
-  const researchers = state.users.filter(u => u.role === 'Researcher');
-  
+  const researchers = state.users.filter(u => u.role === 'Researcher' && u.status === 'active');
   researchers.forEach(r => {
-    const list = state.interviews.filter(i => i.researcher_id === r.id);
-    const approved = list.filter(i => i.status === 'approved').length;
-    const rejected = list.filter(i => i.status === 'rejected').length;
-    const total = list.length;
-    
-    // Freelancers earn R$ 50.00 per approved interview
-    const earned = approved * 50.00;
-    const rejectionRate = total > 0 ? ((rejected / total) * 100).toFixed(0) + '%' : '0%';
-    
-    const row = document.createElement('tr');
-    row.style.borderBottom = '1px solid var(--glass-border)';
-    
-    // Status text
-    const statusText = r.status === 'active' 
-      ? `<span class="form-tag tag-pub" style="margin:0;">Ativo</span>`
-      : `<span class="form-tag tag-draft" style="background:rgba(255,61,0,0.15); color:var(--status-red); margin:0;">Excluído</span>`;
-
-    row.innerHTML = `
-      <td style="padding: 0.8rem; font-weight:600;">${r.name}</td>
-      <td style="padding: 0.8rem;">${total}</td>
-      <td style="padding: 0.8rem; color: var(--status-green);">${approved}</td>
-      <td style="padding: 0.8rem; color: ${rejected > 0 ? 'var(--status-red)' : 'inherit'}">${rejectionRate}</td>
-      <td style="padding: 0.8rem; font-weight:700; color: var(--accent-cyan);">R$ ${earned.toFixed(2)}</td>
-      <td style="padding: 0.8rem;">${statusText}</td>
-    `;
-    tbody.appendChild(row);
+    const rInts = state.interviews.filter(i => i.researcher_id === r.id);
+    const approved = rInts.filter(i => i.status === 'approved').length;
+    const rejected = rInts.filter(i => i.status === 'rejected').length;
+    const payment = approved * 15;
+    const statusBadge = approved > 0 ? '<span class="badge badge-success">Pago</span>' : '<span class="badge badge-warning">Pendente</span>';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><strong>${r.name}</strong></td><td>${rInts.length}</td><td>${approved}</td><td>${rejected}</td><td>R$ ${payment.toFixed(2)}</td><td>${statusBadge}</td>`;
+    tbody.appendChild(tr);
   });
 }
 
-// ----------------- INTERACTIVE FIELD MAP -----------------
+// ===================== MAP =====================
 function initMap() {
-  // Centered in interior of Northeast Brazil (Juazeiro/Petrolina area)
-  state.map = L.map('map').setView([-9.1000, -39.8000], 7);
-  
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors'
-  }).addTo(state.map);
-  
-  // Set up event listeners for filters
-  document.getElementById('map-filter-researcher').addEventListener('change', renderMapInterviews);
-  document.getElementById('map-filter-status').addEventListener('change', renderMapInterviews);
-  document.getElementById('map-filter-date').addEventListener('change', renderMapInterviews);
-  
+  if (state.map) return;
+  state.map = L.map('map').setView([-9.3833, -40.5], 7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 18 }).addTo(state.map);
+  renderMapMarkers();
+  // Filter listeners
+  ['map-filter-researcher','map-filter-status','map-filter-date'].forEach(id => {
+    document.getElementById(id).addEventListener('change', renderMapMarkers);
+  });
   document.getElementById('btn-clear-map-filters').addEventListener('click', () => {
     document.getElementById('map-filter-researcher').value = 'all';
     document.getElementById('map-filter-status').value = 'all';
     document.getElementById('map-filter-date').value = '';
-    renderMapInterviews();
+    renderMapMarkers();
   });
 }
 
-function renderMapInterviews() {
-  if (!state.map) return;
-  
-  // Clear markers
+function renderMapMarkers() {
   state.mapMarkers.forEach(m => state.map.removeLayer(m));
   state.mapMarkers = [];
-  
-  // Read filter options
-  const filterResearcher = document.getElementById('map-filter-researcher').value;
-  const filterStatus = document.getElementById('map-filter-status').value;
-  const filterDate = document.getElementById('map-filter-date').value;
-  
-  const filtered = state.interviews.filter(item => {
-    if (filterResearcher !== 'all' && item.researcher_id !== filterResearcher) return false;
-    if (filterStatus !== 'all' && item.status !== filterStatus) return false;
-    
-    if (filterDate) {
-      const interviewDay = item.created_at.substring(0, 10);
-      if (interviewDay !== filterDate) return false;
-    }
-    
-    return item.latitude !== null && item.longitude !== null;
-  });
-  
-  // Render pins
+  const rFilter = document.getElementById('map-filter-researcher').value;
+  const sFilter = document.getElementById('map-filter-status').value;
+  const dFilter = document.getElementById('map-filter-date').value;
+  let filtered = state.interviews.filter(i => i.latitude && i.longitude);
+  if (rFilter !== 'all') filtered = filtered.filter(i => i.researcher_id === rFilter);
+  if (sFilter !== 'all') filtered = filtered.filter(i => i.status === sFilter);
+  if (dFilter) filtered = filtered.filter(i => i.created_at && i.created_at.startsWith(dFilter));
   filtered.forEach(item => {
-    const color = RESEARCHER_COLORS[item.researcher_id] || DEFAULT_PIN_COLOR;
+    const color = RESEARCHER_COLORS[item.researcher_id] || '#6366f1';
     const researcher = state.users.find(u => u.id === item.researcher_id);
     const researcherName = researcher ? researcher.name : item.researcher_id;
     const form = state.forms.find(f => f.id === item.form_id);
     const formTitle = form ? form.title : item.form_id;
-
-    // Custom colored HTML marker representation
-    const iconHtml = `<div style="background-color:${color}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 8px rgba(0,0,0,0.5);"></div>`;
-    const customIcon = L.divIcon({
-      html: iconHtml,
-      className: 'custom-map-pin',
-      iconSize: [14, 14],
-      iconAnchor: [7, 7]
-    });
-    
-    // Status badges
-    let statusBadge = '';
-    if (item.status === 'approved') statusBadge = '<span style="color:#00e676; font-weight:700;">Aprovada</span>';
-    else if (item.status === 'rejected') statusBadge = '<span style="color:#ff3d00; font-weight:700;">Rejeitada</span>';
-    else statusBadge = '<span style="color:#ffc400; font-weight:700;">Pendente</span>';
-
-    // Build popup content
-    let popupHtml = `
-      <div style="font-family: 'Outfit', sans-serif; min-width: 220px; font-size:0.85rem;">
-        <h4 style="color:var(--accent-cyan); font-size:0.95rem; margin-bottom: 4px;">${formTitle}</h4>
-        <div style="margin-bottom: 6px; font-size:0.75rem; color:#888;">ID: ${item.id} (V${item.form_version})</div>
-        <div><strong>Pesquisador:</strong> ${researcherName}</div>
-        <div><strong>Coordenadas:</strong> ${item.latitude.toFixed(4)}, ${item.longitude.toFixed(4)}</div>
-        <div><strong>Data/Hora:</strong> ${new Date(item.created_at).toLocaleString()}</div>
-        <div><strong>Status:</strong> ${statusBadge}</div>
-        <hr style="margin:8px 0; border:0; border-top:1px solid rgba(255,255,255,0.1);" />
-        <strong>Respostas:</strong>
-        <div style="background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px; margin-top:4px; font-size:0.8rem; max-height: 80px; overflow-y:auto; color:#bbb;">
-    `;
-    
-    for (const [qId, value] of Object.entries(item.data)) {
-      if (qId !== 'Q5' && qId !== 'audio') { // skip large audio recordings in text summary
-        popupHtml += `<div><strong>${qId}:</strong> ${value}</div>`;
-      }
-    }
-    
-    popupHtml += `</div>`;
-
-    // Audio Playback integration if recording exists
-    if (item.audio_url) {
-      popupHtml += `
-        <div style="margin-top: 10px;">
-          <strong>Gravação de Áudio:</strong>
-          <!-- Simulated responsive premium audio visualizer -->
-          <div style="background:rgba(0,240,255,0.08); border:1px solid rgba(0,240,255,0.2); padding: 4px 8px; border-radius: 6px; display:flex; align-items:center; gap: 8px; margin-top: 4px;">
-            <i class="fa-solid fa-play" style="color:var(--accent-cyan); cursor:pointer;" onclick="this.className = this.className.includes('play') ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
-            <span style="font-size:0.75rem; color:#fff; flex:1;">${item.audio_url.replace('/audio-vault/', '')}</span>
-            <span style="font-size:0.7rem; color:#888;">0:12</span>
-          </div>
-        </div>
-      `;
-    }
-
-    popupHtml += `</div>`;
-
-    const marker = L.marker([item.latitude, item.longitude], { icon: customIcon })
-      .addTo(state.map)
-      .bindPopup(popupHtml);
-      
+    const statusLabel = STATUS_LABELS[item.status] || item.status;
+    const statusClass = item.status === 'approved' ? 'badge-success' : item.status === 'rejected' ? 'badge-danger' : 'badge-warning';
+    const icon = L.divIcon({ className:'custom-marker', html:`<div style="width:14px;height:14px;background:${color};border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`, iconSize:[14,14], iconAnchor:[7,7] });
+    const popup = `<div style="font-family:Inter,sans-serif;min-width:200px;"><strong style="font-size:0.9rem;">${formTitle}</strong><br><span style="font-size:0.78rem;color:#64748b;">Pesquisador: ${researcherName}</span><br><span style="font-size:0.78rem;color:#64748b;">Data: ${new Date(item.created_at).toLocaleDateString('pt-BR')}</span><br><span class="badge ${statusClass}" style="margin-top:4px;">${statusLabel}</span></div>`;
+    const marker = L.marker([item.latitude, item.longitude], { icon }).addTo(state.map).bindPopup(popup);
     state.mapMarkers.push(marker);
   });
 }
 
-// ----------------- SUPERVISOR REVIEW & VALIDATION -----------------
-function renderSupervisorReviewList() {
+// ===================== AUDIO REVIEW =====================
+function renderAudioReviewList() {
   const container = document.getElementById('audio-review-list');
+  if (!container) return;
   container.innerHTML = '';
-  
-  // Show pending interviews with audio URLs first
   const auditable = state.interviews.filter(i => i.audio_url);
-  
   if (auditable.length === 0) {
-    container.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding:1rem;">Nenhuma gravação de áudio encontrada para auditoria.</div>';
+    container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-headphones"></i><h4>Nenhuma gravação encontrada</h4><p>As gravações de áudio aparecerão aqui quando os pesquisadores enviarem entrevistas.</p></div>';
     return;
   }
-  
   auditable.forEach(item => {
     const researcher = state.users.find(u => u.id === item.researcher_id);
     const researcherName = researcher ? researcher.name : item.researcher_id;
     const form = state.forms.find(f => f.id === item.form_id);
     const formTitle = form ? form.title : item.form_id;
-
+    const statusLabel = STATUS_LABELS[item.status] || item.status;
+    const statusClass = item.status === 'approved' ? 'badge-success' : item.status === 'rejected' ? 'badge-danger' : 'badge-warning';
     const div = document.createElement('div');
     div.className = 'audio-review-item';
-    
-    // Status text wrapper
-    let statusText = '';
-    if (item.status === 'approved') statusText = '<span style="color:var(--status-green); font-weight:700;">Aprovada</span>';
-    else if (item.status === 'rejected') statusText = '<span style="color:var(--status-red); font-weight:700;">Rejeitada</span>';
-    else statusText = '<span style="color:var(--status-yellow); font-weight:700;">Pendente</span>';
-
     div.innerHTML = `
-      <div style="flex:1;">
-        <h4 style="color:var(--text-primary);">${formTitle}</h4>
-        <div style="font-size:0.8rem; color:var(--text-secondary); margin-bottom: 0.5rem;">
-          Pesquisador: <strong>${researcherName}</strong> | Data: ${new Date(item.created_at).toLocaleDateString()} | Status: ${statusText}
-        </div>
-        
-        <!-- Audio Player mock widget -->
-        <div style="display:flex; align-items:center; gap: 0.8rem; background:rgba(0,0,0,0.2); padding:0.6rem; border-radius:8px; margin-bottom:0.5rem; max-width: 450px;">
-          <button class="btn" style="padding:0.4rem 0.8rem; margin:0;" onclick="playSimulatedAudio(this)">
-            <i class="fa-solid fa-play"></i> Ouvir Áudio
-          </button>
-          <span style="font-family:var(--font-mono); font-size:0.8rem; color:var(--accent-cyan);">${item.audio_url.replace('/audio-vault/', '')}</span>
-          <div style="flex:1; display:flex; gap:2px; align-items:center; height:15px;" class="mini-wave">
-            <span style="width:2px; height:4px; background:#444;"></span>
-            <span style="width:2px; height:8px; background:#444;"></span>
-            <span style="width:2px; height:12px; background:#444;"></span>
-            <span style="width:2px; height:6px; background:#444;"></span>
-            <span style="width:2px; height:4px; background:#444;"></span>
-          </div>
-        </div>
+      <div class="audio-info">
+        <h4>${formTitle}</h4>
+        <div class="audio-meta">Pesquisador: <strong>${researcherName}</strong> · ${new Date(item.created_at).toLocaleDateString('pt-BR')} · <span class="badge ${statusClass}">${statusLabel}</span></div>
       </div>
-      
-      <!-- Approval buttons -->
-      <div style="display:flex; flex-direction:column; gap:0.5rem; justify-content:center;">
-        <div style="display:flex; gap:0.5rem;">
-          <button class="btn btn-primary" style="padding:0.4rem 0.8rem; font-size:0.8rem; background:var(--status-green);" onclick="auditInterviewStatus('${item.id}', 'approved')"><i class="fa-solid fa-check"></i> Aprovar</button>
-          <button class="btn btn-danger" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick="auditInterviewStatus('${item.id}', 'rejected')"><i class="fa-solid fa-xmark"></i> Rejeitar</button>
+      <div class="audio-actions">
+        <div class="audio-btns">
+          <button class="btn btn-success btn-sm" onclick="auditInterview('${item.id}','approved')"><i class="fa-solid fa-check"></i> Aprovar</button>
+          <button class="btn btn-danger btn-sm" onclick="confirmRejectInterview('${item.id}')"><i class="fa-solid fa-xmark"></i> Rejeitar</button>
         </div>
-        <input type="text" placeholder="Observações..." id="notes-${item.id}" class="filter-input" style="padding:0.4rem; font-size:0.8rem;" value="${item.notes || ''}" />
-      </div>
-    `;
-    
+        <input type="text" class="form-input audio-notes" id="notes-${item.id}" placeholder="Observações..." value="${item.notes || ''}" />
+      </div>`;
     container.appendChild(div);
   });
 }
 
-window.playSimulatedAudio = function(btn) {
-  const icon = btn.querySelector('i');
-  const miniWave = btn.parentElement.querySelector('.mini-wave');
-  const waveSpans = miniWave.querySelectorAll('span');
-  
-  if (icon.classList.contains('fa-play')) {
-    icon.className = 'fa-solid fa-pause';
-    // Start mini wave bouncing
-    waveSpans.forEach((span, idx) => {
-      span.style.background = 'var(--accent-cyan)';
-      span.style.animation = `wave-bounce 0.8s ease-in-out infinite alternate`;
-      span.style.animationDelay = `${idx * 0.15}s`;
-    });
-    
-    // Auto-stop after 5 seconds
-    setTimeout(() => {
-      icon.className = 'fa-solid fa-play';
-      waveSpans.forEach(span => {
-        span.style.background = '#444';
-        span.style.animation = 'none';
-      });
-    }, 5000);
-  } else {
-    icon.className = 'fa-solid fa-play';
-    waveSpans.forEach(span => {
-      span.style.background = '#444';
-      span.style.animation = 'none';
-    });
-  }
-};
-
-window.auditInterviewStatus = async function(id, status) {
+window.auditInterview = async function(id, status) {
   const notesField = document.getElementById(`notes-${id}`);
   const notes = notesField ? notesField.value : '';
-  
   try {
-    const result = await apiFetch(`/api/interviews/${id}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ status, notes })
-    });
-    
+    const result = await apiFetch(`/api/interviews/${id}/status`, { method:'PUT', body:JSON.stringify({ status, notes }) });
     if (result.success) {
-      showToast('LOW', `Entrevista ${id} classificada como: ${status === 'approved' ? 'APROVADA' : 'REJEITADA'}`);
+      showToast('success', `Entrevista ${status === 'approved' ? 'aprovada' : 'rejeitada'} com sucesso!`);
       await loadServerData();
       renderDashboard();
+      renderAudioReviewList();
     }
-  } catch (err) {
-    showToast('HIGH', 'Erro ao classificar entrevista: ' + err.message);
-  }
+  } catch (err) { showToast('error', 'Erro ao classificar entrevista: ' + err.message); }
 };
 
-// ----------------- FORM BUILDER CONTROLS -----------------
+window.confirmRejectInterview = function(id) {
+  showConfirm('Rejeitar Entrevista', 'Tem certeza que deseja rejeitar esta entrevista? O pesquisador será notificado.', () => auditInterview(id, 'rejected'), { type:'danger', confirmText:'Rejeitar' });
+};
+
+// ===================== FORM BUILDER =====================
 function initFormBuilder() {
   document.getElementById('btn-new-form').addEventListener('click', () => {
-    loadFormIntoBuilder({
-      id: '',
-      title: 'Novo Formulário do Campo',
-      status: 'draft',
-      version: 1,
-      questions: []
-    });
+    loadFormIntoBuilder({ id:'', title:'Novo Formulário', status:'draft', version:1, questions:[] });
   });
-
   document.getElementById('btn-add-question').addEventListener('click', () => {
     const qId = 'Q' + (state.activeForm.questions.length + 1);
-    state.activeForm.questions.push({
-      id: qId,
-      text: 'Escreva a pergunta aqui...',
-      type: 'single_choice',
-      options: ['Sim', 'Não'],
-      skipRules: []
-    });
+    state.activeForm.questions.push({ id:qId, text:'', type:'single_choice', options:['Sim','Não'], skipRules:[] });
     renderBuilderQuestions();
   });
-
   document.getElementById('btn-save-form').addEventListener('click', saveActiveForm);
 }
 
 function renderFormBuilderList() {
   const container = document.getElementById('forms-list-container');
   container.innerHTML = '';
-  
+  if (state.forms.length === 0) {
+    container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-clipboard-list"></i><h4>Nenhum formulário</h4><p>Clique em "Novo" para criar o primeiro formulário.</p></div>';
+    return;
+  }
   state.forms.forEach(form => {
     const div = document.createElement('div');
     div.className = `form-list-item ${state.activeForm.id === form.id ? 'active' : ''}`;
-    
-    const tagClass = form.status === 'published' ? 'tag-pub' : 'tag-draft';
-    const tagText = form.status === 'published' ? 'PUB' : 'DRAFT';
-    
-    div.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h4 style="margin:0;">${form.title}</h4>
-        <span class="form-tag ${tagClass}">${tagText}</span>
-      </div>
-      <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top:0.4rem;">
-        Versão: <strong>${form.version}</strong> | Perguntas: ${form.questions.length}
-      </div>
-    `;
-    
-    div.addEventListener('click', () => {
-      loadFormIntoBuilder(form);
-    });
-    
+    const badge = form.status === 'published' ? '<span class="badge badge-success">PUB</span>' : '<span class="badge badge-draft">RASCUNHO</span>';
+    div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;"><span class="form-list-title">${form.title}</span>${badge}</div><div class="form-list-meta">Versão ${form.version} · ${form.questions.length} perguntas</div>`;
+    div.addEventListener('click', () => loadFormIntoBuilder(form));
     container.appendChild(div);
   });
 }
 
 function loadFormIntoBuilder(form) {
-  // Deep clone
   state.activeForm = JSON.parse(JSON.stringify(form));
-  
   document.getElementById('form-edit-title').value = state.activeForm.title;
-  document.getElementById('form-edit-version').innerText = state.activeForm.version;
+  document.getElementById('form-edit-version').textContent = state.activeForm.version;
   document.getElementById('form-edit-status').value = state.activeForm.status;
-  
-  // Hide validation errors initially
-  document.getElementById('skip-logic-errors').style.display = 'none';
-  
+  document.getElementById('skip-logic-errors').classList.remove('visible');
   renderBuilderQuestions();
-  renderFormBuilderList(); // refresh active highlight
+  renderFormBuilderList();
 }
 
 function renderBuilderQuestions() {
   const container = document.getElementById('builder-questions-list');
   container.innerHTML = '';
-  
   if (state.activeForm.questions.length === 0) {
-    container.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding:2rem; border:1px dashed var(--glass-border); border-radius:8px;">Nenhuma pergunta adicionada ainda. Clique em "Adicionar Pergunta" acima.</div>';
+    container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-list-ol"></i><h4>Nenhuma pergunta adicionada</h4><p>Clique em "Adicionar Pergunta" acima para começar a criar o questionário.</p></div>';
     return;
   }
-
   state.activeForm.questions.forEach((q, idx) => {
     const card = document.createElement('div');
     card.className = 'question-card';
-    
-    // Select options logic
     const isChoice = q.type === 'single_choice' || q.type === 'multiple_choice';
-    const optionsText = isChoice ? q.options.join(', ') : '';
-
-    // Create options list for skip routing selector
-    let targetOptionsHtml = '<option value="">(Próxima pergunta padrão)</option>';
-    state.activeForm.questions.forEach((otherQ, otherIdx) => {
-      // Show questions appearing further in the list
-      if (otherIdx > idx) {
-        targetOptionsHtml += `<option value="${otherQ.id}">${otherQ.id} - ${otherQ.text.substring(0, 30)}...</option>`;
-      }
-      // Or earlier (to demonstrate backward cycle warnings)
-      if (otherIdx <= idx) {
-        targetOptionsHtml += `<option value="${otherQ.id}" style="color:var(--status-red); font-style:italic;">${otherQ.id} (Pulo para trás - Gera Alerta)</option>`;
-      }
-    });
-
-    // Skip rules html
+    // Options HTML
+    let optionsHtml = '';
+    if (isChoice) {
+      optionsHtml = '<div style="margin-top:0.5rem;"><label class="form-label">Opções de resposta</label>';
+      q.options.forEach((opt, oi) => {
+        optionsHtml += `<div class="option-item"><input type="text" class="form-input" value="${opt}" onchange="updateOption(${idx},${oi},this.value)" /><button class="btn btn-sm btn-danger" onclick="removeOption(${idx},${oi})" title="Remover opção"><i class="fa-solid fa-minus"></i></button></div>`;
+      });
+      optionsHtml += `<button class="btn btn-sm" onclick="addOption(${idx})" style="margin-top:0.3rem;"><i class="fa-solid fa-plus"></i> Nova opção</button></div>`;
+    }
+    // Skip rules HTML
     let rulesHtml = '';
     if (q.skipRules && q.skipRules.length > 0) {
-      q.skipRules.forEach((rule, rIdx) => {
-        rulesHtml += `
-          <div class="skip-rule-item" style="margin-top: 4px;">
-            <span>Se resposta for </span>
-            <input type="text" class="filter-input" style="padding:0.2rem; font-size:0.8rem; width:80px;" value="${rule.conditionValue || ''}" onchange="updateSkipRuleValue(${idx}, ${rIdx}, this.value)" placeholder="valor" />
-            <span> pula para </span>
-            <select class="filter-input" style="padding:0.2rem; font-size:0.8rem;" onchange="updateSkipRuleTarget(${idx}, ${rIdx}, this.value)">
-              ${targetOptionsHtml.replace(`value="${rule.targetQuestionId}"`, `value="${rule.targetQuestionId}" selected`)}
-            </select>
-            <button class="btn btn-danger" style="padding:0.2rem 0.4rem; font-size:0.7rem;" onclick="deleteSkipRule(${idx}, ${rIdx})"><i class="fa-solid fa-trash"></i></button>
-          </div>
-        `;
+      let targetOpts = '<option value="">(Próxima pergunta)</option>';
+      state.activeForm.questions.forEach((oq, oi) => {
+        if (oi !== idx) targetOpts += `<option value="${oq.id}">Pergunta ${oi+1}${oq.text?' - '+oq.text.substring(0,25)+'...':''}</option>`;
+      });
+      q.skipRules.forEach((rule, ri) => {
+        rulesHtml += `<div class="skip-rule-row"><span>Se resposta =</span><input type="text" class="form-input" value="${rule.conditionValue||''}" onchange="updateSkipValue(${idx},${ri},this.value)" style="width:90px;" placeholder="valor" /><span>→ Ir para</span><select class="form-select" onchange="updateSkipTarget(${idx},${ri},this.value)" style="width:auto;">${targetOpts.replace(`value="${rule.targetQuestionId}"`,`value="${rule.targetQuestionId}" selected`)}</select><button class="btn btn-sm btn-danger" onclick="confirmDeleteSkipRule(${idx},${ri})" title="Remover regra"><i class="fa-solid fa-trash"></i></button></div>`;
       });
     }
-
     card.innerHTML = `
       <div class="question-header">
-        <div>
-          <span class="question-index">#${idx + 1} (${q.id})</span>
-          <input type="text" class="filter-input" style="padding:0.2rem 0.5rem; font-weight:700; width:60px; font-family:var(--font-mono); font-size:0.85rem;" value="${q.id}" onchange="updateQuestionId(${idx}, this.value)" />
-        </div>
-        
-        <div style="display:flex; gap:0.5rem;">
-          <button class="btn" style="padding:0.3rem 0.6rem; font-size:0.8rem;" onclick="duplicateQuestion(${idx})"><i class="fa-solid fa-copy"></i> Duplicar</button>
-          <button class="btn btn-danger" style="padding:0.3rem 0.6rem; font-size:0.8rem;" onclick="deleteQuestion(${idx})"><i class="fa-solid fa-trash"></i> Excluir</button>
+        <div style="display:flex;align-items:center;gap:0.5rem;"><div class="question-number">${idx+1}</div><span style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);">${q.id}</span></div>
+        <div class="question-actions">
+          <button class="btn btn-sm" onclick="duplicateQuestion(${idx})" title="Duplicar"><i class="fa-solid fa-copy"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="confirmDeleteQuestion(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>
-      
-      <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1rem; margin-bottom: 0.8rem;">
-        <div>
-          <label style="font-size:0.8rem; color:var(--text-secondary); display:block; margin-bottom:0.2rem;">Texto da Pergunta</label>
-          <input type="text" class="filter-input" style="width:100%;" value="${q.text}" onchange="updateQuestionText(${idx}, this.value)" />
-        </div>
-        <div>
-          <label style="font-size:0.8rem; color:var(--text-secondary); display:block; margin-bottom:0.2rem;">Tipo de Entrada</label>
-          <select class="filter-input" style="width:100%;" onchange="updateQuestionType(${idx}, this.value)">
-            <option value="text" ${q.type === 'text' ? 'selected' : ''}>Texto Livre</option>
-            <option value="single_choice" ${q.type === 'single_choice' ? 'selected' : ''}>Seleção Única (Rádio)</option>
-            <option value="multiple_choice" ${q.type === 'multiple_choice' ? 'selected' : ''}>Múltipla Escolha (Checkbox)</option>
-            <option value="number" ${q.type === 'number' ? 'selected' : ''}>Numérico</option>
-            <option value="audio_record" ${q.type === 'audio_record' ? 'selected' : ''}>Gravação de Áudio (Entrevista)</option>
-          </select>
-        </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;margin-bottom:0.5rem;">
+        <div class="form-group"><label class="form-label">Texto da Pergunta</label><input type="text" class="form-input" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="Escreva a pergunta aqui..." /></div>
+        <div class="form-group"><label class="form-label">Tipo de Entrada <span class="tooltip-trigger"><span class="tooltip-icon">?</span><span class="tooltip-text">Escolha como o pesquisador vai responder esta pergunta.</span></span></label><select class="form-select" onchange="updateQType(${idx},this.value)"><option value="text" ${q.type==='text'?'selected':''}>Texto Livre</option><option value="single_choice" ${q.type==='single_choice'?'selected':''}>Seleção Única</option><option value="multiple_choice" ${q.type==='multiple_choice'?'selected':''}>Múltipla Escolha</option><option value="number" ${q.type==='number'?'selected':''}>Numérico</option><option value="audio_record" ${q.type==='audio_record'?'selected':''}>Gravação de Áudio</option></select></div>
       </div>
-      
-      ${isChoice ? `
-        <div style="margin-bottom:0.8rem;">
-          <label style="font-size:0.8rem; color:var(--text-secondary); display:block; margin-bottom:0.2rem;">Opções (separadas por vírgula)</label>
-          <input type="text" class="filter-input" style="width:100%;" value="${optionsText}" onchange="updateQuestionOptions(${idx}, this.value)" placeholder="Opção 1, Opção 2, Opção 3" />
+      ${optionsHtml}
+      <div style="margin-top:0.75rem;padding-top:0.6rem;border-top:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+          <span style="font-size:0.78rem;font-weight:600;color:var(--text-secondary);">Regras de Pulo <span class="tooltip-trigger"><span class="tooltip-icon">?</span><span class="tooltip-text">Se o entrevistado responder algo específico, pule para outra pergunta automaticamente.</span></span></span>
+          <button class="btn btn-sm" onclick="addSkipRule(${idx})"><i class="fa-solid fa-plus"></i> Regra</button>
         </div>
-      ` : ''}
-      
-      <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:0.6rem;">
-        <span style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">Regras de Pulo Condicional</span>
-        <button class="btn" style="padding:0.1rem 0.4rem; font-size:0.75rem; margin-left:0.5rem;" onclick="addSkipRule(${idx})"><i class="fa-solid fa-plus"></i> Add Regra</button>
-        <div class="skip-rules-list" style="${q.skipRules.length === 0 ? 'display:none;' : ''}">
-          ${rulesHtml}
-        </div>
-      </div>
-    `;
-    
+        ${rulesHtml}
+      </div>`;
     container.appendChild(card);
   });
 }
 
-// Inline question update handlers
-window.updateQuestionId = function(idx, val) {
-  state.activeForm.questions[idx].id = val.toUpperCase().trim();
+// Question handlers
+window.updateQText = (idx, val) => { state.activeForm.questions[idx].text = val; };
+window.updateQType = (idx, val) => { state.activeForm.questions[idx].type = val; renderBuilderQuestions(); };
+window.addOption = (idx) => { state.activeForm.questions[idx].options.push('Nova opção'); renderBuilderQuestions(); };
+window.removeOption = (idx, oi) => {
+  if (state.activeForm.questions[idx].options.length <= 1) { showToast('warning', 'A pergunta precisa ter pelo menos uma opção.'); return; }
+  state.activeForm.questions[idx].options.splice(oi, 1); renderBuilderQuestions();
+};
+window.updateOption = (idx, oi, val) => { state.activeForm.questions[idx].options[oi] = val; };
+window.addSkipRule = (idx) => {
+  if (!state.activeForm.questions[idx].skipRules) state.activeForm.questions[idx].skipRules = [];
+  state.activeForm.questions[idx].skipRules.push({ conditionValue:'Sim', targetQuestionId:'' });
   renderBuilderQuestions();
 };
-window.updateQuestionText = function(idx, val) {
-  state.activeForm.questions[idx].text = val;
-};
-window.updateQuestionType = function(idx, val) {
-  state.activeForm.questions[idx].type = val;
+window.updateSkipValue = (qi, ri, val) => { state.activeForm.questions[qi].skipRules[ri].conditionValue = val; };
+window.updateSkipTarget = (qi, ri, val) => { state.activeForm.questions[qi].skipRules[ri].targetQuestionId = val; };
+window.confirmDeleteSkipRule = (qi, ri) => { showConfirm('Remover Regra', 'Deseja remover esta regra de pulo?', () => { state.activeForm.questions[qi].skipRules.splice(ri,1); renderBuilderQuestions(); }, { type:'warning' }); };
+window.duplicateQuestion = (idx) => {
+  const clone = JSON.parse(JSON.stringify(state.activeForm.questions[idx]));
+  clone.id = clone.id + '_CPY';
+  state.activeForm.questions.splice(idx+1, 0, clone);
   renderBuilderQuestions();
 };
-window.updateQuestionOptions = function(idx, val) {
-  state.activeForm.questions[idx].options = val.split(',').map(s => s.trim()).filter(s => s.length > 0);
-  renderBuilderQuestions();
-};
-window.addSkipRule = function(idx) {
-  if (!state.activeForm.questions[idx].skipRules) {
-    state.activeForm.questions[idx].skipRules = [];
-  }
-  state.activeForm.questions[idx].skipRules.push({
-    conditionValue: 'Sim',
-    targetQuestionId: ''
-  });
-  renderBuilderQuestions();
-};
-window.updateSkipRuleValue = function(qIdx, rIdx, val) {
-  state.activeForm.questions[qIdx].skipRules[rIdx].conditionValue = val;
-};
-window.updateSkipRuleTarget = function(qIdx, rIdx, val) {
-  state.activeForm.questions[qIdx].skipRules[rIdx].targetQuestionId = val;
-};
-window.deleteSkipRule = function(qIdx, rIdx) {
-  state.activeForm.questions[qIdx].skipRules.splice(rIdx, 1);
-  renderBuilderQuestions();
-};
-window.duplicateQuestion = function(idx) {
-  const source = state.activeForm.questions[idx];
-  const clone = JSON.parse(JSON.stringify(source));
-  clone.id = clone.id + '_COPY';
-  clone.copySourceId = source.id;
-  state.activeForm.questions.splice(idx + 1, 0, clone);
-  renderBuilderQuestions();
-};
-window.deleteQuestion = function(idx) {
-  state.activeForm.questions.splice(idx, 1);
-  renderBuilderQuestions();
+window.confirmDeleteQuestion = (idx) => {
+  showConfirm('Excluir Pergunta', `Tem certeza que deseja excluir a pergunta ${idx+1}? Esta ação não pode ser desfeita.`, () => { state.activeForm.questions.splice(idx,1); renderBuilderQuestions(); }, { type:'danger', confirmText:'Excluir' });
 };
 
 async function saveActiveForm() {
   const title = document.getElementById('form-edit-title').value.trim();
   const status = document.getElementById('form-edit-status').value;
-  
-  if (!title) {
-    showToast('MEDIUM', 'Título do formulário não pode ser vazio.');
-    return;
+  if (!title) { showToast('warning', 'O nome do formulário não pode ficar vazio.'); return; }
+  // Validate questions have text
+  for (const q of state.activeForm.questions) {
+    if (!q.text.trim()) { showToast('warning', 'Todas as perguntas precisam ter um texto.'); return; }
   }
-  
   state.activeForm.title = title;
   state.activeForm.status = status;
-  
+  const btn = document.getElementById('btn-save-form');
+  setButtonLoading(btn, true);
   try {
-    const payload = {
-      id: state.activeForm.id || undefined,
-      title: state.activeForm.title,
-      status: state.activeForm.status,
-      questions: state.activeForm.questions
-    };
-    
-    const result = await apiFetch('/api/forms', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-    
+    const payload = { id:state.activeForm.id||undefined, title, status, questions:state.activeForm.questions };
+    const result = await apiFetch('/api/forms', { method:'POST', body:JSON.stringify(payload) });
     if (result.success) {
-      showToast('LOW', `Formulário "${title}" salvo com sucesso!`);
-      
-      // Load saved version back into workspace
+      showToast('success', `Formulário "${title}" salvo com sucesso!`);
       loadFormIntoBuilder(result.form);
-      
-      // Render warnings if skip validation failed
       const warningsDiv = document.getElementById('skip-logic-errors');
       if (result.validation && result.validation.length > 0) {
-        warningsDiv.style.display = 'block';
-        let warningsHtml = `<h4><i class="fa-solid fa-triangle-exclamation"></i> Avisos de Lógica Detectados (${result.validation.length})</h4><ul style="margin-left: 1.5rem; font-size:0.85rem;">`;
-        result.validation.forEach(err => {
-          warningsHtml += `<li style="margin-bottom:0.2rem;">[${err.type}] ${err.message}</li>`;
-        });
-        warningsHtml += `</ul>`;
-        warningsDiv.innerHTML = warningsHtml;
-        showToast('MEDIUM', 'Avisos de lógica detectados. Revise o formulário para evitar erros em campo.');
-      } else {
-        warningsDiv.style.display = 'none';
-      }
-      
-      // Reload server forms
+        warningsDiv.classList.add('visible');
+        warningsDiv.innerHTML = `<h4><i class="fa-solid fa-triangle-exclamation"></i> Avisos de Lógica (${result.validation.length})</h4><ul>${result.validation.map(e => `<li>${e.message}</li>`).join('')}</ul>`;
+        showToast('warning', 'Foram encontrados avisos na lógica do formulário.');
+      } else { warningsDiv.classList.remove('visible'); }
       await loadServerData();
+      renderFormBuilderList();
     }
-  } catch (err) {
-    showToast('HIGH', 'Erro ao salvar formulário: ' + err.message);
-  }
+  } catch (err) { showToast('error', 'Erro ao salvar: ' + err.message); }
+  setButtonLoading(btn, false);
 }
 
-// ----------------- MOBILE RESEARCHER SIMULATOR -----------------
+// ===================== MOBILE SIMULATOR =====================
 function initMobileSimulator() {
-  // Sync checkbox state
-  const onlineCheck = document.getElementById('sim-toggle-network');
-  onlineCheck.addEventListener('change', (e) => {
+  document.getElementById('sim-toggle-network').addEventListener('change', (e) => {
     state.simIsOnline = e.target.checked;
-    
     const badge = document.getElementById('net-status-text');
-    if (state.simIsOnline) {
-      badge.innerText = 'Conectado ao Servidor (Online)';
-      badge.className = 'network-badge network-online';
-      // Auto sync offline queue
-      syncOfflineQueue();
-    } else {
-      badge.innerText = 'Desconectado (Offline)';
-      badge.className = 'network-badge network-offline';
-    }
-    
+    badge.textContent = state.simIsOnline ? 'Conectado (Online)' : 'Desconectado (Offline)';
+    if (state.simIsOnline) syncOfflineQueue();
     renderMobileScreen();
   });
-  
-  // Download templates
-  document.getElementById('sim-btn-download-templates').addEventListener('click', downloadTemplatesToLocalDevice);
-  
-  // Sync local queue
+  document.getElementById('sim-btn-download-templates').addEventListener('click', downloadTemplates);
   document.getElementById('sim-btn-sync-queue').addEventListener('click', syncOfflineQueue);
-  
-  // Load cached local queue
-  const cachedQueue = localStorage.getItem('antigravity_offline_queue');
-  if (cachedQueue) {
-    state.simOfflineQueue = JSON.parse(cachedQueue);
-    document.getElementById('sim-offline-queue-count').innerText = state.simOfflineQueue.length;
-  }
-  
+  const cachedQueue = localStorage.getItem('datapesquise_offline_queue');
+  if (cachedQueue) { state.simOfflineQueue = JSON.parse(cachedQueue); document.getElementById('sim-offline-queue-count').textContent = state.simOfflineQueue.length; }
   renderMobileScreen();
 }
 
-function downloadTemplatesToLocalDevice() {
-  if (!state.simIsOnline) {
-    showToast('HIGH', 'Você está offline. Conecte à internet para baixar os novos formulários.');
-    return;
-  }
-  
-  // Save active published forms to simulation memory
-  const publishedForms = state.forms.filter(f => f.status === 'published');
-  localStorage.setItem('antigravity_sim_templates', JSON.stringify(publishedForms));
-  
-  showToast('LOW', `${publishedForms.length} formulários baixados para o dispositivo do pesquisador.`);
+function downloadTemplates() {
+  if (!state.simIsOnline) { showToast('error', 'Conecte à internet para baixar os formulários.'); return; }
+  const published = state.forms.filter(f => f.status === 'published');
+  localStorage.setItem('datapesquise_sim_templates', JSON.stringify(published));
+  showToast('success', `${published.length} formulário(s) baixado(s) para o celular.`);
   renderMobileScreen();
 }
 
 function syncOfflineQueue() {
-  if (state.simOfflineQueue.length === 0) {
-    showToast('LOW', 'Nenhuma entrevista pendente na fila offline.');
-    return;
-  }
-  
-  if (!state.simIsOnline) {
-    showToast('MEDIUM', 'Não é possível sincronizar enquanto estiver offline.');
-    return;
-  }
-  
+  if (state.simOfflineQueue.length === 0) { showToast('info', 'Nenhuma pesquisa pendente.'); return; }
+  if (!state.simIsOnline) { showToast('warning', 'Conecte à internet para enviar.'); return; }
   const total = state.simOfflineQueue.length;
-  let successCount = 0;
-  
-  showToast('LOW', `Iniciando envio de ${total} entrevistas retidas...`);
-  
-  // Process sequentially (delta syncing)
-  const promises = state.simOfflineQueue.map(async (payload) => {
-    try {
-      // Force researcher active role header to overwrite current session role for simulation
-      const headers = {
-        'x-user-role': 'Researcher',
-        'x-user-id': document.getElementById('sim-active-researcher').value
-      };
-      
-      const response = await fetch('/api/interviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify(payload)
-      });
-      
-      if (response.ok) {
-        successCount++;
-      }
-    } catch (err) {
-      console.error('Failed to sync offline item', err);
-    }
-  });
-  
-  Promise.all(promises).then(async () => {
-    showToast('LOW', `${successCount} de ${total} entrevistas sincronizadas com sucesso.`);
-    
-    // Clear sent items
-    state.simOfflineQueue = state.simOfflineQueue.slice(successCount);
-    localStorage.setItem('antigravity_offline_queue', JSON.stringify(state.simOfflineQueue));
-    document.getElementById('sim-offline-queue-count').innerText = state.simOfflineQueue.length;
-    
-    await loadServerData();
-    renderDashboard();
-    renderMobileScreen();
-  });
+  showToast('info', `Enviando ${total} pesquisa(s)...`);
+  Promise.all(state.simOfflineQueue.map(p => apiFetch('/api/interviews', { method:'POST', body:JSON.stringify(p) }).catch(() => null)))
+    .then(async (results) => {
+      const ok = results.filter(r => r && r.success).length;
+      showToast('success', `${ok} de ${total} pesquisa(s) enviada(s)!`);
+      state.simOfflineQueue = state.simOfflineQueue.slice(ok);
+      localStorage.setItem('datapesquise_offline_queue', JSON.stringify(state.simOfflineQueue));
+      document.getElementById('sim-offline-queue-count').textContent = state.simOfflineQueue.length;
+      await loadServerData(); renderDashboard(); renderMobileScreen();
+    });
 }
 
 function renderMobileScreen() {
   const screen = document.getElementById('phone-screen-body');
+  const header = document.getElementById('phone-header-bar');
+  if (!screen || !header) return;
+  const netBadge = state.simIsOnline ? '<span class="network-badge-online">Online</span>' : '<span class="network-badge-offline">Offline</span>';
+  header.innerHTML = `<span style="font-weight:700;font-size:0.78rem;"><i class="fa-solid fa-chart-pie" style="color:var(--primary);"></i> DATApesquise</span>${netBadge}`;
   screen.innerHTML = '';
-  
-  // Top indicators
-  const netClass = state.simIsOnline ? 'network-online' : 'network-offline';
-  const netText = state.simIsOnline ? 'ONLINE' : 'OFFLINE';
-  
-  const headerDiv = document.createElement('div');
-  headerDiv.className = 'phone-header';
-  headerDiv.innerHTML = `
-    <span style="font-weight:700; font-size:0.8rem;"><i class="fa-solid fa-mobile"></i> Coleta</span>
-    <span class="network-badge ${netClass}" style="font-size:0.65rem;">${netText}</span>
-  `;
-  screen.appendChild(headerDiv);
-  
-  // Check if researcher has templates
-  const templatesJson = localStorage.getItem('antigravity_sim_templates');
-  const templates = templatesJson ? JSON.parse(templatesJson) : [];
-  
-  // 1. SELECT FORM VIEW
+
   if (!state.simActiveForm) {
-    let formOptionsHtml = '<option value="">-- Selecione o formulário --</option>';
-    templates.forEach(t => {
-      formOptionsHtml += `<option value="${t.id}">${t.title} (V${t.version})</option>`;
-    });
-    
-    const viewDiv = document.createElement('div');
-    viewDiv.style.flex = '1';
-    viewDiv.style.display = 'flex';
-    viewDiv.style.flexDirection = 'column';
-    viewDiv.style.justifyContent = 'center';
-    
-    viewDiv.innerHTML = `
-      <div style="text-align:center; margin-bottom:1.5rem;">
-        <i class="fa-solid fa-clipboard-question" style="font-size:3rem; color:var(--accent-purple); margin-bottom:0.5rem; display:block;"></i>
-        <h4 style="margin:0;">Iniciar Nova Pesquisa</h4>
-        <p style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.4rem;">Selecione um formulário carregado no aparelho para iniciar.</p>
-      </div>
-      
-      <select class="filter-input" id="sim-select-form" style="width:100%; margin-bottom:1rem; border-color:var(--accent-purple);">
-        ${formOptionsHtml}
-      </select>
-      
-      <button class="btn btn-primary" style="width:100%; background:var(--accent-purple); color:#fff;" onclick="simStartInterview()"><i class="fa-solid fa-play"></i> Iniciar Questionário</button>
-      
-      ${templates.length === 0 ? `
-        <div style="margin-top:1.5rem; background:rgba(255,196,0,0.1); border:1px dashed var(--status-yellow); padding:0.8rem; border-radius:8px; font-size:0.75rem; color:var(--status-yellow); text-align:center;">
-          <i class="fa-solid fa-circle-exclamation"></i> Nenhum formulário baixado. Clique em "Baixar Modelos" à esquerda primeiro.
-        </div>
-      ` : ''}
-    `;
-    screen.appendChild(viewDiv);
-    
-    // Bind change listener
-    setTimeout(() => {
-      const select = document.getElementById('sim-select-form');
-      if (select) {
-        select.value = state.simSelectedFormId;
-        select.addEventListener('change', (e) => state.simSelectedFormId = e.target.value);
-      }
-    }, 10);
+    // Form selection view
+    const templates = JSON.parse(localStorage.getItem('datapesquise_sim_templates') || '[]');
+    let opts = '<option value="">-- Selecione o formulário --</option>';
+    templates.forEach(t => { opts += `<option value="${t.id}">${t.title} (V${t.version})</option>`; });
+    const warn = templates.length === 0 ? '<div style="margin-top:1rem;padding:0.7rem;background:var(--warning-light);border-radius:8px;font-size:0.75rem;color:var(--warning);text-align:center;"><i class="fa-solid fa-circle-exclamation"></i> Nenhum formulário baixado. Clique em "Baixar Formulários" primeiro.</div>' : '';
+    screen.innerHTML = `<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0.5rem;"><div style="text-align:center;margin-bottom:1.5rem;"><i class="fa-solid fa-clipboard-question" style="font-size:2.5rem;color:var(--primary);margin-bottom:0.5rem;display:block;"></i><h4 style="font-size:1rem;">Iniciar Pesquisa</h4><p style="font-size:0.78rem;color:var(--text-secondary);margin-top:0.3rem;">Selecione um formulário para começar.</p></div><select class="form-select" id="sim-select-form" style="margin-bottom:0.75rem;">${opts}</select><button class="btn btn-primary" style="width:100%;" onclick="simStartInterview()"><i class="fa-solid fa-play"></i> Começar</button>${warn}</div>`;
+    setTimeout(() => { const s = document.getElementById('sim-select-form'); if (s) { s.value = state.simSelectedFormId; s.addEventListener('change', e => state.simSelectedFormId = e.target.value); } }, 10);
   } else {
-    // 2. FILL QUESTIONNAIRE VIEW
     const qList = state.simActiveForm.questions;
-    const currentIdx = state.simCurrentQuestionIdx;
-    
-    if (currentIdx < qList.length) {
-      const q = qList[currentIdx];
-      const isLast = currentIdx === qList.length - 1;
-      
-      // Question rendering structure
-      const qDiv = document.createElement('div');
-      qDiv.className = 'phone-question-container';
-      
+    const ci = state.simCurrentQuestionIdx;
+    if (ci < qList.length) {
+      // Question view
+      const q = qList[ci];
+      const isLast = ci === qList.length - 1;
       let inputHtml = '';
-      if (q.type === 'text') {
-        inputHtml = `<input type="text" id="sim-ans-${q.id}" class="filter-input" style="width:100%; margin-top:0.8rem;" value="${state.simAnswers[q.id] || ''}" placeholder="Escreva a resposta..." />`;
-      } else if (q.type === 'number') {
-        inputHtml = `<input type="number" id="sim-ans-${q.id}" class="filter-input" style="width:100%; margin-top:0.8rem;" value="${state.simAnswers[q.id] || ''}" placeholder="Digite um valor numérico..." />`;
-      } else if (q.type === 'single_choice') {
-        let optionsHtml = '';
-        q.options.forEach(opt => {
-          const checked = state.simAnswers[q.id] === opt ? 'checked' : '';
-          optionsHtml += `
-            <label style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem; font-size:0.9rem; cursor:pointer;">
-              <input type="radio" name="sim-rad-${q.id}" value="${opt}" ${checked} style="transform:scale(1.2);" /> ${opt}
-            </label>
-          `;
-        });
-        inputHtml = `<div style="margin-top:0.8rem; display:flex; flex-direction:column;">${optionsHtml}</div>`;
+      if (q.type === 'text') inputHtml = `<input type="text" id="sim-ans-${q.id}" class="form-input" style="margin-top:0.6rem;" value="${state.simAnswers[q.id]||''}" placeholder="Escreva a resposta..." />`;
+      else if (q.type === 'number') inputHtml = `<input type="number" id="sim-ans-${q.id}" class="form-input" style="margin-top:0.6rem;" value="${state.simAnswers[q.id]||''}" placeholder="Digite um número..." />`;
+      else if (q.type === 'single_choice') {
+        inputHtml = '<div style="margin-top:0.6rem;">';
+        q.options.forEach(opt => { const chk = state.simAnswers[q.id]===opt?'checked':''; inputHtml += `<label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.88rem;cursor:pointer;"><input type="radio" name="sim-rad-${q.id}" value="${opt}" ${chk} style="transform:scale(1.15);" /> ${opt}</label>`; });
+        inputHtml += '</div>';
       } else if (q.type === 'multiple_choice') {
-        let optionsHtml = '';
-        const answeredArr = state.simAnswers[q.id] || [];
-        q.options.forEach(opt => {
-          const checked = answeredArr.includes(opt) ? 'checked' : '';
-          optionsHtml += `
-            <label style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem; font-size:0.9rem; cursor:pointer;">
-              <input type="checkbox" name="sim-chk-${q.id}" value="${opt}" ${checked} style="transform:scale(1.2);" /> ${opt}
-            </label>
-          `;
-        });
-        inputHtml = `<div style="margin-top:0.8rem; display:flex; flex-direction:column;">${optionsHtml}</div>`;
+        const arr = state.simAnswers[q.id] || [];
+        inputHtml = '<div style="margin-top:0.6rem;">';
+        q.options.forEach(opt => { const chk = arr.includes(opt)?'checked':''; inputHtml += `<label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.88rem;cursor:pointer;"><input type="checkbox" name="sim-chk-${q.id}" value="${opt}" ${chk} style="transform:scale(1.15);" /> ${opt}</label>`; });
+        inputHtml += '</div>';
       } else if (q.type === 'audio_record') {
         const isRec = state.simIsRecording;
-        const recordBtnClass = isRec ? 'record-btn recording' : 'record-btn';
-        
-        inputHtml = `
-          <div class="sim-audio-widget">
-            <span style="font-size:0.8rem; color:var(--text-secondary); display:block; margin-bottom:0.4rem;">
-              ${isRec ? 'Gravando entrevista... Fale no microfone.' : 'Pressione para iniciar gravação'}
-            </span>
-            <div class="wave-container ${isRec ? 'recording' : ''}">
-              <span class="wave-bar"></span>
-              <span class="wave-bar"></span>
-              <span class="wave-bar"></span>
-              <span class="wave-bar"></span>
-              <span class="wave-bar"></span>
-              <span class="wave-bar"></span>
-            </div>
-            <button class="${recordBtnClass}" onclick="simToggleAudioRecord()"></button>
-            <div style="font-size:0.8rem; margin-top:0.4rem;" id="sim-audio-status-label">
-              ${state.simAudioFile ? `<span style="color:var(--status-green);"><i class="fa-solid fa-file-audio"></i> ${state.simAudioFile}</span>` : '<span style="color:var(--text-muted);">Nenhum arquivo gravado</span>'}
-            </div>
-          </div>
-        `;
+        inputHtml = `<div class="sim-audio-widget"><p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.4rem;">${isRec?'Gravando... Fale no microfone.':'Pressione para iniciar.'}</p><div class="wave-container ${isRec?'recording':''}"><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span></div><button class="record-btn ${isRec?'recording':''}" onclick="simToggleRecord()"></button><div style="font-size:0.75rem;margin-top:0.3rem;">${state.simAudioFile?`<span style="color:var(--success);"><i class="fa-solid fa-file-audio"></i> ${state.simAudioFile}</span>`:'<span style="color:var(--text-muted);">Nenhum áudio gravado</span>'}</div></div>`;
       }
-      
-      qDiv.innerHTML = `
-        <div style="font-size:0.75rem; color:var(--accent-purple); font-weight:700; margin-bottom:0.2rem;">Questão ${currentIdx + 1} de ${qList.length}</div>
-        <h4 style="font-size:1.1rem; line-height:1.4;">${q.text}</h4>
-        ${inputHtml}
-        
-        <div style="display:flex; justify-content:space-between; margin-top:2rem; gap:0.8rem;">
-          <button class="btn" style="flex:1;" onclick="simPrevQuestion()"><i class="fa-solid fa-arrow-left"></i> Voltar</button>
-          <button class="btn btn-primary" style="flex:2; background:var(--accent-purple); color:#fff;" onclick="simNextQuestion()">${isLast ? '<i class="fa-solid fa-circle-check"></i> Finalizar' : 'Avançar <i class="fa-solid fa-arrow-right"></i>'}</button>
-        </div>
-        
-        <button class="btn btn-danger" style="margin-top:1rem; padding:0.4rem; font-size:0.75rem; width:100%; border:none; background:transparent;" onclick="simAbortInterview()"><i class="fa-solid fa-ban"></i> Cancelar Coleta</button>
-      `;
-      screen.appendChild(qDiv);
+      screen.innerHTML = `<div style="flex:1;display:flex;flex-direction:column;padding:0.25rem;"><div style="font-size:0.7rem;color:var(--primary);font-weight:700;margin-bottom:0.15rem;">Questão ${ci+1} de ${qList.length}</div><div class="progress-bar" style="margin-bottom:0.75rem;"><div class="progress-fill blue" style="width:${((ci+1)/qList.length*100).toFixed(0)}%;"></div></div><h4 style="font-size:1rem;line-height:1.4;margin-bottom:0.25rem;">${q.text}</h4>${inputHtml}<div style="display:flex;gap:0.5rem;margin-top:auto;padding-top:1rem;"><button class="btn" style="flex:1;" onclick="simPrev()"><i class="fa-solid fa-arrow-left"></i> Voltar</button><button class="btn btn-primary" style="flex:2;" onclick="simNext()">${isLast?'<i class="fa-solid fa-circle-check"></i> Finalizar':'Avançar <i class="fa-solid fa-arrow-right"></i>'}</button></div><button class="btn btn-sm" style="margin-top:0.5rem;width:100%;border:none;color:var(--danger);font-size:0.75rem;" onclick="simAbort()"><i class="fa-solid fa-ban"></i> Cancelar Coleta</button></div>`;
     } else {
-      // 3. CONFIRMATION VIEW
-      const confirmDiv = document.createElement('div');
-      confirmDiv.className = 'phone-question-container';
-      confirmDiv.innerHTML = `
-        <div style="text-align:center; margin-bottom:1.5rem;">
-          <i class="fa-solid fa-circle-check" style="font-size:4rem; color:var(--status-green); margin-bottom:1rem; display:block;"></i>
-          <h3>Coleta Concluída!</h3>
-          <p style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.4rem;">Todos os dados foram preenchidos localmente no dispositivo.</p>
-        </div>
-        
-        <div style="background:rgba(0,0,0,0.2); padding:0.8rem; border-radius:8px; margin-bottom:1.5rem; font-size:0.8rem;">
-          <strong>Resumo das Respostas:</strong>
-          <div style="margin-top:0.5rem; max-height:120px; overflow-y:auto; text-align:left; color:#bbb;">
-            ${Object.entries(state.simAnswers).map(([k, v]) => `<div>- <strong>${k}</strong>: ${v}</div>`).join('')}
-            ${state.simAudioFile ? `<div>- <strong>Áudio</strong>: ${state.simAudioFile}</div>` : ''}
-          </div>
-        </div>
-        
-        <button class="btn btn-primary" style="width:100%; background:var(--status-green); border:none; color:#fff;" onclick="simSubmitInterview()"><i class="fa-solid fa-cloud-arrow-up"></i> Enviar Respostas</button>
-        <button class="btn" style="width:100%; margin-top:0.5rem;" onclick="simResetFormState()">Voltar ao Início</button>
-      `;
-      screen.appendChild(confirmDiv);
+      // Confirmation view
+      screen.innerHTML = `<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0.5rem;text-align:center;"><i class="fa-solid fa-circle-check" style="font-size:3rem;color:var(--success);margin-bottom:0.75rem;"></i><h3 style="margin-bottom:0.3rem;">Coleta Concluída!</h3><p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:1rem;">Todos os dados foram preenchidos.</p><div style="background:var(--bg-page);padding:0.6rem;border-radius:8px;margin-bottom:1rem;font-size:0.75rem;text-align:left;max-height:110px;overflow-y:auto;">${Object.entries(state.simAnswers).map(([k,v])=>`<div><strong>${k}:</strong> ${v}</div>`).join('')}${state.simAudioFile?`<div><strong>Áudio:</strong> ${state.simAudioFile}</div>`:''}</div><button class="btn btn-success" style="width:100%;margin-bottom:0.5rem;" onclick="simSubmit()"><i class="fa-solid fa-cloud-arrow-up"></i> Enviar Respostas</button><button class="btn" style="width:100%;" onclick="simReset()">Voltar ao Início</button></div>`;
     }
   }
 }
 
 window.simStartInterview = function() {
   const select = document.getElementById('sim-select-form');
-  if (!select || !select.value) {
-    showToast('MEDIUM', 'Selecione um formulário para iniciar a coleta.');
-    return;
-  }
-  
-  const templatesJson = localStorage.getItem('antigravity_sim_templates');
-  const templates = templatesJson ? JSON.parse(templatesJson) : [];
+  if (!select || !select.value) { showToast('warning', 'Selecione um formulário para começar.'); return; }
+  const templates = JSON.parse(localStorage.getItem('datapesquise_sim_templates') || '[]');
   const form = templates.find(t => t.id === select.value);
-  
-  if (form) {
-    state.simActiveForm = form;
-    state.simAnswers = {};
-    state.simCurrentQuestionIdx = 0;
-    state.simAudioFile = null;
-    state.simIsRecording = false;
-    renderMobileScreen();
-  }
+  if (form) { state.simActiveForm = form; state.simAnswers = {}; state.simCurrentQuestionIdx = 0; state.simAudioFile = null; state.simIsRecording = false; renderMobileScreen(); }
 };
-
-window.simAbortInterview = function() {
-  if (confirm('Deseja realmente cancelar esta entrevista? Todas as respostas preenchidas serão perdidas.')) {
-    simResetFormState();
-  }
-};
-
-function simResetFormState() {
-  state.simActiveForm = null;
-  state.simAnswers = {};
-  state.simCurrentQuestionIdx = 0;
-  state.simAudioFile = null;
-  state.simIsRecording = false;
-  renderMobileScreen();
-}
-
-window.simPrevQuestion = function() {
-  if (state.simCurrentQuestionIdx > 0) {
-    state.simCurrentQuestionIdx--;
-    renderMobileScreen();
-  } else {
-    state.simActiveForm = null;
-    renderMobileScreen();
-  }
-};
-
-window.simNextQuestion = function() {
-  const qList = state.simActiveForm.questions;
-  const currentIdx = state.simCurrentQuestionIdx;
-  const q = qList[currentIdx];
-  
-  // Read value from input
+window.simAbort = function() { showConfirm('Cancelar Coleta', 'Todas as respostas preenchidas serão perdidas. Continuar?', () => simReset(), { type:'danger', confirmText:'Sim, cancelar' }); };
+function simReset() { state.simActiveForm = null; state.simAnswers = {}; state.simCurrentQuestionIdx = 0; state.simAudioFile = null; state.simIsRecording = false; renderMobileScreen(); }
+window.simPrev = function() { if (state.simCurrentQuestionIdx > 0) { state.simCurrentQuestionIdx--; renderMobileScreen(); } else { state.simActiveForm = null; renderMobileScreen(); } };
+window.simNext = function() {
+  const q = state.simActiveForm.questions[state.simCurrentQuestionIdx];
   let val = '';
-  if (q.type === 'text' || q.type === 'number') {
-    val = document.getElementById(`sim-ans-${q.id}`).value.trim();
-  } else if (q.type === 'single_choice') {
-    const radio = document.querySelector(`input[name="sim-rad-${q.id}"]:checked`);
-    val = radio ? radio.value : '';
-  } else if (q.type === 'multiple_choice') {
-    const checked = document.querySelectorAll(`input[name="sim-chk-${q.id}"]:checked`);
-    val = Array.from(checked).map(c => c.value);
-  } else if (q.type === 'audio_record') {
-    val = state.simAudioFile || '';
-  }
-  
-  // Validation
-  if (!val || (Array.isArray(val) && val.length === 0)) {
-    showToast('MEDIUM', 'Por favor, preencha esta questão para continuar.');
-    return;
-  }
-  
-  // Save answer
+  if (q.type === 'text' || q.type === 'number') { const el = document.getElementById(`sim-ans-${q.id}`); val = el ? el.value.trim() : ''; }
+  else if (q.type === 'single_choice') { const r = document.querySelector(`input[name="sim-rad-${q.id}"]:checked`); val = r ? r.value : ''; }
+  else if (q.type === 'multiple_choice') { val = Array.from(document.querySelectorAll(`input[name="sim-chk-${q.id}"]:checked`)).map(c => c.value); }
+  else if (q.type === 'audio_record') { val = state.simAudioFile || ''; }
+  if (!val || (Array.isArray(val) && val.length === 0)) { showToast('warning', 'Preencha esta questão para continuar.'); return; }
   state.simAnswers[q.id] = val;
-  
-  // Evaluate Client-Side Skip Logic
-  let nextQId = null;
-  if (q.skipRules && q.skipRules.length > 0) {
-    for (const rule of q.skipRules) {
-      if (!rule.conditionValue || String(val) === String(rule.conditionValue)) {
-        nextQId = rule.targetQuestionId;
-        break;
-      }
-    }
-  }
-  
-  if (nextQId) {
-    const nextIdx = qList.findIndex(item => item.id === nextQId);
-    if (nextIdx !== -1) {
-      state.simCurrentQuestionIdx = nextIdx;
-    } else {
-      // Skip target missing or end of form target
-      state.simCurrentQuestionIdx = qList.length; // triggers confirmation screen
-    }
-  } else {
-    // Normal progress
-    state.simCurrentQuestionIdx++;
-  }
-  
+  // Skip logic
+  let nextId = null;
+  if (q.skipRules && q.skipRules.length > 0) { for (const rule of q.skipRules) { if (!rule.conditionValue || String(val) === String(rule.conditionValue)) { nextId = rule.targetQuestionId; break; } } }
+  if (nextId) { const ni = state.simActiveForm.questions.findIndex(x => x.id === nextId); state.simCurrentQuestionIdx = ni !== -1 ? ni : state.simActiveForm.questions.length; }
+  else { state.simCurrentQuestionIdx++; }
   renderMobileScreen();
 };
-
-window.simToggleAudioRecord = function() {
-  if (state.simIsRecording) {
-    // Stop recording
-    state.simIsRecording = false;
-    const fileId = Math.floor(Math.random() * 900) + 100;
-    state.simAudioFile = `audio_interview_${fileId}.mp3`;
-    renderMobileScreen();
-  } else {
-    // Start recording
-    state.simIsRecording = true;
-    renderMobileScreen();
-    // Simulate speaking audio bounce animation: auto stop recording after 3 seconds
-    setTimeout(() => {
-      if (state.simIsRecording) {
-        state.simIsRecording = false;
-        const fileId = Math.floor(Math.random() * 900) + 100;
-        state.simAudioFile = `audio_interview_${fileId}.mp3`;
-        renderMobileScreen();
-      }
-    }, 3000);
-  }
+window.simToggleRecord = function() {
+  if (state.simIsRecording) { state.simIsRecording = false; state.simAudioFile = `audio_${Math.floor(Math.random()*900)+100}.mp3`; renderMobileScreen(); }
+  else { state.simIsRecording = true; renderMobileScreen(); setTimeout(() => { if (state.simIsRecording) { state.simIsRecording = false; state.simAudioFile = `audio_${Math.floor(Math.random()*900)+100}.mp3`; renderMobileScreen(); } }, 3000); }
 };
-
-window.simSubmitInterview = async function() {
+window.simSubmit = async function() {
   const researcherId = document.getElementById('sim-active-researcher').value;
   const lat = parseFloat(document.getElementById('sim-lat').value);
   const lng = parseFloat(document.getElementById('sim-lng').value);
-  
-  const payload = {
-    formId: state.simActiveForm.id,
-    formVersion: state.simActiveForm.version,
-    data: state.simAnswers,
-    latitude: lat,
-    longitude: lng,
-    audioFileName: state.simAudioFile
-  };
-  
+  const payload = { formId:state.simActiveForm.id, formVersion:state.simActiveForm.version, data:state.simAnswers, latitude:lat, longitude:lng, audioFileName:state.simAudioFile, researcherId };
   if (state.simIsOnline) {
     try {
-      showToast('LOW', 'Enviando respostas diretamente para a sede...');
-      
-      // Override request headers role to simulation researcher
-      const result = await apiFetch('/api/interviews', {
-        method: 'POST',
-        headers: {
-          'x-user-role': 'Researcher',
-          'x-user-id': researcherId
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      if (result.success) {
-        showToast('LOW', 'Entrevista enviada e salva no servidor da sede.');
-        await loadServerData();
-        renderDashboard();
-        simResetFormState();
-      }
-    } catch (err) {
-      showToast('HIGH', 'Erro ao enviar entrevista: ' + err.message);
-    }
+      const result = await apiFetch('/api/interviews', { method:'POST', body:JSON.stringify(payload) });
+      if (result.success) { showToast('success', 'Entrevista enviada com sucesso!'); await loadServerData(); renderDashboard(); simReset(); }
+    } catch (err) { showToast('error', 'Erro ao enviar: ' + err.message); }
   } else {
-    // Offline caching mode
     state.simOfflineQueue.push(payload);
-    localStorage.setItem('antigravity_offline_queue', JSON.stringify(state.simOfflineQueue));
-    
-    document.getElementById('sim-offline-queue-count').innerText = state.simOfflineQueue.length;
-    showToast('MEDIUM', 'Você está offline. A entrevista foi salva localmente no aparelho para envio posterior.');
-    
-    simResetFormState();
+    localStorage.setItem('datapesquise_offline_queue', JSON.stringify(state.simOfflineQueue));
+    document.getElementById('sim-offline-queue-count').textContent = state.simOfflineQueue.length;
+    showToast('warning', 'Você está offline. A pesquisa foi salva no celular.');
+    simReset();
   }
 };
 
-// ----------------- NETWORK CLI CONSOLE -----------------
-function initCliConsole() {
-  const input = document.getElementById('cli-input');
-  const history = document.getElementById('cli-history');
-  
-  // Set prompt role based on state
-  document.getElementById('cli-prompt-label').innerText = `${state.activeRole}@node01:~$`;
-  
-  input.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') {
-      const command = input.value.trim();
-      input.value = '';
-      
-      if (!command) return;
-      
-      // Write command line to history
-      history.innerHTML += `<div><span class="term-prompt">${state.activeRole}@node01:~$</span> <span style="color:#fff;">${command}</span></div>`;
-      
-      if (command === 'clear') {
-        history.innerHTML = '';
-        return;
-      }
-      if (command === 'help') {
-        history.innerHTML += `
-          <div style="color:var(--text-secondary); margin: 0.5rem 0;">
-            Comandos Disponíveis:<br/>
-            - <code>show version</code> : Versão do firmware.<br/>
-            - <code>ping 8.8.8.8</code> : Teste de ping externo.<br/>
-            - <code>/ip address print</code> : Imprimir IPs ativos.<br/>
-            - <code>show status</code> : Exibir latência de sincronização.<br/>
-            - <code>reboot</code> / <code>reset</code> / <code>/system reset</code> / <code>/interface disable ether1</code> : Comandos de redes.<br/>
-            - <code>clear</code> : Limpa a tela.
-          </div>
-        `;
-        scrollCliToBottom();
-        return;
-      }
-
-      try {
-        // Send command execution request to backend
-        const result = await apiFetch('/api/network/command', {
-          method: 'POST',
-          body: JSON.stringify({ command })
-        });
-        
-        let outputClass = 'color: #a9b1d6;';
-        if (result.severity === 'CRITICAL' || result.severity === 'HIGH') {
-          outputClass = 'color: var(--status-red); font-weight:700;';
-          // Trigger floating toast immediately
-          showToast(result.severity, `ALERTA DE SEGURANÇA: Comando "${command}" bloqueado!`);
-          
-          // Re-render dashboard metrics counts
-          setTimeout(() => {
-            loadServerData().then(() => renderDashboard());
-          }, 300);
-        } else if (result.severity === 'MEDIUM') {
-          outputClass = 'color: var(--status-yellow);';
-        }
-        
-        history.innerHTML += `
-          <div style="${outputClass} margin: 0.4rem 0;">
-            ${result.message}
-          </div>
-          <div style="color:#00e5ff; font-style:italic; margin-bottom: 0.8rem;">
-            ${result.suggestion}
-          </div>
-        `;
-
-      } catch (err) {
-        history.innerHTML += `<div style="color:var(--status-red); margin-bottom: 0.8rem;">Error: ${err.message}</div>`;
-      }
-      
-      scrollCliToBottom();
-    }
-  });
-}
-
-function scrollCliToBottom() {
-  const body = document.getElementById('cli-terminal-body');
-  body.scrollTop = body.scrollHeight;
-}
-
-// ----------------- STRUCTURED LOGS (DEV PANEL) -----------------
-async function fetchLogs() {
-  const container = document.getElementById('log-console-container');
-  
-  if (state.activeRole !== 'DEV') return;
-  
+// ===================== EQUIPMENT =====================
+window.runEquipmentCommand = async function(command) {
+  const container = document.getElementById('equipment-results');
+  container.innerHTML = '<div class="equipment-result"><i class="fa-solid fa-spinner fa-spin"></i> Consultando equipamento...</div>';
   try {
-    const logs = await apiFetch('/api/logs');
-    state.logs = logs;
-    
-    container.innerHTML = '';
-    
-    if (logs.length === 0) {
-      container.innerHTML = '<div style="color:var(--text-secondary);">Sem logs de segurança registrados no banco.</div>';
-      return;
+    const result = await apiFetch('/api/network/command', { method:'POST', body:JSON.stringify({ command }) });
+    let cssClass = '';
+    if (result.severity === 'CRITICAL' || result.severity === 'HIGH') {
+      cssClass = 'color:var(--danger);';
+      showToast('error', 'Comando bloqueado por segurança.');
+      await loadServerData(); renderDashboard();
     }
-    
-    logs.forEach(log => {
-      const row = document.createElement('div');
-      row.className = 'log-entry-row';
-      
-      const timeStr = new Date(log.timestamp).toLocaleString();
-      const rawJson = JSON.stringify({
-        id: log.id,
-        timestamp: log.timestamp,
-        eventType: log.type,
-        severity: log.severity,
-        commandRequested: log.command_requested,
-        userRole: log.user_role
-      });
-      
-      row.innerHTML = `
-        <span class="log-time">[${timeStr}]</span>
-        <span class="log-severity sev-${log.severity}">${log.severity}</span>
-        <span style="color:#e0af68;">${log.type}</span> - 
-        <code style="color: #00e5ff;">${rawJson}</code>
-      `;
-      container.appendChild(row);
-    });
-  } catch (err) {
-    container.innerHTML = `<div style="color:var(--status-red);">Erro ao ler logs de auditoria: ${err.message}</div>`;
-  }
-}
+    container.innerHTML = `<div class="equipment-result"><div style="${cssClass}font-weight:600;margin-bottom:0.4rem;">${result.message}</div><div style="color:var(--success);font-size:0.8rem;margin-top:0.3rem;"><i class="fa-solid fa-lightbulb"></i> ${result.suggestion}</div></div>`;
+  } catch (err) { container.innerHTML = `<div class="equipment-result" style="color:var(--danger);">Erro: ${err.message}</div>`; }
+};
 
-// Quiet background logs fetching to sync metrics without drawing console
-async function fetchLogsQuietly() {
-  if (state.activeRole !== 'DEV') return;
-  try {
-    state.logs = await apiFetch('/api/logs');
-  } catch (e) {}
-}
-
-// ----------------- DATA EXPORTER -----------------
-function initDataExporter() {
-  document.getElementById('btn-export-data').addEventListener('click', () => {
-    if (state.interviews.length === 0) {
-      showToast('MEDIUM', 'Nenhum dado de entrevista disponível para exportar.');
-      return;
-    }
-    
-    // Create CSV content
-    let csv = 'ID,FormId,Version,ResearcherId,Latitude,Longitude,AudioUrl,Status,CreatedAt,ApprovedBy,Notes,AnswersJSON\r\n';
-    
-    state.interviews.forEach(i => {
-      const answersStr = JSON.stringify(i.data).replace(/"/g, '""');
-      const notesStr = (i.notes || '').replace(/"/g, '""');
-      
-      csv += `"${i.id}","${i.form_id}",${i.form_version},"${i.researcher_id}",${i.latitude || ''},${i.longitude || ''},"${i.audio_url || ''}","${i.status}","${i.created_at}","${i.approved_by || ''}","${notesStr}","${answersStr}"\r\n`;
-    });
-    
-    // Download triggers
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `antigravity_base_entrevistas_${new Date().toISOString().substring(0,10)}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showToast('LOW', 'Base de dados exportada com sucesso em formato CSV.');
-  });
-}
-
-// ----------------- FLOATING TOAST ALERTS -----------------
-function showToast(severity, message) {
-  const container = document.getElementById('alert-toast-container');
-  
-  const toast = document.createElement('div');
-  toast.className = 'alert-toast';
-  
-  // Style toast based on severity
-  if (severity === 'CRITICAL') {
-    toast.style.background = 'rgba(255, 23, 68, 0.95)';
-    toast.style.borderColor = '#ff1744';
-  } else if (severity === 'HIGH') {
-    toast.style.background = 'rgba(255, 109, 0, 0.95)';
-    toast.style.borderColor = '#ff6d00';
-  } else if (severity === 'MEDIUM') {
-    toast.style.background = 'rgba(255, 196, 0, 0.95)';
-    toast.style.borderColor = '#ffc400';
-    toast.style.color = '#000';
-  } else {
-    // LOW / INFO
-    toast.style.background = 'rgba(18, 21, 38, 0.95)';
-    toast.style.borderColor = 'var(--accent-cyan)';
-    toast.style.color = '#fff';
-  }
-
-  toast.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; margin-bottom: 2px;">
-      <span><i class="fa-solid fa-triangle-exclamation"></i> Alerta [${severity}]</span>
-      <span style="font-size:0.7rem; color:inherit; opacity:0.8;">${new Date().toLocaleTimeString()}</span>
-    </div>
-    <div style="font-size:0.85rem; font-weight:500;">${message}</div>
-  `;
-  
-  container.appendChild(toast);
-  
-  setTimeout(() => {
-    toast.style.animation = 'slideInRight 0.3s ease-out reverse forwards';
-    setTimeout(() => {
-      container.removeChild(toast);
-    }, 300);
-  }, 4000);
-}
-
-// ----------------- AI ANALYSIS MOCK -----------------
+// ===================== AI ANALYSIS =====================
 window.runAiAnalysis = function() {
   const status = document.getElementById('ai-status');
   const container = document.getElementById('ai-results-container');
-  
-  status.innerHTML = '<span style="color:var(--accent-cyan);"><i class="fa-solid fa-spinner fa-spin"></i> Processando modelos de Machine Learning...</span>';
-  container.innerHTML = '<div style="text-align:center; padding: 2rem; border: 1px dashed var(--glass-border); border-radius: 8px; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin" style="font-size:2rem; color:var(--accent-purple); margin-bottom:1rem; display:block;"></i> Analisando assinaturas de áudio e rotas GPS...</div>';
-  
+  status.innerHTML = '<span style="color:var(--primary);"><i class="fa-solid fa-spinner fa-spin"></i> Analisando dados...</span>';
+  container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin" style="opacity:1;"></i><h4>Processando verificação...</h4><p>Analisando padrões de deslocamento e qualidade do áudio.</p></div>';
   setTimeout(() => {
-    status.innerHTML = '<span style="color:var(--status-green);"><i class="fa-solid fa-check"></i> Análise concluída.</span>';
-    
-    // Generate mock anomaly detection results
+    status.innerHTML = '<span style="color:var(--success);"><i class="fa-solid fa-check"></i> Verificação concluída.</span>';
     container.innerHTML = `
-      <div style="background:rgba(255, 23, 68, 0.1); border-left: 4px solid var(--status-red); padding: 1rem; border-radius: 4px;">
-        <h4 style="color:var(--status-red); margin-bottom:0.5rem;"><i class="fa-solid fa-triangle-exclamation"></i> Anomalia de Velocidade Detectada</h4>
-        <p style="font-size:0.85rem; color:var(--text-secondary);">O pesquisador <strong>Bruno Pesquisador</strong> preencheu 3 questionários em menos de 2 minutos. Possível fraude. <button class="btn" style="padding:0.2rem 0.5rem; font-size:0.7rem; margin-left:1rem;">Analisar Dados</button></p>
-      </div>
-      
-      <div style="background:rgba(255, 196, 0, 0.1); border-left: 4px solid var(--status-yellow); padding: 1rem; border-radius: 4px;">
-        <h4 style="color:var(--status-yellow); margin-bottom:0.5rem;"><i class="fa-solid fa-wave-square"></i> Qualidade de Áudio Suspeita</h4>
-        <p style="font-size:0.85rem; color:var(--text-secondary);">A entrevista <strong>int_005</strong> apresenta 80% de silêncio e ruído de fundo sem vozes humanas inteligíveis. Recomendada auditoria manual imediata. <button class="btn" style="padding:0.2rem 0.5rem; font-size:0.7rem; margin-left:1rem;" onclick="switchTab('view-map')">Ouvir Gravação</button></p>
-      </div>
-
-      <div style="background:rgba(0, 230, 118, 0.1); border-left: 4px solid var(--status-green); padding: 1rem; border-radius: 4px;">
-        <h4 style="color:var(--status-green); margin-bottom:0.5rem;"><i class="fa-solid fa-location-dot"></i> Verificação de GPS Consistente</h4>
-        <p style="font-size:0.85rem; color:var(--text-secondary);">Todos os deslocamentos da <strong>Ana Pesquisadora</strong> hoje (14km) são perfeitamente consistentes com a malha viária e o tempo registrado de coleta.</p>
-      </div>
-    `;
-    
-    showToast('LOW', 'Varredura de Inteligência Artificial finalizada.');
+      <div class="ai-result-card anomaly"><h4 style="color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> Anomalia de Velocidade</h4><p>O pesquisador <strong>Bruno Pesquisador</strong> preencheu 3 questionários em menos de 2 minutos. Possível fraude.</p></div>
+      <div class="ai-result-card warning"><h4 style="color:var(--warning);"><i class="fa-solid fa-wave-square"></i> Qualidade de Áudio Suspeita</h4><p>A entrevista <strong>int_005</strong> apresenta 80% de silêncio sem vozes inteligíveis. Recomendada auditoria manual.</p></div>
+      <div class="ai-result-card ok"><h4 style="color:var(--success);"><i class="fa-solid fa-location-dot"></i> GPS Consistente</h4><p>Todos os deslocamentos da <strong>Ana Pesquisadora</strong> hoje (14km) são consistentes com a malha viária e o tempo de coleta.</p></div>`;
+    showToast('success', 'Verificação de qualidade finalizada.');
   }, 2500);
 };
+
+// ===================== LOGS =====================
+async function fetchLogs() {
+  const container = document.getElementById('log-console-container');
+  if (state.activeRole !== 'DEV') { container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-lock"></i><h4>Acesso restrito</h4><p>Apenas o perfil de Suporte Técnico (DEV) pode visualizar os registros.</p></div>'; return; }
+  try {
+    const logs = await apiFetch('/api/logs');
+    state.logs = logs;
+    if (!logs || logs.length === 0) { container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-shield-halved"></i><h4>Nenhum registro</h4><p>Os eventos de segurança aparecerão aqui.</p></div>'; return; }
+    let html = '<table class="data-table"><thead><tr><th>Data/Hora</th><th>Severidade</th><th>Tipo</th><th>Comando</th><th>Perfil</th></tr></thead><tbody>';
+    logs.forEach(l => {
+      html += `<tr><td style="font-size:0.78rem;">${new Date(l.timestamp).toLocaleString('pt-BR')}</td><td><span class="severity-badge sev-${l.severity}">${l.severity}</span></td><td style="font-size:0.82rem;">${l.type}</td><td style="font-family:var(--font-mono);font-size:0.78rem;">${l.command_requested||'-'}</td><td>${l.user_role||'-'}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (err) { container.innerHTML = `<div style="color:var(--danger);">Erro ao carregar registros: ${err.message}</div>`; }
+}
+
+// ===================== DATA EXPORTER =====================
+function initDataExporter() {
+  document.getElementById('btn-export-data').addEventListener('click', () => {
+    if (state.interviews.length === 0) { showToast('warning', 'Nenhum dado disponível para exportar.'); return; }
+    let csv = 'ID,FormId,Versao,Pesquisador,Latitude,Longitude,AudioUrl,Status,DataCriacao,AprovadoPor,Notas,RespostasJSON\r\n';
+    state.interviews.forEach(i => {
+      const ans = JSON.stringify(i.data).replace(/"/g, '""');
+      const notes = (i.notes || '').replace(/"/g, '""');
+      csv += `"${i.id}","${i.form_id}",${i.form_version},"${i.researcher_id}",${i.latitude||''},${i.longitude||''},"${i.audio_url||''}","${i.status}","${i.created_at}","${i.approved_by||''}","${notes}","${ans}"\r\n`;
+    });
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `datapesquise_entrevistas_${new Date().toISOString().substring(0,10)}.csv`;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('success', 'Planilha exportada com sucesso!');
+  });
+}
+
+// ===================== ODK URL COPY =====================
+window.copyOdkUrl = function() {
+  const url = document.getElementById('odk-server-url').textContent;
+  navigator.clipboard.writeText(url).then(() => showToast('success', 'Endereço copiado!')).catch(() => showToast('info', 'Copie manualmente: ' + url));
+};
+
+// ===================== INIT =====================
+document.addEventListener('DOMContentLoaded', async () => {
+  // Navigation
+  document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => {
+    item.addEventListener('click', (e) => { e.preventDefault(); switchTab(item.dataset.target); });
+  });
+
+  // Mobile sidebar toggle
+  document.getElementById('sidebar-toggle-mobile').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('mobile-open');
+  });
+
+  // Role switcher
+  document.getElementById('role-select').addEventListener('change', async (e) => {
+    state.activeRole = e.target.value;
+    state.activeUserId = MOCK_USER_IDS[state.activeRole] || 'anonymous';
+    updateUserUI();
+    applyRoleRestrictions();
+    await loadServerData();
+    renderDashboard();
+    renderFormBuilderList();
+    renderAudioReviewList();
+  });
+
+  // Load data
+  await loadServerData();
+
+  // Initialize components
+  updateUserUI();
+  applyRoleRestrictions();
+  renderDashboard();
+  initFormBuilder();
+  renderFormBuilderList();
+  if (state.forms.length > 0) loadFormIntoBuilder(state.forms[0]);
+  initMobileSimulator();
+  initDataExporter();
+  renderAudioReviewList();
+
+  // Refresh logs button
+  document.getElementById('btn-refresh-logs').addEventListener('click', fetchLogs);
+
+  // Init map on first map tab visit
+  const mapNav = document.getElementById('nav-map');
+  const initMapOnce = () => { setTimeout(() => initMap(), 200); mapNav.removeEventListener('click', initMapOnce); };
+  mapNav.addEventListener('click', initMapOnce);
+
+  // Try loading logs quietly
+  try { state.logs = await apiFetch('/api/logs'); } catch {}
+  renderDashboard();
+});

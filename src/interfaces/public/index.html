@@ -3,513 +3,288 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DataGoal Research Platform</title>
-  
-  <!-- Leaflet Map CSS -->
+  <title>DATApesquise — Plataforma de Pesquisa de Campo</title>
+  <meta name="description" content="Plataforma inteligente de gestão de pesquisas de campo">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <!-- Custom Styling -->
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
 
-  <!-- Background glows removed for clean light theme -->
+  <!-- Mobile Header -->
+  <div class="mobile-header" id="mobile-header">
+    <button class="btn-icon" id="sidebar-toggle-mobile"><i class="fa-solid fa-bars"></i></button>
+    <span class="mobile-logo">DATApesquise</span>
+  </div>
 
-  <!-- Float Security Alert Toast Container -->
-  <div id="alert-toast-container" class="alert-toast-container"></div>
-
-  <!-- HEADER -->
-  <header>
-    <div class="logo">
-      <div class="logo-icon"><i class="fa-solid fa-chart-pie" style="color:#fff; font-size:1.2rem;"></i></div>
-      <div>
-        <span>DATAGOAL</span>
-        <div style="font-size: 0.65rem; color: var(--accent-cyan); letter-spacing: 2px;">PLATAFORMA INTELIGENTE</div>
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-icon"><i class="fa-solid fa-chart-pie"></i></div>
+        <div class="sidebar-logo">
+          <div>DATApesquise</div>
+          <div class="logo-sub">Pesquisa Inteligente</div>
+        </div>
       </div>
-    </div>
-
-    <!-- Navigation Tabs -->
-    <nav>
-      <ul class="nav-links" id="main-nav">
-        <li class="nav-item active" data-target="view-dashboard"><a href="#"><i class="fa-solid fa-chart-line"></i> Dashboard</a></li>
-        <li class="nav-item" data-target="view-map"><a href="#"><i class="fa-solid fa-map-location-dot"></i> Mapa de Campo</a></li>
-        <li class="nav-item" data-target="view-form-builder" id="nav-form-builder"><a href="#"><i class="fa-solid fa-cubes"></i> Construtor</a></li>
-        <li class="nav-item" data-target="view-mobile-sim"><a href="#"><i class="fa-solid fa-mobile-screen"></i> Coleta (Simulador)</a></li>
-        <li class="nav-item" data-target="view-ai-analysis"><a href="#"><i class="fa-solid fa-brain"></i> Análise IA</a></li>
-        <li class="nav-item" data-target="view-cli"><a href="#"><i class="fa-solid fa-server"></i> Status do Sistema</a></li>
-        <li class="nav-item" data-target="view-logs" id="nav-logs"><a href="#"><i class="fa-solid fa-shield-halved"></i> Logs Suporte (DEV)</a></li>
-      </ul>
-    </nav>
-
-    <!-- Role Switcher -->
-    <div class="role-switcher-container">
-      <span class="role-label"><i class="fa-solid fa-user-gear"></i> Perfil Operacional:</span>
-      <select id="role-select" class="role-select">
-        <option value="DEV">DEV (Suporte Técnico)</option>
-        <option value="Admin">Admin (Cliente)</option>
-        <option value="Analyst">Analista (Formulários/Pagamentos)</option>
-        <option value="Coordinator" selected>Coordenador (Gestão Campo)</option>
-        <option value="Supervisor">Supervisor (Validação Campo)</option>
-        <option value="Researcher">Pesquisador</option>
-      </select>
-    </div>
-  </header>
-
-  <!-- MAIN WRAPPER -->
-  <main>
-    
-    <!-- 1. VIEW: DASHBOARD -->
-    <section id="view-dashboard" class="view-panel active">
-      <!-- Welcome card and Active Role overview -->
-      <div class="glass-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-target="view-dashboard" id="nav-dashboard"><i class="fa-solid fa-house"></i><span>Início</span></a>
+        <a class="nav-item" data-target="view-map" id="nav-map"><i class="fa-solid fa-map-location-dot"></i><span>Mapa de Campo</span></a>
+        <a class="nav-item" data-target="view-form-builder" id="nav-form-builder"><i class="fa-solid fa-clipboard-list"></i><span>Formulários</span></a>
+        <a class="nav-item" data-target="view-mobile-sim" id="nav-mobile-sim"><i class="fa-solid fa-mobile-screen"></i><span>Coletar Dados</span></a>
+        <a class="nav-item" data-target="view-ai-analysis" id="nav-ai"><i class="fa-solid fa-magnifying-glass-chart"></i><span>Análise Inteligente</span></a>
+        <div class="nav-divider"></div>
+        <a class="nav-item" data-target="view-equipment" id="nav-equipment"><i class="fa-solid fa-server"></i><span>Equipamentos</span></a>
+        <a class="nav-item" data-target="view-logs" id="nav-logs"><i class="fa-solid fa-shield-halved"></i><span>Registros</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-avatar" id="user-avatar">H</div>
           <div>
-            <h2 id="dashboard-welcome">Painel de Acompanhamento Geral</h2>
-            <p style="color: var(--text-secondary);">Visão geral do andamento da coleta de dados em campo.</p>
+            <div class="sidebar-user-name" id="current-user-name">Helena Coordenadora</div>
+            <div class="sidebar-user-role" id="current-user-role-label">Coordenador</div>
           </div>
-          <div style="display:flex; gap: 0.8rem;">
-            <button class="btn btn-primary" id="btn-export-data"><i class="fa-solid fa-file-csv"></i> Exportar Planilha (CSV)</button>
+        </div>
+        <select class="form-select" id="role-select">
+          <option value="Coordinator" selected>Coordenador</option>
+          <option value="Admin">Administrador</option>
+          <option value="Analyst">Analista</option>
+          <option value="Supervisor">Supervisor</option>
+          <option value="Researcher">Pesquisador</option>
+          <option value="DEV">Suporte Técnico (DEV)</option>
+        </select>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content" id="main-content">
+
+      <!-- Toast Container -->
+      <div class="toast-container" id="toast-container"></div>
+
+      <!-- Confirmation Modal -->
+      <div class="modal-overlay" id="confirm-modal">
+        <div class="modal-box">
+          <div class="modal-icon warning" id="confirm-modal-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          <h3 class="modal-title" id="confirm-modal-title">Confirmar Ação</h3>
+          <p class="modal-message" id="confirm-modal-message">Tem certeza que deseja continuar?</p>
+          <div class="modal-actions">
+            <button class="btn" id="confirm-modal-cancel">Cancelar</button>
+            <button class="btn btn-danger-solid" id="confirm-modal-confirm">Confirmar</button>
           </div>
         </div>
       </div>
 
-      <!-- Quick Metrics Grid -->
-      <div class="stats-grid">
-        <div class="glass-card stat-item cyan">
-          <span class="stat-label">Entrevistas Coletadas</span>
-          <div class="stat-value" id="metric-total-interviews">0</div>
+      <!-- ===== VIEW: DASHBOARD ===== -->
+      <section id="view-dashboard" class="view-panel active">
+        <div class="page-header">
+          <h1 class="page-title" id="dashboard-welcome">Bom dia! 👋</h1>
+          <p class="page-subtitle">Acompanhe o andamento das pesquisas de campo em tempo real.</p>
         </div>
-        <div class="glass-card stat-item purple">
-          <span class="stat-label">Formulários Ativos</span>
-          <div class="stat-value" id="metric-total-forms">0</div>
-        </div>
-        <div class="glass-card stat-item green">
-          <span class="stat-label">Pesquisadores em Campo</span>
-          <div class="stat-value" id="metric-total-researchers">0</div>
-        </div>
-        <div class="glass-card stat-item yellow">
-          <span class="stat-label">Alertas de Redes Bloqueados</span>
-          <div class="stat-value" id="metric-blocked-commands">0</div>
-        </div>
-      </div>
 
-      <!-- ODK Collect Integration Connection Guide -->
-      <div class="glass-card" style="border-color: rgba(0, 240, 255, 0.25); background: rgba(0, 240, 255, 0.03);">
-        <h3 class="card-title" style="color: var(--accent-cyan); font-size: 1.25rem;">
-          <span><i class="fa-solid fa-mobile-screen-button"></i> Sincronização e Conexão com ODK Collect (Android)</span>
-          <span class="form-tag tag-pub" style="background: rgba(0, 240, 255, 0.15); color: var(--accent-cyan);">Ativo</span>
-        </h3>
-        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 0.8rem;">
-          Este construtor de formulários compila os modelos de perguntas diretamente no padrão internacional <strong>XForms XML</strong>. Os pesquisadores de campo freelancer podem usar o aplicativo oficial do <strong>ODK Collect</strong> no Android para realizar as entrevistas offline no interior e enviar as respostas e gravações de áudio de volta ao nosso servidor.
-        </p>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem; margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary);">
-          <div style="background: rgba(0,0,0,0.2); padding: 0.8rem; border-radius: 8px; border: 1px solid var(--glass-border);">
-            <strong style="color: var(--text-primary); display:block; margin-bottom: 0.3rem;"><i class="fa-solid fa-1"></i> Passo 1: Instale o App</strong>
-            Baixe o app <strong>ODK Collect</strong> gratuitamente na Google Play Store no celular do pesquisador.
+        <div class="stats-grid">
+          <div class="card stat-card blue">
+            <div class="stat-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+            <div class="stat-value" id="metric-total-interviews">0</div>
+            <div class="stat-label">Entrevistas Realizadas</div>
           </div>
-          <div style="background: rgba(0,0,0,0.2); padding: 0.8rem; border-radius: 8px; border: 1px solid var(--glass-border);">
-            <strong style="color: var(--text-primary); display:block; margin-bottom: 0.3rem;"><i class="fa-solid fa-2"></i> Passo 2: Configure o Servidor</strong>
-            No ODK Collect, vá nas configurações do projeto, selecione <i>Configuração Manual</i> e insira os dados:<br/>
-            • <b>URL do Servidor:</b> <code id="odk-server-url" style="color: var(--accent-cyan);">http://localhost:3000/api</code>
+          <div class="card stat-card green">
+            <div class="stat-icon"><i class="fa-solid fa-file-lines"></i></div>
+            <div class="stat-value" id="metric-total-forms">0</div>
+            <div class="stat-label">Formulários Ativos</div>
           </div>
-          <div style="background: rgba(0,0,0,0.2); padding: 0.8rem; border-radius: 8px; border: 1px solid var(--glass-border);">
-            <strong style="color: var(--text-primary); display:block; margin-bottom: 0.3rem;"><i class="fa-solid fa-3"></i> Passo 3: Baixe e Sincronize</strong>
-            O app carregará os formulários publicados. As respostas enviadas aparecerão automaticamente no nosso <b>Mapa de Campo</b> acima!
+          <div class="card stat-card orange">
+            <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+            <div class="stat-value" id="metric-total-researchers">0</div>
+            <div class="stat-label">Pesquisadores em Campo</div>
+          </div>
+          <div class="card stat-card red">
+            <div class="stat-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="stat-value" id="metric-blocked-commands">0</div>
+            <div class="stat-label">Alertas de Segurança</div>
           </div>
         </div>
-      </div>
 
-      <!-- Dashboard grid containing charts and quotas -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 1.5rem;">
-        
-        <!-- Quotas and completion rates -->
-        <div class="glass-card">
-          <h3 class="card-title">Cotas & Metas de Coleta</h3>
-          <div style="display:flex; flex-direction:column; gap:1.2rem; margin-top: 1rem;">
-            <div>
-              <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom: 0.3rem;">
-                <span>Censo Populacional do Sertão (Petrolina)</span>
-                <span style="font-weight:600; color:var(--accent-cyan);">68%</span>
+        <div class="dashboard-grid">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-bullseye"></i> Metas de Coleta</h3></div>
+            <div class="quotas-list">
+              <div class="quota-item">
+                <div class="quota-header"><span>Censo Populacional do Sertão (Petrolina)</span><span class="quota-pct">68%</span></div>
+                <div class="progress-bar"><div class="progress-fill blue" style="width:68%"></div></div>
               </div>
-              <div style="background:var(--bg-tertiary); height:10px; border-radius:5px; overflow:hidden;">
-                <div style="width:68%; background:linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); height:100%;"></div>
+              <div class="quota-item">
+                <div class="quota-header"><span>Pesquisa Saneamento (Sobral)</span><span class="quota-pct purple">42%</span></div>
+                <div class="progress-bar"><div class="progress-fill purple" style="width:42%"></div></div>
               </div>
-            </div>
-
-            <div>
-              <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom: 0.3rem;">
-                <span>Pesquisa Saneamento (Sobral)</span>
-                <span style="font-weight:600; color:var(--accent-purple);">42%</span>
-              </div>
-              <div style="background:var(--bg-tertiary); height:10px; border-radius:5px; overflow:hidden;">
-                <div style="width:42%; background:linear-gradient(90deg, var(--accent-purple), var(--accent-cyan)); height:100%;"></div>
-              </div>
-            </div>
-
-            <div>
-              <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom: 0.3rem;">
-                <span>Meta Diária Geral (Hoje)</span>
-                <span style="font-weight:600; color:var(--status-green);">90%</span>
-              </div>
-              <div style="background:var(--bg-tertiary); height:10px; border-radius:5px; overflow:hidden;">
-                <div style="width:90%; background:var(--status-green); height:100%;"></div>
+              <div class="quota-item">
+                <div class="quota-header"><span>Meta Diária Geral (Hoje)</span><span class="quota-pct green">90%</span></div>
+                <div class="progress-bar"><div class="progress-fill green" style="width:90%"></div></div>
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- Charts panel -->
-        <div class="glass-card">
-          <h3 class="card-title">Distribuição de Entrevistas por Status</h3>
-          <div style="height: 200px; display:flex; justify-content:center; align-items:center;">
-            <canvas id="chart-statuses" style="max-height: 100%; max-width: 100%;"></canvas>
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-chart-pie"></i> Status das Entrevistas</h3></div>
+            <div class="chart-container"><canvas id="chart-statuses"></canvas></div>
           </div>
         </div>
 
-      </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title"><i class="fa-solid fa-download"></i> Exportar Dados</h3>
+            <button class="btn btn-primary" id="btn-export-data"><i class="fa-solid fa-file-csv"></i> Baixar Planilha (CSV)</button>
+          </div>
+          <p class="text-muted">Exporte todas as entrevistas coletadas em formato CSV para análise externa.</p>
+        </div>
 
-      <!-- Financial area for DEV view -->
-      <div id="financial-dashboard-section" class="glass-card role-restricted" style="margin-top: 1.5rem;">
-        <h3 class="card-title">
-          <span><i class="fa-solid fa-coins"></i> Controle de Pagamentos de Freelancers (Financeiro)</span>
-          <span class="form-tag tag-pub" style="background: rgba(0, 240, 255, 0.15); color: var(--accent-cyan);">Apenas DEV / Admin</span>
-        </h3>
-        <div class="role-restricted-message"><i class="fa-solid fa-lock"></i> Seus privilégios atuais não permitem acesso aos dados financeiros.</div>
-        
-        <table style="width: 100%; border-collapse: collapse; margin-top: 1rem; text-align: left;" id="financials-table">
-          <thead>
-            <tr style="border-bottom: 1px solid var(--glass-border); color: var(--text-secondary); font-size: 0.9rem;">
-              <th style="padding: 0.8rem;">Pesquisador</th>
-              <th style="padding: 0.8rem;">Entrevistas Realizadas</th>
-              <th style="padding: 0.8rem;">Aprovadas para Pagamento</th>
-              <th style="padding: 0.8rem;">Taxa de Rejeição</th>
-              <th style="padding: 0.8rem;">Valor Acumulado (R$)</th>
-              <th style="padding: 0.8rem;">Status</th>
-            </tr>
-          </thead>
-          <tbody style="font-size: 0.95rem;" id="financials-tbody">
-            <!-- Filled programmatically -->
-          </tbody>
-        </table>
-      </div>
-    </section>
+        <div class="card" id="odk-guide-section">
+          <div class="card-header">
+            <h3 class="card-title"><i class="fa-solid fa-mobile-screen-button"></i> Como Conectar o Celular</h3>
+            <span class="badge badge-success">Ativo</span>
+          </div>
+          <p class="text-muted">Os pesquisadores podem usar o aplicativo ODK Collect no Android para realizar entrevistas offline e enviar os dados ao servidor.</p>
+          <div class="steps-grid">
+            <div class="step-card"><div class="step-number">1</div><h4>Instale o App</h4><p>Baixe o ODK Collect na Google Play Store no celular do pesquisador.</p></div>
+            <div class="step-card"><div class="step-number">2</div><h4>Configure o Servidor</h4><p>No app, insira o endereço: <code id="odk-server-url">http://localhost:3000/api</code> <button class="btn btn-sm" onclick="copyOdkUrl()" title="Copiar endereço"><i class="fa-solid fa-copy"></i></button></p></div>
+            <div class="step-card"><div class="step-number">3</div><h4>Sincronize</h4><p>O app carregará os formulários. As respostas aparecem no Mapa de Campo!</p></div>
+          </div>
+        </div>
 
-    <!-- 2. VIEW: FIELD MAP -->
-    <section id="view-map" class="view-panel">
-      <div class="glass-card">
-        <h3 class="card-title">Mapa de Coleta em Tempo Real</h3>
-        
-        <!-- Filters -->
-        <div class="filters-bar">
+        <div class="card" id="financial-dashboard-section">
+          <div class="card-header">
+            <h3 class="card-title"><i class="fa-solid fa-coins"></i> Pagamentos de Pesquisadores</h3>
+            <span class="badge badge-info">Financeiro</span>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table" id="financials-table">
+              <thead><tr><th>Pesquisador</th><th>Entrevistas</th><th>Aprovadas</th><th>Rejeições</th><th>Valor (R$)</th><th>Status</th></tr></thead>
+              <tbody id="financials-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== VIEW: MAP ===== -->
+      <section id="view-map" class="view-panel">
+        <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-map-location-dot"></i> Mapa de Campo</h1><p class="page-subtitle">Visualize onde as entrevistas foram coletadas em tempo real.</p></div>
+        <div class="card">
+          <div class="filters-bar">
+            <div class="form-group"><label class="form-label">Pesquisador</label><select class="form-select" id="map-filter-researcher"><option value="all">Todos</option><option value="researcher_1">Ana Pesquisadora</option><option value="researcher_2">Bruno Pesquisador</option><option value="researcher_3">Carla Pesquisadora</option><option value="researcher_4">Daniel Pesquisador</option></select></div>
+            <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="map-filter-status"><option value="all">Todos</option><option value="pending">Pendente</option><option value="approved">Aprovada</option><option value="rejected">Rejeitada</option></select></div>
+            <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-input" id="map-filter-date" /></div>
+            <div class="form-group"><button class="btn" id="btn-clear-map-filters"><i class="fa-solid fa-rotate-left"></i> Limpar</button></div>
+          </div>
+          <div id="map" class="map-container"></div>
+        </div>
+        <div class="card" id="supervisor-validation-panel">
+          <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-headphones"></i> Avaliar Gravações de Áudio</h3><span class="badge badge-warning">Supervisor / Analista</span></div>
+          <p class="text-muted">Ouça as gravações de campo e aprove ou rejeite para liberar o pagamento.</p>
+          <div id="audio-review-list"></div>
+        </div>
+      </section>
+
+      <!-- ===== VIEW: FORM BUILDER ===== -->
+      <section id="view-form-builder" class="view-panel">
+        <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-clipboard-list"></i> Formulários de Pesquisa</h1><p class="page-subtitle">Crie e edite os questionários que serão usados em campo.</p></div>
+        <div class="builder-layout">
+          <div class="card forms-sidebar">
+            <div class="card-header"><h3 class="card-title">Meus Formulários</h3><button class="btn btn-primary btn-sm" id="btn-new-form"><i class="fa-solid fa-plus"></i> Novo</button></div>
+            <div id="forms-list-container"></div>
+          </div>
+          <div class="card builder-workspace">
+            <div class="builder-header">
+              <input type="text" class="builder-title-input" id="form-edit-title" placeholder="Nome do Formulário..." />
+              <div class="builder-meta">
+                <span class="text-muted" style="font-size:0.8rem;">Versão: <strong id="form-edit-version">1</strong></span>
+                <select class="form-select" id="form-edit-status"><option value="draft">Rascunho</option><option value="published">Publicado</option></select>
+                <button class="btn btn-primary" id="btn-save-form"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+              </div>
+            </div>
+            <div id="skip-logic-errors" class="validation-banner"></div>
+            <div class="questions-header"><h4>Perguntas</h4><button class="btn btn-sm" id="btn-add-question"><i class="fa-solid fa-plus"></i> Adicionar Pergunta</button></div>
+            <div id="builder-questions-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== VIEW: MOBILE SIMULATOR ===== -->
+      <section id="view-mobile-sim" class="view-panel">
+        <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-mobile-screen"></i> Coletar Dados</h1><p class="page-subtitle">Simule como o pesquisador preenche o questionário no celular.</p></div>
+        <div class="sim-layout">
           <div>
-            <label style="font-size:0.8rem; color:var(--text-secondary); display:block; margin-bottom:0.2rem;">Pesquisador</label>
-            <select class="filter-input" id="map-filter-researcher">
-              <option value="all">Todos os Pesquisadores</option>
-              <option value="researcher_1">Ana Pesquisadora</option>
-              <option value="researcher_2">Bruno Pesquisador</option>
-              <option value="researcher_3">Carla Pesquisadora</option>
-              <option value="researcher_4">Daniel Pesquisador</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:0.8rem; color:var(--text-secondary); display:block; margin-bottom:0.2rem;">Status da Entrevista</label>
-            <select class="filter-input" id="map-filter-status">
-              <option value="all">Todos os Status</option>
-              <option value="pending">Pendente de Avaliação</option>
-              <option value="approved">Aprovada para Pagamento</option>
-              <option value="rejected">Rejeitada</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:0.8rem; color:var(--text-secondary); display:block; margin-bottom:0.2rem;">Data</label>
-            <input type="date" class="filter-input" id="map-filter-date" />
-          </div>
-          <div style="margin-top:auto;">
-            <button class="btn btn-primary" id="btn-clear-map-filters"><i class="fa-solid fa-rotate-left"></i> Limpar Filtros</button>
-          </div>
-        </div>
-
-        <!-- The Leaflet Map container -->
-        <div id="map" class="map-container"></div>
-      </div>
-
-      <!-- Supervisor audio validation sidebar -->
-      <div class="glass-card role-restricted" id="supervisor-validation-panel">
-        <h3 class="card-title">
-          <span><i class="fa-solid fa-microphone-lines"></i> Auditoria de Gravações de Áudio</span>
-          <span class="form-tag tag-pub" style="background: rgba(255, 196, 0, 0.15); color: var(--status-yellow);">Supervisor / Analista / Admin</span>
-        </h3>
-        <div class="role-restricted-message"><i class="fa-solid fa-lock"></i> Apenas Supervisores, Analistas ou Administradores podem avaliar e ouvir gravações de campo.</div>
-        
-        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom: 1rem;">
-          Ouça abaixo os áudios gravados no interior pelos pesquisadores. Classifique a qualidade do questionário para liberar o pagamento do freelancer.
-        </p>
-
-        <div id="audio-review-list" style="display:flex; flex-direction:column; gap:0.8rem;">
-          <!-- Populated programmatically -->
-        </div>
-      </div>
-    </section>
-
-    <!-- 3. VIEW: FORM BUILDER -->
-    <section id="view-form-builder" class="view-panel role-restricted">
-      <div class="role-restricted-message" style="margin-bottom:1.5rem; padding:1.5rem; background:var(--bg-tertiary); border-radius:16px; border:1px solid var(--glass-border);">
-        <i class="fa-solid fa-lock" style="font-size: 2rem; color:var(--status-red); margin-bottom:1rem; display:block;"></i>
-        <h3>Acesso Restrito ao Construtor de Formulários</h3>
-        <p style="color:var(--text-secondary); margin-top:0.5rem;">
-          Apenas Analistas de Pesquisa, Administradores ou DEVs podem criar, editar e publicar formulários de coleta em campo. Modifique seu Perfil Operacional no topo.
-        </p>
-      </div>
-
-      <div class="builder-layout">
-        <!-- Forms sidebar list -->
-        <div class="glass-card forms-sidebar">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-            <h3>Formulários</h3>
-            <button class="btn btn-primary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" id="btn-new-form"><i class="fa-solid fa-plus"></i> Novo</button>
-          </div>
-          <div id="forms-list-container">
-            <!-- Dynamically populated -->
-          </div>
-        </div>
-
-        <!-- Form Workarea -->
-        <div class="glass-card builder-workspace">
-          <!-- Form Header Edit -->
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--glass-border); padding-bottom:1.2rem; margin-bottom:1.5rem;">
-            <div style="flex:1;">
-              <input type="text" id="form-edit-title" class="filter-input" style="font-size:1.4rem; font-weight:700; width:100%; border:none; background:transparent; padding:0; margin-bottom:0.4rem; color:var(--text-primary);" placeholder="Título do Formulário..." />
-              <div style="display:flex; align-items:center; gap:1rem;">
-                <span style="font-size:0.9rem; color:var(--text-secondary);"><i class="fa-solid fa-code-branch"></i> Versão Ativa: <strong id="form-edit-version" style="color:var(--accent-cyan);">1</strong></span>
-                <div>
-                  <label style="font-size:0.9rem; color:var(--text-secondary);">Status: </label>
-                  <select id="form-edit-status" class="role-select" style="padding: 0.2rem 0.5rem; font-size:0.8rem;">
-                    <option value="draft">Draft (Rascunho)</option>
-                    <option value="published">Published (Publicado)</option>
-                  </select>
+            <div class="card">
+              <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-gear"></i> Configurações</h3></div>
+              <div class="form-group"><label class="form-label">Pesquisador Ativo</label><select class="form-select" id="sim-active-researcher"><option value="researcher_1">Ana Pesquisadora</option><option value="researcher_2">Bruno Pesquisador</option><option value="researcher_3">Carla Pesquisadora</option><option value="researcher_4">Daniel Pesquisador</option></select></div>
+              <div class="form-group">
+                <label class="form-label">Conexão com Internet</label>
+                <div class="toggle-row"><span id="net-status-text" class="text-muted">Conectado (Online)</span><input type="checkbox" id="sim-toggle-network" checked /></div>
+              </div>
+              <button class="btn btn-primary" style="width:100%;margin-bottom:0.75rem;" id="sim-btn-download-templates"><i class="fa-solid fa-cloud-arrow-down"></i> Baixar Formulários</button>
+              <div class="offline-queue-box"><i class="fa-solid fa-inbox"></i><div><strong id="sim-offline-queue-count">0</strong> pesquisas salvas no celular</div></div>
+              <button class="btn" style="width:100%;margin-top:0.5rem;" id="sim-btn-sync-queue"><i class="fa-solid fa-rotate"></i> Enviar Pesquisas Salvas</button>
+              <div class="form-group" style="margin-top:1rem;">
+                <label class="form-label">Coordenadas (simulação)</label>
+                <div class="coords-row">
+                  <input type="number" class="form-input" id="sim-lat" value="-9.3833" step="0.0001" placeholder="Latitude" />
+                  <input type="number" class="form-input" id="sim-lng" value="-40.5000" step="0.0001" placeholder="Longitude" />
                 </div>
               </div>
             </div>
-            
-            <div style="display:flex; gap:0.8rem;">
-              <button class="btn" id="btn-save-form"><i class="fa-solid fa-floppy-disk"></i> Salvar Formulário</button>
-            </div>
           </div>
-
-          <!-- Skip Logic Warnings display -->
-          <div id="skip-logic-errors" class="validation-warnings">
-            <!-- Errors dynamically listed here -->
-          </div>
-
-          <!-- List of Questions in Builder -->
-          <h4 style="margin-bottom:1rem;">Estrutura das Perguntas <button class="btn" style="padding:0.2rem 0.6rem; font-size:0.75rem; float:right;" id="btn-add-question"><i class="fa-solid fa-plus"></i> Adicionar Pergunta</button></h4>
-          
-          <div id="builder-questions-list">
-            <!-- Questions rendered here -->
-          </div>
+          <div class="phone-frame"><div class="phone-wrapper"><div class="phone-notch"></div><div class="phone-screen"><div class="phone-screen-header" id="phone-header-bar"></div><div class="phone-screen-body" id="phone-screen-body"></div></div></div></div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- 4. VIEW: MOBILE RESEARCHER SIMULATOR -->
-    <section id="view-mobile-sim" class="view-panel">
-      <div class="stats-grid" style="grid-template-columns: 1fr 2fr; gap:1.5rem;">
-        
-        <!-- Left configuration panel for the simulator -->
-        <div class="glass-card">
-          <h3 class="card-title">Parâmetros do Dispositivo</h3>
-          
-          <div style="margin-bottom: 1.2rem;">
-            <label style="font-size:0.85rem; color:var(--text-secondary); display:block; margin-bottom:0.3rem;">Pesquisador Ativo</label>
-            <select class="filter-input" id="sim-active-researcher" style="width:100%;">
-              <option value="researcher_1">Ana Pesquisadora (freelancer_1)</option>
-              <option value="researcher_2">Bruno Pesquisador (freelancer_2)</option>
-              <option value="researcher_3">Carla Pesquisadora (freelancer_3)</option>
-              <option value="researcher_4">Daniel Pesquisador (freelancer_4)</option>
-            </select>
-          </div>
-
-          <div style="margin-bottom: 1.2rem; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:0.8rem; border-radius:8px;">
+      <!-- ===== VIEW: AI ANALYSIS ===== -->
+      <section id="view-ai-analysis" class="view-panel">
+        <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-magnifying-glass-chart"></i> Análise Inteligente</h1><p class="page-subtitle">Verificação automática de qualidade e detecção de anomalias nas pesquisas.</p></div>
+        <div class="card">
+          <div class="card-header">
             <div>
-              <span style="font-weight:600; display:block;">Modo de Internet</span>
-              <span style="font-size:0.8rem; color:var(--text-secondary);" id="net-status-text">Conectado ao Servidor (Online)</span>
+              <h3 class="card-title"><i class="fa-solid fa-robot"></i> Verificação de Qualidade</h3>
+              <p class="text-muted" style="margin-top:0.2rem;">Analisa padrões de deslocamento, tempo de resposta e qualidade do áudio.</p>
             </div>
-            <div>
-              <input type="checkbox" id="sim-toggle-network" style="transform: scale(1.5); cursor:pointer;" checked />
+            <div class="ai-controls">
+              <span id="ai-status" class="text-muted">Aguardando...</span>
+              <button class="btn btn-primary" onclick="runAiAnalysis()"><i class="fa-solid fa-play"></i> Verificar Agora</button>
             </div>
           </div>
-
-          <div style="margin-bottom: 1.2rem;">
-            <h4 style="margin-bottom:0.5rem; font-size:0.9rem;">Baixar Formulários da Sede</h4>
-            <button class="btn btn-primary" style="width:100%;" id="sim-btn-download-templates"><i class="fa-solid fa-cloud-arrow-down"></i> Baixar Modelos Atualizados</button>
-            <span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:0.3rem;">Simula a sincronização antes de o pesquisador viajar para o interior sem internet.</span>
-          </div>
-
-          <div style="margin-bottom: 1.2rem;">
-            <h4 style="margin-bottom:0.5rem; font-size:0.9rem;">Fila de Envio (Offline Cache)</h4>
-            <div style="background:rgba(0,0,0,0.2); padding:0.8rem; border-radius:8px; text-align:center;">
-              <span style="font-size:1.2rem; font-weight:700; color:var(--accent-purple);" id="sim-offline-queue-count">0</span>
-              <span style="font-size:0.8rem; display:block; color:var(--text-secondary);">Entrevistas retidas localmente</span>
-            </div>
-            <button class="btn" style="width:100%; margin-top:0.5rem;" id="sim-btn-sync-queue"><i class="fa-solid fa-rotate"></i> Forçar Sincronização dos Dados</button>
-          </div>
-
-          <div style="margin-bottom: 0.5rem;">
-            <h4 style="margin-bottom:0.5rem; font-size:0.9rem;">Coordenadas de Coleta (Simuladas)</h4>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
-              <div>
-                <span style="font-size:0.75rem; color:var(--text-secondary);">Latitude</span>
-                <input type="number" id="sim-lat" class="filter-input" style="width:100%; padding:0.4rem;" value="-9.3833" step="0.0001" />
-              </div>
-              <div>
-                <span style="font-size:0.75rem; color:var(--text-secondary);">Longitude</span>
-                <input type="number" id="sim-lng" class="filter-input" style="width:100%; padding:0.4rem;" value="-40.5000" step="0.0001" />
-              </div>
-            </div>
-            <span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:0.3rem;">Ajuste para simular rotas em diferentes pontos.</span>
+          <div id="ai-results-container">
+            <div class="empty-state"><i class="fa-solid fa-magnifying-glass-chart"></i><h4>Nenhuma verificação realizada</h4><p>Clique em "Verificar Agora" para analisar a qualidade das pesquisas coletadas.</p></div>
           </div>
         </div>
+      </section>
 
-        <!-- Phone simulation body -->
-        <div class="phone-sim-container">
-          <div class="phone-wrapper">
-            <div class="phone-notch"></div>
-            
-            <div class="phone-screen" id="phone-screen-body">
-              <!-- Dynamically populated phone content -->
-            </div>
+      <!-- ===== VIEW: EQUIPMENT ===== -->
+      <section id="view-equipment" class="view-panel">
+        <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-server"></i> Equipamentos de Campo</h1><p class="page-subtitle">Consulte informações dos roteadores e equipamentos de sincronização.</p></div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-circle-info"></i> Ações Disponíveis</h3><span class="badge badge-info">Somente Leitura</span></div>
+          <p class="text-muted" style="margin-bottom:1rem;">Selecione uma ação abaixo. Por segurança, todas as consultas são apenas de leitura.</p>
+          <div class="equipment-grid">
+            <div class="equipment-action-card" onclick="runEquipmentCommand('show version')"><div class="action-icon" style="background:var(--primary-light);color:var(--primary);"><i class="fa-solid fa-microchip"></i></div><div class="action-title">Versão do Equipamento</div><div class="action-desc">Ver firmware instalado</div></div>
+            <div class="equipment-action-card" onclick="runEquipmentCommand('ping 8.8.8.8')"><div class="action-icon" style="background:var(--success-light);color:var(--success);"><i class="fa-solid fa-wifi"></i></div><div class="action-title">Testar Conexão</div><div class="action-desc">Verificar acesso à internet</div></div>
+            <div class="equipment-action-card" onclick="runEquipmentCommand('/ip address print')"><div class="action-icon" style="background:var(--warning-light);color:var(--warning);"><i class="fa-solid fa-network-wired"></i></div><div class="action-title">Endereços de Rede</div><div class="action-desc">Listar IPs configurados</div></div>
+            <div class="equipment-action-card" onclick="runEquipmentCommand('show status')"><div class="action-icon" style="background:var(--info-light);color:var(--info);"><i class="fa-solid fa-gauge-high"></i></div><div class="action-title">Status de Sincronização</div><div class="action-desc">Latência e qualidade</div></div>
           </div>
+          <div id="equipment-results"></div>
         </div>
+      </section>
 
-      </div>
-    </section>
-
-    <!-- 5. VIEW: CLI NETWORK SHELL -->
-    <section id="view-cli" class="view-panel">
-      <div class="glass-card">
-        <h3>Console de Rede - Gestão de Equipamentos de Campo</h3>
-        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom: 1.2rem;">
-          Este módulo simula a interação técnica com os roteadores e portais de sincronização das bases remotas. 
-          De acordo com as regras operacionais, os módulos operam estritamente em modo <strong>READ-ONLY</strong>. 
-          Qualquer comando destrutivo inserido por operadores humanos será interceptado, bloqueado, gerará um alerta e será registrado no log de auditoria.
-        </p>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-          
-          <!-- Terminal Shell -->
-          <div class="terminal-window">
-            <div class="terminal-header">
-              <span class="term-dot dot-red"></span>
-              <span class="term-dot dot-yellow"></span>
-              <span class="term-dot dot-green"></span>
-              <span class="term-title">router-sync-node01.antigravity.corp</span>
-            </div>
-            
-            <div class="terminal-body" id="cli-terminal-body">
-              <div class="term-welcome">
-                Antigravity Safe Network Controller v1.4.2-RO<br/>
-                Sistema conectado em modo READ-ONLY. Equipamento ativo.<br/>
-                Digite 'help' para listar os comandos.
-              </div>
-              <div id="cli-history"></div>
-              <div class="term-input-line">
-                <span class="term-prompt" id="cli-prompt-label">Coordinator@node01:~$</span>
-                <input type="text" id="cli-input" class="term-input" placeholder="Digite o comando aqui..." autofocus />
-              </div>
-            </div>
-          </div>
-
-          <!-- Documentation & Warnings -->
-          <div>
-            <h4 style="margin-bottom:0.8rem; color:var(--accent-cyan);"><i class="fa-solid fa-circle-info"></i> Manual de Comandos</h4>
-            <div style="background:var(--bg-secondary); border:1px solid var(--glass-border); padding:1rem; border-radius:10px; font-size:0.9rem;">
-              <p style="margin-bottom:0.6rem;"><strong>Comandos Seguros (Read-Only):</strong></p>
-              <ul style="margin-left:1.5rem; margin-bottom:1rem; color:var(--text-secondary); display:flex; flex-direction:column; gap:0.2rem;">
-                <li><code>show version</code> - Exibe a versão do firmware.</li>
-                <li><code>ping 8.8.8.8</code> - Testa conexão externa.</li>
-                <li><code>/ip address print</code> - Imprime os endereços IPv4 configurados.</li>
-                <li><code>show status</code> - Exibe estatísticas de latência de sincronização.</li>
-              </ul>
-              
-              <p style="margin-bottom:0.6rem; color:var(--status-red);"><strong>Comandos Destrutivos Bloqueados (Auditados):</strong></p>
-              <ul style="margin-left:1.5rem; color:var(--text-secondary); display:flex; flex-direction:column; gap:0.2rem;">
-                <li><code>reboot</code> - Força reinicialização do dispositivo.</li>
-                <li><code>reset</code> - Apaga configurações.</li>
-                <li><code>/system reset</code> - Restaura padrões de fábrica.</li>
-                <li><code>/interface disable ether1</code> - Desativa a interface WAN.</li>
-                <li><code>/ip route remove [id]</code> - Remove uma rota ativa.</li>
-              </ul>
-            </div>
-          </div>
-
+      <!-- ===== VIEW: LOGS ===== -->
+      <section id="view-logs" class="view-panel">
+        <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-shield-halved"></i> Registros de Segurança</h1><p class="page-subtitle">Logs de auditoria e eventos do sistema.</p></div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-list-check"></i> Histórico de Eventos</h3><button class="btn btn-sm" id="btn-refresh-logs"><i class="fa-solid fa-arrows-rotate"></i> Atualizar</button></div>
+          <div id="log-console-container"></div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- 6. VIEW: AUDIT LOGS (DEV ONLY) -->
-    <section id="view-logs" class="view-panel role-restricted">
-      <div class="role-restricted-message" style="margin-bottom:1.5rem; padding:1.5rem; background:var(--bg-tertiary); border-radius:16px; border:1px solid var(--glass-border);">
-        <i class="fa-solid fa-lock" style="font-size: 2rem; color:var(--status-red); margin-bottom:1rem; display:block;"></i>
-        <h3>Acesso Restrito aos Logs de Suporte e Auditoria</h3>
-        <p style="color:var(--text-secondary); margin-top:0.5rem;">
-          Apenas Engenheiros DEV de Suporte Técnico podem acessar o log em tempo real de auditorias de comandos e auditoria de erros. Modifique seu Perfil Operacional no topo para DEV.
-        </p>
-      </div>
+    </main>
+  </div>
 
-      <div class="glass-card">
-        <h3 class="card-title">
-          <span><i class="fa-solid fa-shield-halved"></i> Audit Trails & Security Logs (JSON Structured Format)</span>
-          <button class="btn" style="padding:0.4rem 0.8rem; font-size:0.8rem;" id="btn-refresh-logs"><i class="fa-solid fa-arrows-rotate"></i> Atualizar Logs</button>
-        </h3>
-        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:1.2rem;">
-          Logs estruturados em formato JSON gerados em conformidade com os requisitos de monitoramento de segurança corporativa do projeto.
-        </p>
-        
-        <div class="log-console" id="log-console-container">
-          <!-- Filled dynamically -->
-        </div>
-      </div>
-    </section>
-
-    <!-- 7. VIEW: AI ANALYSIS -->
-    <section id="view-ai-analysis" class="view-panel">
-      <div class="glass-card">
-        <h3 class="card-title">
-          <span><i class="fa-solid fa-brain"></i> Motor de Inteligência Artificial (Antigravity AI)</span>
-          <span class="form-tag tag-pub" style="background: rgba(157, 78, 221, 0.15); color: #9d4edd;">BETA</span>
-        </h3>
-        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:1.5rem;">
-          Nosso módulo de IA analisa em tempo real padrões de deslocamento, tempo de resposta e qualidade do áudio para identificar fraudes, outliers ou anomalias nas entrevistas submetidas.
-        </p>
-        
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border);">
-          <div>
-            <h4 style="margin-bottom:0.3rem;">Detecção de Anomalias Baseada em Redes Neurais</h4>
-            <span style="font-size:0.8rem; color:var(--text-secondary);">Varredura profunda utilizando modelos de ML e NLP treinados com dados de campo.</span>
-          </div>
-          <div style="display:flex; align-items:center; gap: 1rem;">
-            <span id="ai-status" style="font-size:0.85rem; color:var(--text-muted); font-style:italic;">Aguardando execução manual...</span>
-            <button class="btn btn-primary" style="background: var(--accent-purple); color: #fff; padding: 0.6rem 1.2rem;" onclick="runAiAnalysis()"><i class="fa-solid fa-microchip"></i> Iniciar Varredura de IA</button>
-          </div>
-        </div>
-        
-        <div id="ai-results-container" style="display:grid; grid-template-columns: 1fr; gap:1.2rem;">
-          <!-- Empty state -->
-          <div style="text-align:center; padding: 2rem; border: 1px dashed var(--glass-border); border-radius: 8px; color: var(--text-muted);">
-            Nenhuma anomalia processada recentemente. Clique no botão acima para rodar a IA.
-          </div>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Leaflet Map JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Main Application Code -->
   <script src="js/app.js"></script>
 </body>
 </html>
