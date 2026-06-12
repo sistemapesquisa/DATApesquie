@@ -99,6 +99,12 @@ const virtualDb = {
         { id:'log_004', type:'UNAUTHORIZED_ACCESS', severity:'MEDIUM', command_requested:'view financials', user_role:'Researcher', timestamp:new Date().toISOString() }
       ]);
     }
+    if (this._getStore('vdb_routes').length === 0) {
+      this._setStore('vdb_routes', [
+        { id: 'route_1', researcher_id: 'researcher_1', form_id: 'form_censo', city: 'Petrolina', created_at: new Date().toISOString() },
+        { id: 'route_2', researcher_id: 'researcher_2', form_id: 'form_censo', city: 'Juazeiro', created_at: new Date().toISOString() }
+      ]);
+    }
   }
 };
 
@@ -119,12 +125,43 @@ function simulateOfflineApi(endpoint, options = {}) {
     virtualDb._setStore('vdb_users', users);
     return { success:true, user:newUser };
   }
+  if (endpoint.match(/\/api\/users\//) && method === 'PUT') {
+    const uid = endpoint.split('/').pop();
+    let users = virtualDb._getStore('vdb_users');
+    users = users.map(u => u.id === uid ? {...u, name: body.name, email: body.email, role: body.role} : u);
+    virtualDb._setStore('vdb_users', users);
+    return { success:true };
+  }
   if (endpoint.match(/\/api\/users\//) && method === 'DELETE') {
     const uid = endpoint.split('/').pop();
     let users = virtualDb._getStore('vdb_users');
     users = users.map(u => u.id === uid ? {...u, status:'deleted'} : u);
     virtualDb._setStore('vdb_users', users);
     return { success:true };
+  }
+  if (endpoint === '/api/routes' && method === 'GET') {
+    const routes = virtualDb._getStore('vdb_routes');
+    const users = virtualDb._getStore('vdb_users');
+    const forms = virtualDb._getStore('vdb_forms');
+    return routes.map(r => ({
+      ...r,
+      researcher_name: (users.find(u => u.id === r.researcher_id) || {}).name || 'Desconhecido',
+      form_title: (forms.find(f => f.id === r.form_id) || {}).title || 'Desconhecido'
+    }));
+  }
+  if (endpoint === '/api/routes' && method === 'POST') {
+    const routes = virtualDb._getStore('vdb_routes');
+    const newRoute = { id: 'route_'+Math.random().toString(36).substr(2,8), researcher_id: body.researcher_id, form_id: body.form_id, city: body.city, created_at: new Date().toISOString() };
+    routes.push(newRoute);
+    virtualDb._setStore('vdb_routes', routes);
+    return { success: true, routeId: newRoute.id };
+  }
+  if (endpoint.match(/\/api\/routes\//) && method === 'DELETE') {
+    const rid = endpoint.split('/').pop();
+    let routes = virtualDb._getStore('vdb_routes');
+    routes = routes.filter(r => r.id !== rid);
+    virtualDb._setStore('vdb_routes', routes);
+    return { success: true };
   }
   if (endpoint === '/api/forms' && method === 'POST') {
     const forms = virtualDb._getStore('vdb_forms');
@@ -291,14 +328,18 @@ function switchTab(targetId) {
   if (targetId === 'view-map' && state.map) setTimeout(() => state.map.invalidateSize(), 150);
   // Load logs when switching to logs tab
   if (targetId === 'view-logs') fetchLogs();
+  if (targetId === 'view-team-routes') loadTeamAndRoutes();
+  if (targetId === 'view-reports') renderReportsTable();
 }
 
 // ===================== RBAC =====================
 const NAV_PERMISSIONS = {
+  'nav-team-routes': ['DEV','Admin','Coordinator'],
   'nav-form-builder': ['DEV','Admin','Analyst'],
   'nav-logs': ['DEV'],
   'nav-ai': ['DEV','Admin','Analyst','Supervisor','Coordinator'],
   'nav-equipment': ['DEV','Admin','Coordinator'],
+  'nav-reports': ['DEV','Admin','Analyst','Supervisor','Coordinator'],
 };
 const SECTION_PERMISSIONS = {
   'financial-dashboard-section': ['DEV','Admin','Analyst'],
@@ -448,6 +489,105 @@ function renderMapMarkers() {
     const marker = L.marker([item.latitude, item.longitude], { icon }).addTo(state.map).bindPopup(popup);
     state.mapMarkers.push(marker);
   });
+}
+
+// ===================== REPORTS =====================
+window.renderReportsTable = function() {
+  const tbody = document.getElementById('reports-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  
+  // Update select filters
+  const fSelect = document.getElementById('report-filter-form');
+  const rSelect = document.getElementById('report-filter-researcher');
+  if (fSelect.options.length === 1) {
+    state.forms.forEach(f => fSelect.insertAdjacentHTML('beforeend', `<option value="${f.id}">${f.title}</option>`));
+  }
+  if (rSelect.options.length === 1) {
+    state.users.filter(u => u.role === 'Researcher').forEach(u => rSelect.insertAdjacentHTML('beforeend', `<option value="${u.id}">${u.name}</option>`));
+  }
+
+  const fFilter = document.getElementById('report-filter-form').value;
+  const rFilter = document.getElementById('report-filter-researcher').value;
+  const sFilter = document.getElementById('report-filter-status').value;
+  const dFilter = document.getElementById('report-filter-date').value;
+
+  let filtered = [...state.interviews].reverse(); // newest first
+  if (fFilter !== 'all') filtered = filtered.filter(i => i.form_id === fFilter);
+  if (rFilter !== 'all') filtered = filtered.filter(i => i.researcher_id === rFilter);
+  if (sFilter !== 'all') filtered = filtered.filter(i => i.status === sFilter);
+  if (dFilter) filtered = filtered.filter(i => i.created_at && i.created_at.startsWith(dFilter));
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;">Nenhum relatório encontrado com os filtros atuais.</td></tr>';
+    return;
+  }
+
+  filtered.forEach(int => {
+    const researcher = state.users.find(u => u.id === int.researcher_id) || {name: int.researcher_id};
+    const form = state.forms.find(f => f.id === int.form_id) || {title: int.form_id};
+    const date = new Date(int.created_at).toLocaleString('pt-BR');
+    const statusLabel = STATUS_LABELS[int.status] || int.status;
+    const statusClass = int.status === 'approved' ? 'badge-success' : int.status === 'rejected' ? 'badge-danger' : 'badge-warning';
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${int.id.substring(0,8)}</td>
+      <td>${researcher.name}</td>
+      <td>${form.title}</td>
+      <td>${date}</td>
+      <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+      <td><button class="btn btn-sm btn-primary" onclick="openInterviewDetails('${int.id}')"><i class="fa-solid fa-eye"></i> Ver</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+};
+
+window.openInterviewDetails = function(id) {
+  const int = state.interviews.find(i => i.id === id);
+  if (!int) return;
+  const researcher = state.users.find(u => u.id === int.researcher_id) || {name: int.researcher_id};
+  const form = state.forms.find(f => f.id === int.form_id) || {title: int.form_id, questions: []};
+  
+  document.getElementById('interview-modal-status').className = 'badge ' + (int.status === 'approved' ? 'badge-success' : int.status === 'rejected' ? 'badge-danger' : 'badge-warning');
+  document.getElementById('interview-modal-status').textContent = STATUS_LABELS[int.status] || int.status;
+  document.getElementById('interview-modal-form').textContent = form.title;
+  document.getElementById('interview-modal-researcher').textContent = researcher.name;
+  document.getElementById('interview-modal-date').textContent = new Date(int.created_at).toLocaleString('pt-BR');
+  document.getElementById('interview-modal-gps').textContent = (int.latitude && int.longitude) ? `${int.latitude}, ${int.longitude}` : 'Não registrada';
+  
+  const answersDiv = document.getElementById('interview-modal-answers');
+  answersDiv.innerHTML = '';
+  Object.keys(int.data || {}).forEach(qId => {
+    const qText = form.questions ? (form.questions.find(q => q.id === qId)?.text || qId) : qId;
+    const val = int.data[qId];
+    answersDiv.innerHTML += `<div style="margin-bottom:0.75rem;"><strong style="color:var(--text-primary);display:block;margin-bottom:0.25rem;">${qText}</strong><span style="color:var(--text-secondary);">${val}</span></div>`;
+  });
+  
+  if (int.audio_url) {
+    answersDiv.innerHTML += `<div style="margin-top:1rem;border-top:1px solid var(--border);padding-top:1rem;"><strong style="display:block;margin-bottom:0.5rem;"><i class="fa-solid fa-microphone"></i> Gravação de Áudio</strong><audio controls style="width:100%;height:36px;"><source src="${int.audio_url}"></audio></div>`;
+  }
+  
+  document.getElementById('interview-modal-notes').value = int.notes || '';
+  
+  document.getElementById('btn-interview-approve').onclick = () => auditInterviewFromModal(id, 'approved');
+  document.getElementById('btn-interview-reject').onclick = () => auditInterviewFromModal(id, 'rejected');
+  
+  document.getElementById('interview-modal').classList.add('active');
+};
+
+async function auditInterviewFromModal(id, newStatus) {
+  const notes = document.getElementById('interview-modal-notes').value;
+  try {
+    await apiFetch(`/api/interviews/${id}/status`, { method: 'PUT', body: JSON.stringify({ status: newStatus, notes }) });
+    showToast('success', 'Avaliação registrada com sucesso!');
+    document.getElementById('interview-modal').classList.remove('active');
+    await loadServerData();
+    if (document.getElementById('view-reports').classList.contains('active')) renderReportsTable();
+    if (document.getElementById('view-map').classList.contains('active')) renderMapMarkers();
+    renderDashboard();
+    renderAudioReviewList();
+  } catch(err) { showToast('error', err.message); }
 }
 
 // ===================== AUDIO REVIEW =====================
@@ -863,6 +1003,144 @@ function initDataExporter() {
   });
 }
 
+// ===================== TEAM & ROUTES =====================
+async function loadTeamAndRoutes() {
+  const usersTable = document.getElementById('users-tbody');
+  const routesTable = document.getElementById('routes-tbody');
+  try {
+    const users = await apiFetch('/api/users');
+    const routes = await apiFetch('/api/routes');
+    const forms = await apiFetch('/api/forms');
+    
+    if(usersTable) {
+      usersTable.innerHTML = '';
+      users.filter(u => u.status !== 'deleted').forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${u.name}</strong><br><span style="font-size:0.75rem;color:var(--text-muted);">${u.email}</span></td>
+          <td><span class="badge badge-info">${ROLE_LABELS[u.role]||u.role}</span></td>
+          <td>
+            <button class="btn-icon" style="color:var(--primary)" onclick="editUser('${u.id}')" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+            <button class="btn-icon" style="color:var(--danger)" onclick="deleteUser('${u.id}')" title="Remover"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        `;
+        usersTable.appendChild(tr);
+      });
+    }
+
+    if(routesTable) {
+      routesTable.innerHTML = '';
+      routes.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.researcher_name}</td>
+          <td>${r.form_title}</td>
+          <td>${r.city || '-'}</td>
+          <td>
+            <button class="btn-icon" style="color:var(--danger)" onclick="deleteRoute('${r.id}')" title="Remover Atribuição"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        `;
+        routesTable.appendChild(tr);
+      });
+    }
+    
+    const resSelect = document.getElementById('route-form-researcher');
+    const formSelect = document.getElementById('route-form-id');
+    if(resSelect) {
+      resSelect.innerHTML = users.filter(u => u.status !== 'deleted' && u.role === 'Researcher').map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+    }
+    if(formSelect) {
+      formSelect.innerHTML = forms.filter(f => f.status === 'published').map(f => `<option value="${f.id}">${f.title} (V${f.version})</option>`).join('');
+    }
+  } catch(err) {
+    showToast('error', 'Erro ao carregar equipe e rotas.');
+  }
+}
+
+window.openUserModal = function() {
+  document.getElementById('user-form-id').value = '';
+  document.getElementById('user-form-name').value = '';
+  document.getElementById('user-form-email').value = '';
+  document.getElementById('user-form-role').value = 'Researcher';
+  document.getElementById('user-form-password').value = '';
+  document.getElementById('user-modal-title').textContent = 'Novo Usuário';
+  document.getElementById('user-modal').classList.add('active');
+};
+window.closeUserModal = function() { document.getElementById('user-modal').classList.remove('active'); };
+window.saveUser = async function() {
+  const id = document.getElementById('user-form-id').value;
+  const name = document.getElementById('user-form-name').value;
+  const email = document.getElementById('user-form-email').value;
+  const role = document.getElementById('user-form-role').value;
+  const password = document.getElementById('user-form-password').value;
+  
+  if(!name || !email) { showToast('warning', 'Preencha nome e e-mail.'); return; }
+  
+  try {
+    if(id) {
+      await apiFetch(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify({ name, email, role, password }) });
+      showToast('success', 'Usuário atualizado!');
+    } else {
+      if(!password) { showToast('warning', 'A senha inicial é obrigatória.'); return; }
+      await apiFetch('/api/users', { method: 'POST', body: JSON.stringify({ name, email, role, password }) });
+      showToast('success', 'Usuário criado!');
+    }
+    closeUserModal();
+    loadTeamAndRoutes();
+  } catch(err) { showToast('error', err.message); }
+};
+window.editUser = async function(id) {
+  try {
+    const users = await apiFetch('/api/users');
+    const u = users.find(x => x.id === id);
+    if(u) {
+      document.getElementById('user-form-id').value = u.id;
+      document.getElementById('user-form-name').value = u.name;
+      document.getElementById('user-form-email').value = u.email;
+      document.getElementById('user-form-role').value = u.role;
+      document.getElementById('user-form-password').value = '';
+      document.getElementById('user-modal-title').textContent = 'Editar Usuário';
+      document.getElementById('user-modal').classList.add('active');
+    }
+  } catch(err) {}
+};
+window.deleteUser = function(id) {
+  showConfirm('Remover Usuário', 'Tem certeza que deseja desativar este usuário?', async () => {
+    try {
+      await apiFetch(`/api/users/${id}`, { method: 'DELETE' });
+      showToast('success', 'Usuário removido.');
+      loadTeamAndRoutes();
+    } catch(err) { showToast('error', err.message); }
+  });
+};
+
+window.openRouteModal = function() {
+  document.getElementById('route-form-city').value = '';
+  document.getElementById('route-modal').classList.add('active');
+};
+window.closeRouteModal = function() { document.getElementById('route-modal').classList.remove('active'); };
+window.saveRoute = async function() {
+  const researcher_id = document.getElementById('route-form-researcher').value;
+  const form_id = document.getElementById('route-form-id').value;
+  const city = document.getElementById('route-form-city').value;
+  if(!researcher_id || !form_id) { showToast('warning', 'Selecione o pesquisador e o formulário.'); return; }
+  try {
+    await apiFetch('/api/routes', { method: 'POST', body: JSON.stringify({ researcher_id, form_id, city }) });
+    showToast('success', 'Formulário habilitado!');
+    closeRouteModal();
+    loadTeamAndRoutes();
+  } catch(err) { showToast('error', err.message); }
+};
+window.deleteRoute = function(id) {
+  showConfirm('Remover Atribuição', 'O pesquisador não terá mais acesso a este formulário. Continuar?', async () => {
+    try {
+      await apiFetch(`/api/routes/${id}`, { method: 'DELETE' });
+      showToast('success', 'Atribuição removida.');
+      loadTeamAndRoutes();
+    } catch(err) { showToast('error', err.message); }
+  });
+};
+
 // ===================== ODK URL COPY =====================
 window.copyOdkUrl = function() {
   const url = document.getElementById('odk-server-url').textContent;
@@ -909,6 +1187,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Refresh logs button
   document.getElementById('btn-refresh-logs').addEventListener('click', fetchLogs);
+
+  // Reports Events
+  const btnExportReports = document.getElementById('btn-export-reports');
+  if (btnExportReports) {
+    btnExportReports.addEventListener('click', () => {
+      const btnExportMain = document.getElementById('btn-export-data');
+      if (btnExportMain) btnExportMain.click();
+    });
+  }
+  ['report-filter-form','report-filter-researcher','report-filter-status','report-filter-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('change', renderReportsTable);
+  });
 
   // Init map on first map tab visit
   const mapNav = document.getElementById('nav-map');

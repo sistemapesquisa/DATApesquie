@@ -31,9 +31,11 @@
         <a class="nav-item active" data-target="view-dashboard" id="nav-dashboard"><i class="fa-solid fa-house"></i><span>Início</span></a>
         <a class="nav-item" data-target="view-map" id="nav-map"><i class="fa-solid fa-map-location-dot"></i><span>Mapa de Campo</span></a>
         <a class="nav-item" data-target="view-form-builder" id="nav-form-builder"><i class="fa-solid fa-clipboard-list"></i><span>Formulários</span></a>
+        <a class="nav-item" data-target="view-reports" id="nav-reports"><i class="fa-solid fa-table-list"></i><span>Relatórios de Coleta</span></a>
         <a class="nav-item" data-target="view-mobile-sim" id="nav-mobile-sim"><i class="fa-solid fa-mobile-screen"></i><span>Coletar Dados</span></a>
         <a class="nav-item" data-target="view-ai-analysis" id="nav-ai"><i class="fa-solid fa-magnifying-glass-chart"></i><span>Análise Inteligente</span></a>
         <div class="nav-divider"></div>
+        <a class="nav-item" data-target="view-team-routes" id="nav-team-routes"><i class="fa-solid fa-users-gear"></i><span>Equipe e Rotas</span></a>
         <a class="nav-item" data-target="view-equipment" id="nav-equipment"><i class="fa-solid fa-server"></i><span>Equipamentos</span></a>
         <a class="nav-item" data-target="view-logs" id="nav-logs"><i class="fa-solid fa-shield-halved"></i><span>Registros</span></a>
       </nav>
@@ -183,6 +185,29 @@
         </div>
       </section>
 
+      <!-- ===== VIEW: REPORTS ===== -->
+      <section id="view-reports" class="view-panel">
+        <div class="page-header">
+          <h1 class="page-title"><i class="fa-solid fa-table-list"></i> Auditoria e Relatórios</h1>
+          <p class="page-subtitle">Acompanhe detalhadamente todas as respostas coletadas pela equipe de campo.</p>
+        </div>
+        <div class="card">
+          <div class="filters-bar" style="margin-bottom:1.5rem;">
+            <div class="form-group"><label class="form-label">Formulário</label><select class="form-select" id="report-filter-form"><option value="all">Todos</option></select></div>
+            <div class="form-group"><label class="form-label">Pesquisador</label><select class="form-select" id="report-filter-researcher"><option value="all">Todos</option></select></div>
+            <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="report-filter-status"><option value="all">Todos</option><option value="pending">Pendente</option><option value="approved">Aprovada</option><option value="rejected">Rejeitada</option></select></div>
+            <div class="form-group"><label class="form-label">Buscar Data</label><input type="date" class="form-input" id="report-filter-date" /></div>
+            <div class="form-group"><button class="btn btn-primary" id="btn-export-reports"><i class="fa-solid fa-file-csv"></i> Exportar</button></div>
+          </div>
+          <div class="table-wrapper" style="max-height:600px;overflow-y:auto;">
+            <table class="data-table" id="reports-table">
+              <thead><tr><th>ID</th><th>Pesquisador</th><th>Formulário</th><th>Data/Hora</th><th>Status</th><th>Ações</th></tr></thead>
+              <tbody id="reports-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <!-- ===== VIEW: FORM BUILDER ===== -->
       <section id="view-form-builder" class="view-panel">
         <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-clipboard-list"></i> Formulários de Pesquisa</h1><p class="page-subtitle">Crie e edite os questionários que serão usados em campo.</p></div>
@@ -255,6 +280,71 @@
         </div>
       </section>
 
+      <!-- ===== VIEW: TEAM & ROUTES ===== -->
+      <section id="view-team-routes" class="view-panel">
+        <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-users-gear"></i> Equipe e Rotas</h1><p class="page-subtitle">Gerencie usuários, cargos e atribua formulários aos pesquisadores.</p></div>
+        
+        <div class="dashboard-grid">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-user-plus"></i> Gerenciar Usuários</h3><button class="btn btn-primary btn-sm" onclick="openUserModal()"><i class="fa-solid fa-plus"></i> Novo Usuário</button></div>
+            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+              <table class="data-table" id="users-table">
+                <thead><tr><th>Nome / E-mail</th><th>Cargo</th><th>Ações</th></tr></thead>
+                <tbody id="users-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-route"></i> Rotas e Formulários</h3><button class="btn btn-primary btn-sm" onclick="openRouteModal()"><i class="fa-solid fa-plus"></i> Nova Rota</button></div>
+            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+              <table class="data-table" id="routes-table">
+                <thead><tr><th>Pesquisador</th><th>Formulário</th><th>Região</th><th>Ações</th></tr></thead>
+                <tbody id="routes-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-overlay" id="user-modal">
+          <div class="modal-box">
+            <div class="modal-title" id="user-modal-title">Novo Usuário</div>
+            <input type="hidden" id="user-form-id" />
+            <div class="form-group"><label class="form-label">Nome Completo</label><input type="text" class="form-input" id="user-form-name" /></div>
+            <div class="form-group"><label class="form-label">E-mail</label><input type="email" class="form-input" id="user-form-email" /></div>
+            <div class="form-group"><label class="form-label">Cargo</label>
+              <select class="form-select" id="user-form-role">
+                <option value="Researcher">Pesquisador (Aplicativo)</option>
+                <option value="Coordinator">Coordenador</option>
+                <option value="Analyst">Analista</option>
+                <option value="Supervisor">Supervisor</option>
+                <option value="Admin">Administrador</option>
+                <option value="DEV">Suporte (DEV)</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Senha</label><input type="password" class="form-input" id="user-form-password" placeholder="Deixe em branco para não alterar" /></div>
+            <div class="modal-actions" style="margin-top:1.5rem;">
+              <button class="btn" onclick="closeUserModal()">Cancelar</button>
+              <button class="btn btn-primary" onclick="saveUser()">Salvar Usuário</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-overlay" id="route-modal">
+          <div class="modal-box">
+            <div class="modal-title">Atribuir Formulário</div>
+            <p class="modal-message" style="margin-bottom:1rem;">Habilite um formulário específico para o aplicativo de um pesquisador.</p>
+            <div class="form-group"><label class="form-label">Pesquisador</label><select class="form-select" id="route-form-researcher"></select></div>
+            <div class="form-group"><label class="form-label">Formulário</label><select class="form-select" id="route-form-id"></select></div>
+            <div class="form-group"><label class="form-label">Região / Cidade</label><input type="text" class="form-input" id="route-form-city" placeholder="Ex: Petrolina" /></div>
+            <div class="modal-actions" style="margin-top:1.5rem;">
+              <button class="btn" onclick="closeRouteModal()">Cancelar</button>
+              <button class="btn btn-primary" onclick="saveRoute()">Confirmar Atribuição</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ===== VIEW: EQUIPMENT ===== -->
       <section id="view-equipment" class="view-panel">
         <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-server"></i> Equipamentos de Campo</h1><p class="page-subtitle">Consulte informações dos roteadores e equipamentos de sincronização.</p></div>
@@ -279,6 +369,36 @@
           <div id="log-console-container"></div>
         </div>
       </section>
+
+      <!-- Interview Details Modal -->
+      <div class="modal-overlay" id="interview-modal">
+        <div class="modal-box" style="max-width:700px;width:95%;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;border-bottom:1px solid var(--border);padding-bottom:1rem;">
+            <h3 class="modal-title" style="margin-bottom:0;text-align:left;"><i class="fa-solid fa-file-invoice"></i> Detalhes da Coleta</h3>
+            <span class="badge" id="interview-modal-status"></span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;font-size:0.85rem;background:var(--bg-page);padding:1rem;border-radius:var(--radius-sm);">
+            <div><strong style="color:var(--text-muted);">Formulário:</strong> <br><span id="interview-modal-form"></span></div>
+            <div><strong style="color:var(--text-muted);">Pesquisador:</strong> <br><span id="interview-modal-researcher"></span></div>
+            <div><strong style="color:var(--text-muted);">Data/Hora:</strong> <br><span id="interview-modal-date"></span></div>
+            <div><strong style="color:var(--text-muted);">Localização:</strong> <br><span id="interview-modal-gps"></span></div>
+          </div>
+          <h4 style="font-size:0.9rem;margin-bottom:1rem;color:var(--text-secondary);text-transform:uppercase;">Respostas</h4>
+          <div id="interview-modal-answers" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1.5rem;">
+          </div>
+          <div class="form-group" style="margin-bottom:1.5rem;">
+            <label class="form-label">Observações da Auditoria</label>
+            <textarea class="form-input" id="interview-modal-notes" rows="2" placeholder="Descreva os motivos de aprovação/rejeição..."></textarea>
+          </div>
+          <div class="modal-actions" style="justify-content:space-between;">
+            <button class="btn" onclick="document.getElementById('interview-modal').classList.remove('active')">Fechar</button>
+            <div style="display:flex;gap:0.75rem;">
+              <button class="btn btn-danger" id="btn-interview-reject"><i class="fa-solid fa-xmark"></i> Rejeitar</button>
+              <button class="btn btn-success" id="btn-interview-approve"><i class="fa-solid fa-check"></i> Aprovar</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
     </main>
   </div>

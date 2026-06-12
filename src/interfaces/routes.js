@@ -30,28 +30,74 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 
+function parseDigest(header) {
+  const dict = {};
+  const re = /(\w+)=(?:"([^"]+)"|([^,]+))/g;
+  let match;
+  while ((match = re.exec(header.substring(7))) !== null) {
+    dict[match[1]] = match[2] || match[3];
+  }
+  return dict;
+}
+
 // Middleware for authentication
 function authenticate(req, res, next) {
-  // 1. ODK Collect Basic Authentication
+  const isOdkEndpoint = req.path.includes('/formList') || req.path.includes('/odk/') || req.path.includes('/submission') || req.path === '/';
+  
+  if (isOdkEndpoint) {
+    res.set('X-OpenRosa-Version', '1.0');
+    // Allow CORS for ODK
+    res.set('Access-Control-Allow-Origin', '*');
+  }
+
+  // 1. ODK Collect Basic & Digest Authentication
   const authHeader = req.headers.authorization;
+  if (isOdkEndpoint) console.log(`ODK Request: ${req.method} ${req.path} | Auth: ${authHeader}`);
+  
+  if (authHeader && authHeader.startsWith('Digest ')) {
+    const digest = parseDigest(authHeader);
+    const email = digest.username;
+    
+    db.get('SELECT id, name, email, role, status, password FROM users WHERE email = ? OR name = ?', [email, email], (err, user) => {
+      if (!err && user && user.status !== 'deleted') {
+        const HA1 = crypto.createHash('md5').update(`${email}:${digest.realm}:${user.password}`).digest('hex');
+        const HA2 = crypto.createHash('md5').update(`${req.method}:${digest.uri}`).digest('hex');
+        const expectedResponse = crypto.createHash('md5').update(`${HA1}:${digest.nonce}:${digest.nc}:${digest.cnonce}:${digest.qop}:${HA2}`).digest('hex');
+        
+        if (digest.response === expectedResponse) {
+          req.user = user;
+          req.headers['x-user-id'] = user.id;
+          return next();
+        }
+      }
+      if (isOdkEndpoint) res.set('X-OpenRosa-Version', '1.0');
+      res.set('WWW-Authenticate', `Digest realm="DATApesquise ODK", qop="auth", nonce="${crypto.randomBytes(16).toString('hex')}", opaque="odk"`);
+      return res.status(401).send('Credenciais inválidas.');
+    });
+    return;
+  }
+
   if (authHeader && authHeader.startsWith('Basic ')) {
     const credentials = Buffer.from(authHeader.split(' ')[1], 'base64').toString('utf8');
     const [email, password] = credentials.split(':');
     
-    db.get('SELECT id, name, email, role, status FROM users WHERE email = ? AND password = ?', [email, password], (err, user) => {
+    db.get('SELECT id, name, email, role, status FROM users WHERE (email = ? OR name = ?) AND password = ?', [email, email, password], (err, user) => {
       if (!err && user && user.status !== 'deleted') {
         req.user = user;
+        // Mock ID header for logic down the line
+        req.headers['x-user-id'] = user.id;
         return next();
       }
+      if (isOdkEndpoint) res.set('X-OpenRosa-Version', '1.0');
       res.set('WWW-Authenticate', 'Basic realm="DATApesquise ODK"');
       return res.status(401).send('Credenciais inválidas.');
     });
     return;
   }
 
-  // 2. Enforce Basic Auth for ODK endpoints if not provided
-  if (req.path.includes('/formList') || req.path.includes('/odk/') || req.path.includes('/submission')) {
-    res.set('WWW-Authenticate', 'Basic realm="DATApesquise ODK"');
+  // 2. Enforce Auth for ODK endpoints if not provided
+  if (isOdkEndpoint) {
+    res.set('WWW-Authenticate', `Digest realm="DATApesquise ODK", qop="auth", nonce="${crypto.randomBytes(16).toString('hex')}", opaque="odk"`);
     return res.status(401).send('Autenticação necessária.');
   }
 
@@ -64,6 +110,12 @@ function authenticate(req, res, next) {
 }
 
 router.use(authenticate);
+
+// --- OPENROSA ROOT ---
+router.all('/', (req, res) => {
+  res.set('X-OpenRosa-Version', '1.0');
+  res.status(204).send();
+});
 
 // --- AUTHENTICATION ---
 router.post('/auth/login', (req, res) => {
@@ -145,6 +197,87 @@ router.delete('/users/:id', (req, res) => {
     res.json({ success: true });
   });
 });
+
+router.put('/users/:id', (req, res) => {
+  const userId = req.params.id;
+  const { name, email, role, password } = req.body;
+
+  const isCoordinator = checkPermission(req.user.role, PERMISSIONS.MANAGE_RESEARCHERS);
+  const isAdmin = checkPermission(req.user.role, PERMISSIONS.MANAGE_COORDINATORS);
+  
+  if (!isCoordinator && !isAdmin) {
+    return res.status(403).json({ error: 'Acesso negado: permissões insuficientes.' });
+  }
+
+  // If password is empty, don't update it
+  let query = 'UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?';
+  let params = [name, email, role, userId];
+  
+  if (password && password.trim() !== '') {
+    query = 'UPDATE users SET name = ?, email = ?, role = ?, password = ? WHERE id = ?';
+    params = [name, email, role, password, userId];
+  }
+
+  db.run(query, params, (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    jsonLogger.info(`User updated: ${userId} by ${req.user.id}`);
+    res.json({ success: true });
+  });
+});
+
+// --- ROUTES MANAGEMENT (Assignments) ---
+router.get('/routes', (req, res) => {
+  const query = `
+    SELECT r.id, r.researcher_id, r.form_id, r.city, r.created_at, 
+           u.name as researcher_name, f.title as form_title
+    FROM routes r
+    JOIN users u ON r.researcher_id = u.id
+    JOIN forms f ON r.form_id = f.id
+    ORDER BY r.created_at DESC
+  `;
+  db.all(query, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+router.post('/routes', (req, res) => {
+  const { researcher_id, form_id, city } = req.body;
+  const isCoordinator = checkPermission(req.user.role, PERMISSIONS.MANAGE_RESEARCHERS);
+  const isAdmin = checkPermission(req.user.role, PERMISSIONS.MANAGE_COORDINATORS);
+  
+  if (!isCoordinator && !isAdmin) {
+    return res.status(403).json({ error: 'Acesso negado: apenas coordenadores ou admins.' });
+  }
+
+  const routeId = 'route_' + crypto.randomBytes(6).toString('hex');
+  db.run(
+    'INSERT INTO routes (id, researcher_id, form_id, city) VALUES (?, ?, ?, ?)',
+    [routeId, researcher_id, form_id, city || ''],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      jsonLogger.info(`Route assignment created: ${routeId} by ${req.user.id}`);
+      res.json({ success: true, routeId });
+    }
+  );
+});
+
+router.delete('/routes/:id', (req, res) => {
+  const routeId = req.params.id;
+  const isCoordinator = checkPermission(req.user.role, PERMISSIONS.MANAGE_RESEARCHERS);
+  const isAdmin = checkPermission(req.user.role, PERMISSIONS.MANAGE_COORDINATORS);
+  
+  if (!isCoordinator && !isAdmin) {
+    return res.status(403).json({ error: 'Acesso negado: permissões insuficientes.' });
+  }
+
+  db.run("DELETE FROM routes WHERE id = ?", [routeId], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    jsonLogger.info(`Route assignment deleted: ${routeId} by ${req.user.id}`);
+    res.json({ success: true });
+  });
+});
+
 
 // --- FORM BUILDER (Analyst / Admin / DEV) ---
 router.get('/forms', (req, res) => {
@@ -314,7 +447,6 @@ router.get(['/formList', '/odk/formList'], (req, res) => {
     rows.forEach(form => {
       xml += `  <xform>\n`;
       xml += `    <formID>${form.id}</formID>\n`;
-      xml += `    <jr:formID>${form.id}</jr:formID>\n`; // jr namespace compatibility
       xml += `    <name>${form.title}</name>\n`;
       xml += `    <version>${form.version}</version>\n`;
       xml += `    <hash>md5:${crypto.createHash('md5').update(form.id + form.version).digest('hex')}</hash>\n`;
@@ -349,6 +481,11 @@ router.get('/odk/forms/:id', (req, res) => {
 });
 
 // 3. ODK Submission Endpoint (Multipart XML + Audio parser)
+router.head(['/submission', '/odk/submission'], (req, res) => {
+  res.set('X-OpenRosa-Version', '1.0');
+  res.status(204).send();
+});
+
 router.post(['/submission', '/odk/submission'], upload.any(), (req, res) => {
   const files = req.files || [];
   const xmlFile = files.find(f => f.fieldname === 'xml_submission_file');
