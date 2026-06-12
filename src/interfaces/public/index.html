@@ -104,48 +104,8 @@
         </div>
       </section>
 
-      <!-- ===== VIEW: MAP ===== -->
-      <section id="view-map" class="view-panel">
-        <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-map-location-dot"></i> Mapa de Campo</h1><p class="page-subtitle">Visualize onde as entrevistas foram coletadas em tempo real.</p></div>
-        <div class="card">
-          <div class="filters-bar">
-            <div class="form-group"><label class="form-label">Pesquisador</label><select class="form-select" id="map-filter-researcher"><option value="all">Todos</option><option value="researcher_1">Ana Pesquisadora</option><option value="researcher_2">Bruno Pesquisador</option><option value="researcher_3">Carla Pesquisadora</option><option value="researcher_4">Daniel Pesquisador</option></select></div>
-            <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="map-filter-status"><option value="all">Todos</option><option value="pending">Pendente</option><option value="approved">Aprovada</option><option value="rejected">Rejeitada</option></select></div>
-            <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-input" id="map-filter-date" /></div>
-            <div class="form-group"><button class="btn" id="btn-clear-map-filters"><i class="fa-solid fa-rotate-left"></i> Limpar</button></div>
-          </div>
-          <div id="map" class="map-container"></div>
-        </div>
-        <div class="card" id="supervisor-validation-panel">
-          <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-headphones"></i> Avaliar Gravações de Áudio</h3><span class="badge badge-warning">Supervisor / Analista</span></div>
-          <p class="text-muted">Ouça as gravações de campo e aprove ou rejeite para liberar o pagamento.</p>
-          <div id="audio-review-list"></div>
-        </div>
-      </section>
-
-      <!-- ===== VIEW: REPORTS ===== -->
-      <section id="view-reports" class="view-panel">
-        <div class="page-header">
-          <h1 class="page-title"><i class="fa-solid fa-table-list"></i> Auditoria e Relatórios</h1>
-          <p class="page-subtitle">Acompanhe detalhadamente todas as respostas coletadas pela equipe de campo.</p>
-        </div>
-        <div class="card">
-          <div class="filters-bar" style="margin-bottom:1.5rem;">
-            <div class="form-group"><label class="form-label">Formulário</label><select class="form-select" id="report-filter-form"><option value="all">Todos</option></select></div>
-            <div class="form-group"><label class="form-label">Pesquisador</label><select class="form-select" id="report-filter-researcher"><option value="all">Todos</option></select></div>
-            <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="report-filter-status"><option value="all">Todos</option><option value="pending">Pendente</option><option value="approved">Aprovada</option><option value="rejected">Rejeitada</option></select></div>
-            <div class="form-group"><label class="form-label">Buscar Data</label><input type="date" class="form-input" id="report-filter-date" /></div>
-            <div class="form-group"><button class="btn btn-primary" id="btn-export-reports"><i class="fa-solid fa-file-csv"></i> Exportar</button></div>
-          </div>
-          <div class="table-wrapper" style="max-height:600px;overflow-y:auto;">
-            <table class="data-table" id="reports-table">
-              <thead><tr><th>ID</th><th>Pesquisador</th><th>Formulário</th><th>Data/Hora</th><th>Status</th><th>Ações</th></tr></thead>
-              <tbody id="reports-tbody"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
+      <!-- (Old view-map and view-reports removed because they are now part of view-project-details) -->
+      
       <!-- ===== VIEW: FORM BUILDER ===== -->
       <section id="view-form-builder" class="view-panel">
         <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-clipboard-list"></i> Formulários de Pesquisa</h1><p class="page-subtitle">Crie e edite os questionários que serão usados em campo.</p></div>

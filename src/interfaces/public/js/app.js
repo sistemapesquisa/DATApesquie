@@ -1272,8 +1272,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Init map on first map tab visit
   const mapNav = document.getElementById('nav-map');
-  const initMapOnce = () => { setTimeout(() => initMap(), 200); mapNav.removeEventListener('click', initMapOnce); };
-  mapNav.addEventListener('click', initMapOnce);
+  if (mapNav) {
+    const initMapOnce = () => { setTimeout(() => initMap(), 200); mapNav.removeEventListener('click', initMapOnce); };
+    mapNav.addEventListener('click', initMapOnce);
+  }
 
   // Try loading logs quietly
   try { state.logs = await apiFetch('/api/logs'); } catch {}
