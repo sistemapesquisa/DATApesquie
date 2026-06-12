@@ -419,20 +419,20 @@ function renderDashboard() {
     const lastCollect = ints.length > 0 ? new Date(ints[ints.length-1].created_at).toLocaleDateString('pt-BR') : 'Sem dados';
     
     grid.innerHTML += `
-      <div class="card" style="cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.2s;" onclick="openProject('${form.id}')" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
-        <div>
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 1rem;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-              <i class="fa-solid fa-clipboard-list"></i>
-            </div>
-            <span class="badge badge-success">V${form.version}</span>
+      <div class="card" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; padding: 1rem 1.5rem; transition:transform 0.2s;" onclick="openProject('${form.id}')" onmouseover="this.style.background='var(--bg-sidebar-hover)'; this.style.color='white';" onmouseout="this.style.background='var(--bg-card)'; this.style.color='var(--text-primary)';">
+        <div style="display:flex; align-items:center; gap: 1rem;">
+          <div style="width: 40px; height: 40px; border-radius: 8px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+            <i class="fa-solid fa-clipboard-list"></i>
           </div>
-          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; line-height: 1.3;">${form.title}</h3>
-          <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 1.5rem;">Clique para gerenciar dados, exportar base ou visualizar mapa.</p>
+          <div>
+            <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0;">${form.title} <span class="badge badge-success" style="margin-left:0.5rem;font-size:0.7rem;">V${form.version}</span></h3>
+            <p class="text-muted" style="font-size: 0.85rem; margin: 0; color:inherit; opacity:0.8;">Clique para gerenciar dados, exportar base ou visualizar mapa.</p>
+          </div>
         </div>
-        <div style="border-top: 1px solid var(--border); padding-top: 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <div><strong style="font-size: 1.25rem;">${ints.length}</strong><span class="text-muted" style="font-size: 0.75rem; display:block;">COLETAS</span></div>
-          <div style="text-align:right;"><span class="text-muted" style="font-size: 0.75rem;">ÚLTIMA</span><br><strong style="font-size: 0.85rem;">${lastCollect}</strong></div>
+        <div style="display:flex; align-items:center; gap: 2rem; text-align:right;">
+          <div><span class="text-muted" style="font-size: 0.75rem; display:block; color:inherit; opacity:0.8;">COLETAS</span><strong style="font-size: 1.1rem;">${ints.length}</strong></div>
+          <div><span class="text-muted" style="font-size: 0.75rem; display:block; color:inherit; opacity:0.8;">ÚLTIMA COLETA</span><strong style="font-size: 0.9rem;">${lastCollect}</strong></div>
+          <i class="fa-solid fa-chevron-right text-muted" style="color:inherit; opacity:0.8;"></i>
         </div>
       </div>
     `;
@@ -977,12 +977,31 @@ function initDataExporter() {
     
     if (toExport.length === 0) { showToast('warning', 'Nenhum dado disponível para exportar neste projeto.'); return; }
     
-    let csv = 'ID,FormId,Versao,Pesquisador,DeviceID,Latitude,Longitude,AudioUrl,DataCriacao,AprovadoPor,RespostasJSON\r\n';
+    // Extract all unique JSON keys
+    let keys = new Set();
     toExport.forEach(i => {
-      const ans = JSON.stringify(i.data).replace(/"/g, '""');
-      csv += `"${i.id}","${i.form_id}",${i.form_version},"${i.researcher_id}","${i.device_id||''}","${i.latitude||''}","${i.longitude||''}","${i.audio_url||''}","${i.created_at}","${i.approved_by||''}","${ans}"\r\n`;
+      if (i.data) {
+        Object.keys(i.data).forEach(k => keys.add(k));
+      }
     });
-    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const dataKeys = Array.from(keys);
+    
+    let csv = 'ID;FormId;Versao;Pesquisador;DeviceID;Latitude;Longitude;AudioUrl;DataCriacao;AprovadoPor;';
+    csv += dataKeys.join(';') + '\r\n';
+    
+    toExport.forEach(i => {
+      let row = `"${i.id}";"${i.form_id}";${i.form_version};"${i.researcher_id}";"${i.device_id||''}";"${i.latitude||''}";"${i.longitude||''}";"${i.audio_url||''}";"${i.created_at}";"${i.approved_by||''}";`;
+      let ansVals = dataKeys.map(k => {
+        let val = (i.data && i.data[k]) ? i.data[k] : '';
+        if (Array.isArray(val)) val = val.join(', ');
+        return `"${String(val).replace(/"/g, '""')}"`;
+      });
+      row += ansVals.join(';') + '\r\n';
+      csv += row;
+    });
+    
+    // Use BOM for Excel UTF-8 support
+    const blob = new Blob(["\uFEFF" + csv], { type:'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `datapesquise_entrevistas_${new Date().toISOString().substring(0,10)}.csv`;

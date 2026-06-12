@@ -87,7 +87,7 @@
           <p class="page-subtitle">Selecione um projeto para visualizar o mapa de coleta, gerenciar dados e metadados.</p>
         </div>
 
-        <div class="projects-grid" id="projects-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+        <div class="projects-grid" id="projects-grid" style="display:flex; flex-direction:column; gap: 0.75rem;">
           <!-- Projects cards will be injected here via JS -->
         </div>
 
@@ -180,7 +180,7 @@
           </div>
           <div style="display:flex; gap:0.5rem;">
             <button class="btn btn-primary" id="btn-export-data"><i class="fa-solid fa-file-csv"></i> Exportar Dados</button>
-            <button class="btn btn-danger" id="btn-clear-tests" onclick="clearTestInterviews()"><i class="fa-solid fa-broom"></i> Limpar Base</button>
+            <button class="btn btn-danger" id="btn-clear-tests" onclick="clearTestInterviews()" title="Apagar Selecionados"><i class="fa-solid fa-trash"></i></button>
           </div>
         </div>
 
