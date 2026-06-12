@@ -347,7 +347,6 @@ router.post('/interviews', async (req, res) => {
   const now = new Date().toISOString();
 
   db.run(
-  db.run(
     `INSERT INTO interviews (id, form_id, form_version, researcher_id, data_json, latitude, longitude, audio_url, device_id, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [interviewId, formId, parseInt(formVersion), req.user.id, qJson, parseFloat(latitude) || null, parseFloat(longitude) || null, audioUrl, 'simulator', now],
