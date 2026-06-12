@@ -27,7 +27,7 @@ app.get('*', (req, res) => {
 initDb()
   .then(() => {
     app.listen(PORT, () => {
-      jsonLogger.info(`Antigravity Monolith Server booted successfully!`);
+      jsonLogger.info(`DATApesquise Monolith Server booted successfully!`);
       jsonLogger.info(`Local Dashboard available at http://localhost:${PORT}`);
     });
   })

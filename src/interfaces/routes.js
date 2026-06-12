@@ -410,7 +410,7 @@ router.post(['/submission', '/odk/submission'], upload.any(), (req, res) => {
       });
       res.status(201).send(`<?xml version='1.0' encoding='UTF-8' ?>
 <OpenRosaResponse xmlns="http://openrosa.org/http/response">
-  <message jr:value="Sucesso">Entrevista salva com sucesso na plataforma Antigravity.</message>
+  <message jr:value="Sucesso">Entrevista salva com sucesso na plataforma DATApesquise.</message>
 </OpenRosaResponse>`);
     }
   );

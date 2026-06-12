@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# Script de Deploy Automatizado - Antigravity Research Platform
+# Script de Deploy Automatizado - DATApesquise Research Platform
 # Compatível com: Debian / Ubuntu Linux
 # ==============================================================================
 
@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # Sem Cor
 
-echo -e "${BLUE}=== Iniciando Instalação & Deploy da Antigravity Research Platform ===${NC}\n"
+echo -e "${BLUE}=== Iniciando Instalação & Deploy da DATApesquise Research Platform ===${NC}\n"
 
 # 1. Verificar se está rodando como ROOT ou Sudo
 if [ "$EUID" -ne 0 ]; then
@@ -108,7 +108,7 @@ PORT=3000
 NODE_ENV=production
 DATABASE_PATH=/app/data/database.sqlite
 LOG_LEVEL=info
-ALERT_API_URL=https://alerts.ext.antigravity.corp/security-incidents
+ALERT_API_URL=https://alerts.ext.datapesquise.corp/security-incidents
 EOT
         echo -e "${YELLOW}[AVISO] .env.example não existia, criado .env padrão básico.${NC}"
     fi
@@ -129,7 +129,7 @@ if [ $? -eq 0 ]; then
     echo -e "• Endpoint ODK Collect FormList: ${YELLOW}http://localhost:3000/api/formList${NC}"
     echo -e "• Banco de dados SQLite persistido localmente em: ${YELLOW}./data/database.sqlite${NC}"
     echo -e "\nPara visualizar logs do container em tempo real execute:"
-    echo -e "  > ${BLUE}docker logs -f antigravity_monolith${NC}\n"
+    echo -e "  > ${BLUE}docker logs -f datapesquise_monolith${NC}\n"
 else
     echo -e "${RED}[ERRO] Falha ao subir os containers do Docker. Verifique a saída acima.${NC}"
     exit 1

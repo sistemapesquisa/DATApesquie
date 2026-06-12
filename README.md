@@ -1,4 +1,4 @@
-# Antigravity Research Platform 🛰️
+# DATApesquise Research Platform 🛰️
 
 > **Clean Architecture + Modular Monolith + ODK Collect Server + Container-First**
 
