@@ -30,8 +30,32 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 
-// Middleware to mock user parsing from headers
+// Middleware for authentication
 function authenticate(req, res, next) {
+  // 1. ODK Collect Basic Authentication
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Basic ')) {
+    const credentials = Buffer.from(authHeader.split(' ')[1], 'base64').toString('utf8');
+    const [email, password] = credentials.split(':');
+    
+    db.get('SELECT id, name, email, role, status FROM users WHERE email = ? AND password = ?', [email, password], (err, user) => {
+      if (!err && user && user.status !== 'deleted') {
+        req.user = user;
+        return next();
+      }
+      res.set('WWW-Authenticate', 'Basic realm="DATApesquise ODK"');
+      return res.status(401).send('Credenciais inválidas.');
+    });
+    return;
+  }
+
+  // 2. Enforce Basic Auth for ODK endpoints if not provided
+  if (req.path.includes('/formList') || req.path.includes('/odk/') || req.path.includes('/submission')) {
+    res.set('WWW-Authenticate', 'Basic realm="DATApesquise ODK"');
+    return res.status(401).send('Autenticação necessária.');
+  }
+
+  // 3. Fallback: Mock user parsing from headers (for local web UI tests)
   const role = req.headers['x-user-role'];
   const userId = req.headers['x-user-id'] || 'anonymous';
   
