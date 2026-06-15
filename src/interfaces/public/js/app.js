@@ -1027,7 +1027,13 @@ async function saveActiveForm() {
 
 // ===================== KOBO BUTTON HANDLERS =====================
 window.closeFormBuilder = () => {
-  switchTab('view-dashboard');
+  if (state.activeProjectFormId) {
+    switchTab('view-project-details');
+    // Force refresh of the data just in case the form changed
+    openProject(state.activeProjectFormId);
+  } else {
+    switchTab('view-dashboard');
+  }
 };
 
 window.previewActiveForm = () => {
