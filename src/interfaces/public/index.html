@@ -114,18 +114,39 @@
             <div class="card-header"><h3 class="card-title">Meus Formulários</h3><button class="btn btn-primary btn-sm" id="btn-new-form"><i class="fa-solid fa-plus"></i> Novo</button></div>
             <div id="forms-list-container"></div>
           </div>
-          <div class="card builder-workspace">
-            <div class="builder-header">
-              <input type="text" class="builder-title-input" id="form-edit-title" placeholder="Nome do Formulário..." />
-              <div class="builder-meta">
-                <span class="text-muted" style="font-size:0.8rem;">Versão: <strong id="form-edit-version">1</strong></span>
-                <select class="form-select" id="form-edit-status"><option value="draft">Rascunho</option><option value="published">Publicado</option></select>
-                <button class="btn btn-primary" id="btn-save-form"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+          <div class="card builder-workspace" style="padding:0; border:1px solid #dbe2e8; border-radius:4px; overflow:hidden; display:flex; flex-direction:column; background:#ffffff; height: calc(100vh - 120px);">
+            <div class="kobo-top-bar">
+              <div class="kobo-logo-box"><i class="fa-solid fa-check-to-slot"></i></div>
+              <div class="kobo-title-box">
+                <span class="kobo-title-label">projeto</span>
+                <input type="text" class="kobo-title-input" id="form-edit-title" placeholder="Nome do Projeto..." />
+              </div>
+              <div class="kobo-actions">
+                <select id="form-edit-status" style="border:1px solid #ccc; border-radius:4px; padding:4px; margin-right:8px; font-size:12px; height:32px;"><option value="draft">Rascunho</option><option value="published">Publicado</option></select>
+                <button class="kobo-btn-save" id="btn-save-form">SALVAR</button>
+                <button class="kobo-btn-close"><i class="fa-solid fa-xmark"></i></button>
               </div>
             </div>
-            <div id="skip-logic-errors" class="validation-banner"></div>
-            <div class="questions-header"><h4>Perguntas</h4><button class="btn btn-sm" id="btn-add-question"><i class="fa-solid fa-plus"></i> Adicionar Pergunta</button></div>
-            <div id="builder-questions-list"></div>
+            <div class="kobo-sub-bar">
+              <div class="kobo-sub-left">
+                <button><i class="fa-solid fa-eye"></i></button>
+                <button><i class="fa-solid fa-list-ul"></i></button>
+                <button><i class="fa-solid fa-copy"></i></button>
+                <button><i class="fa-solid fa-code-branch"></i></button>
+              </div>
+              <div class="kobo-sub-right">
+                <button><i class="fa-solid fa-book"></i> Adicionar da Biblioteca</button>
+                <button><i class="fa-solid fa-gear"></i> Layout e Configurações</button>
+              </div>
+            </div>
+            
+            <div id="skip-logic-errors" class="validation-banner" style="margin:1rem;"></div>
+            <div class="kobo-workspace-body" style="padding: 2rem; overflow-y:auto; flex:1; background:#ffffff;">
+              <div id="builder-questions-list" class="kobo-questions-container"></div>
+              <div style="text-align:center; margin-top:1rem;">
+                <button class="kobo-btn-add-q" id="btn-add-question" title="Add Question"><i class="fa-solid fa-plus"></i></button>
+              </div>
+            </div>
           </div>
         </div>
         

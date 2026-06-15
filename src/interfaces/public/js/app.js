@@ -682,7 +682,7 @@ function renderBuilderQuestions() {
   }
   state.activeForm.questions.forEach((q, idx) => {
     const card = document.createElement('div');
-    card.className = 'question-card';
+    card.className = 'kobo-question-row';
     card.draggable = true;
     card.dataset.index = idx;
     
@@ -717,61 +717,50 @@ function renderBuilderQuestions() {
     // Options HTML
     let optionsHtml = '';
     if (isChoice) {
-      optionsHtml = '<div style="margin-top:0.5rem;"><label class="form-label">Opções de resposta</label>';
+      optionsHtml = '<div style="margin-top:0.5rem;">';
       q.options.forEach((opt, oi) => {
         const val = typeof opt === 'object' ? opt.label : opt;
-        optionsHtml += `<div class="option-item"><input type="text" class="form-input" value="${val}" onchange="updateOption(${idx},${oi},this.value)" /><button class="btn btn-sm btn-danger" onclick="removeOption(${idx},${oi})" title="Remover opção"><i class="fa-solid fa-minus"></i></button></div>`;
+        const nameVal = typeof opt === 'object' ? opt.name : val.toLowerCase().replace(/[^a-z0-9]/g,'_');
+        optionsHtml += `
+          <div class="kobo-choice-row">
+            <button class="kobo-choice-trash" onclick="removeOption(${idx},${oi})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+            <input type="text" class="kobo-choice-input" value="${val}" onchange="updateOption(${idx},${oi},this.value)" />
+            <div class="kobo-choice-pill">${nameVal}</div>
+          </div>
+        `;
       });
-      optionsHtml += `<button class="btn btn-sm" onclick="addOption(${idx})" style="margin-top:0.3rem;"><i class="fa-solid fa-plus"></i> Nova opção</button></div>`;
-    }
-    
-    // Skip rules HTML (Backwards compatibility)
-    let rulesHtml = '';
-    if (q.skipRules && q.skipRules.length > 0) {
-      let targetOpts = '<option value="">(Próxima pergunta)</option>';
-      state.activeForm.questions.forEach((oq, oi) => {
-        if (oi !== idx) targetOpts += `<option value="${oq.id}">Pergunta ${oi+1}${oq.text?' - '+oq.text.substring(0,25)+'...':''}</option>`;
-      });
-      q.skipRules.forEach((rule, ri) => {
-        rulesHtml += `<div class="skip-rule-row"><span>Se resposta =</span><input type="text" class="form-input" value="${rule.conditionValue||''}" onchange="updateSkipValue(${idx},${ri},this.value)" style="width:90px;" placeholder="valor" /><span>→ Ir para</span><select class="form-select" onchange="updateSkipTarget(${idx},${ri},this.value)" style="width:auto;">${targetOpts.replace(`value="${rule.targetQuestionId}"`,`value="${rule.targetQuestionId}" selected`)}</select><button class="btn btn-sm btn-danger" onclick="confirmDeleteSkipRule(${idx},${ri})" title="Remover regra"><i class="fa-solid fa-trash"></i></button></div>`;
-      });
+      optionsHtml += `<div class="kobo-add-choice" onclick="addOption(${idx})">+ click to add another response...</div></div>`;
     }
 
     card.innerHTML = `
-      <div class="question-header">
-        <div style="display:flex;align-items:center;gap:0.5rem;flex:1;">
-          <div style="opacity:0.5;cursor:grab;margin-right:0.25rem;"><i class="fa-solid fa-grip-vertical"></i></div>
-          <span style="font-size:0.85rem;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Questão ${idx+1} <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;font-family:var(--font-mono);margin-left:0.5rem;">[${q.id}]</span></span>
-        </div>
-        <div class="question-actions">
-          <button class="btn-icon" onclick="openQuestionSettingsModal(${idx})" title="Configurações"><i class="fa-solid fa-gear"></i></button>
-          <button class="btn-icon" onclick="duplicateQuestion(${idx})" title="Duplicar"><i class="fa-solid fa-copy"></i></button>
-          <button class="btn-icon" style="color:var(--danger);" onclick="confirmDeleteQuestion(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-        </div>
+      <div class="kobo-question-left">
+        <i class="kobo-question-icon fa-solid fa-circle-dot"></i>
       </div>
-      <div class="question-body">
-        <div style="display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;margin-bottom:0.5rem;">
-          <div class="form-group" style="margin:0;"><label class="form-label" style="font-size:0.65rem;color:var(--text-muted);">Texto da Pergunta</label><input type="text" class="form-input" style="border:none;border-bottom:1px solid var(--border);border-radius:0;padding:0.4rem 0;font-size:0.95rem;font-weight:500;box-shadow:none;" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="Escreva a pergunta aqui..." /></div>
-          <div class="form-group" style="margin:0;"><label class="form-label" style="font-size:0.65rem;color:var(--text-muted);">Tipo de Entrada</label>
-          <select class="form-select" onchange="updateQType(${idx},this.value)" style="border:none;border-bottom:1px solid var(--border);border-radius:0;padding:0.4rem 0;font-size:0.85rem;box-shadow:none;cursor:pointer;">
+      <div class="kobo-question-center">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <input type="text" class="kobo-question-text" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="${idx+1}. Escreva a pergunta aqui..." />
+          <select style="border:none; color:#64748b; font-size:0.8rem; outline:none; background:transparent; cursor:pointer;" onchange="updateQType(${idx},this.value)">
             <option value="text" ${q.type==='text'?'selected':''}>Texto Livre</option>
             <option value="number" ${q.type==='number'||q.type==='decimal'?'selected':''}>Número (Decimal)</option>
             <option value="integer" ${q.type==='integer'?'selected':''}>Número (Inteiro)</option>
             <option value="single_choice" ${q.type==='single_choice'||q.type==='select_one'?'selected':''}>Seleção Única</option>
             <option value="multiple_choice" ${q.type==='multiple_choice'||q.type==='select_multiple'?'selected':''}>Múltipla Escolha</option>
-            <option value="geopoint" ${q.type==='geopoint'?'selected':''}>Localização (GPS)</option>
+            <option value="geopoint" ${q.type==='geopoint'?'selected':''}>GPS</option>
             <option value="image" ${q.type==='image'?'selected':''}>Foto / Imagem</option>
             <option value="video" ${q.type==='video'?'selected':''}>Vídeo</option>
-            <option value="audio_record" ${q.type==='audio_record'||q.type==='audio'?'selected':''}>Gravação de Áudio</option>
-          </select></div>
+            <option value="audio_record" ${q.type==='audio_record'||q.type==='audio'?'selected':''}>Áudio</option>
+          </select>
         </div>
+        <input type="text" class="kobo-question-hint" value="Question hint" readonly />
         ${optionsHtml}
-        <div style="margin-top:0.75rem;padding-top:0.6rem;font-size:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
-          ${q.required?'<span class="badge badge-danger">Obrigatória</span>':''}
-          ${q.relevant?`<span class="badge badge-info" title="Pulo"><i class="fa-solid fa-code-branch"></i> ${q.relevant}</span>`:''}
-          ${q.constraint?`<span class="badge badge-warning" title="Regra"><i class="fa-solid fa-shield"></i> ${q.constraint}</span>`:''}
-        </div>
-      </div>`;
+      </div>
+      <div class="kobo-question-right">
+        <button class="kobo-btn-gear" onclick="openQuestionSettingsModal(${idx})" title="Configurações"><i class="fa-solid fa-gear"></i></button>
+        <button class="kobo-btn-trash" onclick="confirmDeleteQuestion(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+        <button class="kobo-btn-copy" onclick="duplicateQuestion(${idx})" title="Duplicar"><i class="fa-solid fa-copy"></i></button>
+        <button class="kobo-btn-branch" onclick="addSkipRule(${idx})" title="Regra de Pulo"><i class="fa-solid fa-code-branch"></i></button>
+      </div>
+    `;
     container.appendChild(card);
   });
 }
