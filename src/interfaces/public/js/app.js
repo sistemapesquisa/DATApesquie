@@ -349,7 +349,7 @@ function switchTab(targetId) {
   if (targetId === 'view-map' && state.map) setTimeout(() => state.map.invalidateSize(), 150);
   // Load logs when switching to logs tab
   if (targetId === 'view-logs') fetchLogs();
-  if (targetId === 'view-team-routes') loadTeamAndRoutes();
+  if (targetId === 'view-team') loadTeam();
   if (targetId === 'view-reports') renderReportsTable();
 }
 
@@ -448,6 +448,8 @@ window.openProject = function(formId) {
   document.getElementById('project-details-title').innerHTML = `<i class="fa-solid fa-clipboard-list"></i> ${form.title}`;
   switchTab('view-project-details');
   
+  loadProjectAccess();
+
   // Setup tabs
   document.querySelectorAll('#view-project-details .tab-link').forEach(el => {
     el.onclick = function() {
@@ -1013,10 +1015,9 @@ function initDataExporter() {
   });
 }
 
-// ===================== TEAM & ROUTES =====================
-async function loadTeamAndRoutes() {
+// ===================== TEAM =====================
+async function loadTeam() {
   const usersTable = document.getElementById('users-tbody');
-  const routesTable = document.getElementById('routes-tbody');
   try {
     const users = await apiFetch('/api/users');
     const routes = await apiFetch('/api/routes');
@@ -1038,32 +1039,52 @@ async function loadTeamAndRoutes() {
       });
     }
 
-    if(routesTable) {
-      routesTable.innerHTML = '';
-      routes.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${r.researcher_name}</td>
-          <td>${r.form_title}</td>
-          <td>${r.city || '-'}</td>
-          <td>
-            <button class="btn-icon" style="color:var(--danger)" onclick="deleteRoute('${r.id}')" title="Remover Atribuição"><i class="fa-solid fa-trash"></i></button>
-          </td>
-        `;
-        routesTable.appendChild(tr);
-      });
-    }
     
     const resSelect = document.getElementById('route-form-researcher');
-    const formSelect = document.getElementById('route-form-id');
     if(resSelect) {
       resSelect.innerHTML = users.filter(u => u.status !== 'deleted' && u.role === 'Researcher').map(u => `<option value="${u.id}">${u.name}</option>`).join('');
     }
-    if(formSelect) {
-      formSelect.innerHTML = forms.filter(f => f.status === 'published').map(f => `<option value="${f.id}">${f.title} (V${f.version})</option>`).join('');
+  } catch(err) {
+    showToast('error', 'Erro ao carregar equipe.');
+  }
+}
+
+async function loadProjectAccess() {
+  if (!state.activeProjectFormId) return;
+  const routesTable = document.getElementById('routes-tbody');
+  if (!routesTable) return;
+  try {
+    const routes = await apiFetch('/api/routes');
+    const projectRoutes = routes.filter(r => r.form_id === state.activeProjectFormId);
+    
+    routesTable.innerHTML = '';
+    if (projectRoutes.length === 0) {
+      routesTable.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nenhum pesquisador atribuído a este projeto.</td></tr>';
+      return;
+    }
+    
+    projectRoutes.forEach(r => {
+      const date = new Date(r.created_at).toLocaleDateString('pt-BR');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${r.researcher_name}</strong></td>
+        <td>${r.city || '-'}</td>
+        <td>${date}</td>
+        <td>
+          <button class="btn-icon" style="color:var(--danger)" onclick="deleteRoute('${r.id}')" title="Remover Acesso"><i class="fa-solid fa-trash"></i></button>
+        </td>
+      `;
+      routesTable.appendChild(tr);
+    });
+    
+    // Certifique-se de popular o select de pesquisadores se ainda não estiver
+    const users = await apiFetch('/api/users');
+    const resSelect = document.getElementById('route-form-researcher');
+    if (resSelect && resSelect.options.length === 0) {
+      resSelect.innerHTML = users.filter(u => u.status !== 'deleted' && u.role === 'Researcher').map(u => `<option value="${u.id}">${u.name}</option>`).join('');
     }
   } catch(err) {
-    showToast('error', 'Erro ao carregar equipe e rotas.');
+    showToast('error', 'Erro ao carregar acessos do projeto.');
   }
 }
 
@@ -1096,7 +1117,7 @@ window.saveUser = async function() {
       showToast('success', 'Usuário criado!');
     }
     closeUserModal();
-    loadTeamAndRoutes();
+    loadTeam();
   } catch(err) { showToast('error', err.message); }
 };
 window.editUser = async function(id) {
@@ -1119,34 +1140,38 @@ window.deleteUser = function(id) {
     try {
       await apiFetch(`/api/users/${id}`, { method: 'DELETE' });
       showToast('success', 'Usuário removido.');
-      loadTeamAndRoutes();
+      loadTeam();
     } catch(err) { showToast('error', err.message); }
   });
 };
 
 window.openRouteModal = function() {
+  if (!state.activeProjectFormId) {
+    showToast('error', 'Nenhum projeto selecionado.');
+    return;
+  }
   document.getElementById('route-form-city').value = '';
   document.getElementById('route-modal').classList.add('active');
 };
 window.closeRouteModal = function() { document.getElementById('route-modal').classList.remove('active'); };
 window.saveRoute = async function() {
   const researcher_id = document.getElementById('route-form-researcher').value;
-  const form_id = document.getElementById('route-form-id').value;
+  const form_id = state.activeProjectFormId;
   const city = document.getElementById('route-form-city').value;
-  if(!researcher_id || !form_id) { showToast('warning', 'Selecione o pesquisador e o formulário.'); return; }
+  if(!researcher_id || !form_id) { showToast('warning', 'Selecione o pesquisador.'); return; }
   try {
     await apiFetch('/api/routes', { method: 'POST', body: JSON.stringify({ researcher_id, form_id, city }) });
-    showToast('success', 'Formulário habilitado!');
+    showToast('success', 'Acesso habilitado para o projeto!');
     closeRouteModal();
-    loadTeamAndRoutes();
+    loadProjectAccess();
   } catch(err) { showToast('error', err.message); }
 };
 window.deleteRoute = function(id) {
-  showConfirm('Remover Atribuição', 'O pesquisador não terá mais acesso a este formulário. Continuar?', async () => {
+  showConfirm('Remover Acesso', 'O pesquisador não terá mais acesso a este projeto no aplicativo. Continuar?', async () => {
     try {
       await apiFetch(`/api/routes/${id}`, { method: 'DELETE' });
-      showToast('success', 'Atribuição removida.');
-      loadTeamAndRoutes();
+      showToast('success', 'Acesso removido.');
+      loadProjectAccess();
     } catch(err) { showToast('error', err.message); }
   });
 };

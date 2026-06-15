@@ -34,7 +34,7 @@
         <a class="nav-item" data-target="view-form-builder" id="nav-form-builder"><i class="fa-solid fa-clipboard-list"></i><span>Formulários</span></a>
         <a class="nav-item" data-target="view-mobile-sim" id="nav-mobile-sim"><i class="fa-solid fa-mobile-screen"></i><span>Coletar Dados</span></a>
         <div class="nav-divider"></div>
-        <a class="nav-item" data-target="view-team-routes" id="nav-team-routes"><i class="fa-solid fa-users-gear"></i><span>Equipe e Acessos</span></a>
+        <a class="nav-item" data-target="view-team" id="nav-team"><i class="fa-solid fa-users"></i><span>Gerenciar Equipe</span></a>
         <a class="nav-item" data-target="view-roles" id="nav-roles"><i class="fa-solid fa-user-shield"></i><span>Cargos e Permissões</span></a>
         <a class="nav-item" data-target="view-equipment" id="nav-equipment"><i class="fa-solid fa-server"></i><span>Equipamentos</span></a>
         <a class="nav-item" data-target="view-logs" id="nav-logs"><i class="fa-solid fa-shield-halved"></i><span>Auditoria de Logs</span></a>
@@ -149,6 +149,7 @@
           <div class="tab-link active" data-tab="proj-tab-data" style="padding:0.5rem 1rem; cursor:pointer; font-weight:600; border-bottom:2px solid var(--primary); color:var(--primary);"><i class="fa-solid fa-table"></i> Dados e Entrevistas</div>
           <div class="tab-link" data-tab="proj-tab-map" style="padding:0.5rem 1rem; cursor:pointer; font-weight:600; border-bottom:2px solid transparent; color:var(--text-secondary);"><i class="fa-solid fa-map"></i> Mapa de Coleta</div>
           <div class="tab-link" data-tab="proj-tab-audio" style="padding:0.5rem 1rem; cursor:pointer; font-weight:600; border-bottom:2px solid transparent; color:var(--text-secondary);"><i class="fa-solid fa-microphone"></i> Gravações</div>
+          <div class="tab-link" data-tab="proj-tab-access" style="padding:0.5rem 1rem; cursor:pointer; font-weight:600; border-bottom:2px solid transparent; color:var(--text-secondary);"><i class="fa-solid fa-user-plus"></i> Acessos</div>
         </div>
 
         <div class="tab-content active" id="proj-tab-data">
@@ -170,6 +171,19 @@
 
         <div class="tab-content" id="proj-tab-audio" style="display:none;">
           <div class="card" id="audio-review-list"></div>
+        </div>
+
+        <div class="tab-content" id="proj-tab-access" style="display:none;">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-route"></i> Pesquisadores Atribuídos</h3><button class="btn btn-primary btn-sm" onclick="openRouteModal()"><i class="fa-solid fa-plus"></i> Atribuir Acesso</button></div>
+            <p class="text-muted" style="margin-bottom:1rem;">Apenas os pesquisadores nesta lista poderão baixar e preencher este formulário no ODK Collect.</p>
+            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+              <table class="data-table" id="routes-table">
+                <thead><tr><th>Pesquisador</th><th>Região / Cidade</th><th>Atribuído em</th><th>Ações</th></tr></thead>
+                <tbody id="routes-tbody"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -259,29 +273,17 @@
         </div>
       </section>
 
-      <!-- ===== VIEW: TEAM & ROUTES ===== -->
-      <section id="view-team-routes" class="view-panel">
-        <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-users-gear"></i> Equipe e Rotas</h1><p class="page-subtitle">Gerencie usuários, cargos e atribua formulários aos pesquisadores.</p></div>
+      <!-- ===== VIEW: TEAM ===== -->
+      <section id="view-team" class="view-panel">
+        <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-users"></i> Gerenciar Equipe</h1><p class="page-subtitle">Crie e edite as contas de usuários do sistema.</p></div>
         
-        <div class="dashboard-grid">
-          <div class="card">
-            <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-user-plus"></i> Gerenciar Usuários</h3><button class="btn btn-primary btn-sm" onclick="openUserModal()"><i class="fa-solid fa-plus"></i> Novo Usuário</button></div>
-            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
-              <table class="data-table" id="users-table">
-                <thead><tr><th>Nome / E-mail</th><th>Cargo</th><th>Ações</th></tr></thead>
-                <tbody id="users-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-route"></i> Rotas e Formulários</h3><button class="btn btn-primary btn-sm" onclick="openRouteModal()"><i class="fa-solid fa-plus"></i> Nova Rota</button></div>
-            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
-              <table class="data-table" id="routes-table">
-                <thead><tr><th>Pesquisador</th><th>Formulário</th><th>Região</th><th>Ações</th></tr></thead>
-                <tbody id="routes-tbody"></tbody>
-              </table>
-            </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-user-plus"></i> Usuários</h3><button class="btn btn-primary btn-sm" onclick="openUserModal()"><i class="fa-solid fa-plus"></i> Novo Usuário</button></div>
+          <div class="table-wrapper" style="max-height: 500px; overflow-y: auto;">
+            <table class="data-table" id="users-table">
+              <thead><tr><th>Nome / E-mail</th><th>Cargo</th><th>Ações</th></tr></thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
           </div>
         </div>
 
@@ -311,10 +313,9 @@
 
         <div class="modal-overlay" id="route-modal">
           <div class="modal-box">
-            <div class="modal-title">Atribuir Formulário</div>
-            <p class="modal-message" style="margin-bottom:1rem;">Habilite um formulário específico para o aplicativo de um pesquisador.</p>
+            <div class="modal-title">Atribuir Acesso ao Projeto</div>
+            <p class="modal-message" style="margin-bottom:1rem;">Selecione o pesquisador que poderá realizar as coletas deste projeto no aplicativo.</p>
             <div class="form-group"><label class="form-label">Pesquisador</label><select class="form-select" id="route-form-researcher"></select></div>
-            <div class="form-group"><label class="form-label">Formulário</label><select class="form-select" id="route-form-id"></select></div>
             <div class="form-group"><label class="form-label">Região / Cidade</label><input type="text" class="form-input" id="route-form-city" placeholder="Ex: Petrolina" /></div>
             <div class="modal-actions" style="margin-top:1.5rem;">
               <button class="btn" onclick="closeRouteModal()">Cancelar</button>
