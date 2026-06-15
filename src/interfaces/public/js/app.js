@@ -555,6 +555,8 @@ window.renderCharts = function() {
       });
       window._analyticsCharts.push(chart);
     }
+  });
+
   if (container.innerHTML === '') {
     container.innerHTML = '<p class="text-muted" style="grid-column: 1 / -1; text-align: center;">Nenhuma questão de múltipla escolha para gerar gráficos.</p>';
   }
