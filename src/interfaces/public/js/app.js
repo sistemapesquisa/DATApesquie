@@ -422,15 +422,19 @@ function renderDashboard() {
     const isPub = form.status === 'published';
     const statusBadge = isPub ? '<span class="kobo-status-badge"><i class="fa-solid fa-satellite-dish"></i> disponibilizado</span>' : '<span class="kobo-status-badge" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-pen"></i> rascunho</span>';
     
+    // Fallbacks for missing dates since the DB schema didn't track these closely initially
+    const modDateStr = form.updated_at ? new Date(form.updated_at).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+    const pubDateStr = isPub ? modDateStr : '-';
+
     grid.innerHTML += `
       <tr>
         <td><input type="checkbox" class="proj-checkbox" value="${form.id}"></td>
         <td><span class="kobo-project-name" onclick="openProject('${form.id}')">${form.title}</span></td>
         <td>${statusBadge}</td>
         <td><div class="kobo-owner-badge"><div class="kobo-owner-circle">${initial}</div> ${name.split(' ')[0].toLowerCase()}</div></td>
-        <td>Última Sexta-feira</td>
-        <td>Última Sexta-feira</td>
-        <td>${isPub ? 'Última Sexta-feira' : '-'}</td>
+        <td>${modDateStr}</td>
+        <td>${modDateStr}</td>
+        <td>${pubDateStr}</td>
         <td><span class="kobo-count-pill">${ints.length}</span></td>
       </tr>
     `;
@@ -1743,4 +1747,49 @@ window.closeAdvLogicModal = function() {
   document.getElementById('advanced-logic-modal').classList.remove('active');
   renderBuilderQuestions();
   showToast('success', 'Regras de pulo atualizadas!');
+};
+
+// ===================== DASHBOARD BULK ACTIONS =====================
+window.archiveSelectedProjects = function() {
+  const checkboxes = document.querySelectorAll('.proj-checkbox:checked');
+  if (checkboxes.length === 0) {
+    showToast('warning', 'Selecione pelo menos um projeto para arquivar.');
+    return;
+  }
+  showToast('info', 'Arquivamento será implementado na próxima versão. (Mocked)');
+};
+
+window.dashboardShareSelected = function() {
+  const checkboxes = document.querySelectorAll('.proj-checkbox:checked');
+  if (checkboxes.length === 0) {
+    showToast('warning', 'Selecione um projeto para gerenciar acessos.');
+    return;
+  }
+  if (checkboxes.length > 1) {
+    showToast('warning', 'Selecione apenas um projeto para compartilhar.');
+    return;
+  }
+  const formId = checkboxes[0].value;
+  state.activeProjectFormId = formId;
+  openRouteModal();
+};
+
+window.deleteSelectedProjects = function() {
+  const checkboxes = document.querySelectorAll('.proj-checkbox:checked');
+  if (checkboxes.length === 0) {
+    showToast('warning', 'Selecione pelo menos um projeto para excluir.');
+    return;
+  }
+  showConfirm('Excluir Projetos', `Tem certeza que deseja excluir ${checkboxes.length} projeto(s)? Todos os dados serão perdidos.`, async () => {
+    try {
+      for (const cb of checkboxes) {
+        await apiFetch(`/api/forms/${cb.value}`, { method: 'DELETE' });
+      }
+      showToast('success', 'Projetos excluídos com sucesso.');
+      await loadServerData();
+      renderDashboard();
+    } catch (err) {
+      showToast('error', 'Erro ao excluir projetos: ' + err.message);
+    }
+  });
 };
