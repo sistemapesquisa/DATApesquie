@@ -372,8 +372,6 @@ window.openProject = function(formId) {
 
   renderReportsTable();
   renderCharts();
-  if (!state.map) initMap();
-  else renderMapMarkers();
   renderAudioReviewList();
 };
 
@@ -386,8 +384,15 @@ window.koboSwitchTab = function(tabId) {
   const target = document.getElementById(tabId);
   if (target) target.style.display = 'block';
   
-  if (tabId === 'proj-tab-mapa' && state.map) {
-    setTimeout(() => state.map.invalidateSize(), 150);
+  if (tabId === 'proj-tab-mapa') {
+    if (!state.map) {
+      setTimeout(() => initMap(), 100);
+    } else {
+      setTimeout(() => {
+        state.map.invalidateSize();
+        renderMapMarkers();
+      }, 150);
+    }
   }
 };
 
