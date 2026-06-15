@@ -650,58 +650,39 @@ window.clearTestInterviews = function() {
   }, { type:'danger', confirmText:'Apagar Dados' });
 };
 
-window.exportProjectData = function() {
+window.exportProjectData = async function() {
   if (!state.activeProjectFormId) return;
-  const form = state.forms.find(f => f.id === state.activeProjectFormId);
-  const interviews = state.interviews.filter(i => i.form_id === state.activeProjectFormId);
-  if (interviews.length === 0) {
-    showToast('warning', 'Não há dados para exportar.');
-    return;
-  }
+  const formId = state.activeProjectFormId;
+  const form = state.forms.find(f => f.id === formId);
   
-  // Collect columns
-  const baseCols = ['_id', '_uuid', 'start', 'end', 'deviceid', 'username'];
-  const dataCols = new Set();
-  interviews.forEach(int => {
-    Object.keys(int.data || {}).forEach(k => dataCols.add(k));
-  });
-  const allCols = [...baseCols, ...Array.from(dataCols), 'audio_url', '_status'];
+  showToast('info', 'Gerando arquivo CSV no servidor...');
   
-  // Build CSV
-  let csv = allCols.join(',') + '\n';
-  interviews.forEach(int => {
-    const row = [];
-    allCols.forEach(col => {
-      let val = '';
-      if (col === '_id') val = int.id;
-      else if (col === '_uuid') val = int.id;
-      else if (col === 'start') val = new Date(int.created_at).toISOString();
-      else if (col === 'end') val = new Date(int.created_at).toISOString();
-      else if (col === 'deviceid') val = int.device_id || 'unknown';
-      else if (col === 'username') val = int.researcher_id || '';
-      else if (col === 'audio_url') val = int.audio_url || '';
-      else if (col === '_status') val = 'submitted_via_web';
-      else val = (int.data && int.data[col] !== undefined) ? int.data[col] : '';
-      
-      // Escape for CSV
-      if (typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))) {
-        val = '"' + val.replace(/"/g, '""') + '"';
+  try {
+    const response = await fetch(`/api/export/${formId}`, {
+      headers: {
+        'x-user-id': state.activeUserId,
+        'x-user-role': state.activeRole
       }
-      row.push(val);
     });
-    csv += row.join(',') + '\n';
-  });
-  
-  // Download file
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `DATApesquise_${form.title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  showToast('success', 'Download iniciado! Padrão KoboToolbox.');
+    
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Erro na exportação');
+    }
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `DATApesquise_${form ? form.title.replace(/\s+/g, '_') : formId}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+    showToast('success', 'Download concluído!');
+  } catch (err) {
+    showToast('error', err.message);
+  }
 };
 
 // ===================== AUDIO REVIEW =====================

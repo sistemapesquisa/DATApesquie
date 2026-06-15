@@ -659,6 +659,59 @@ router.post(['/submission', '/odk/submission'], upload.any(), (req, res) => {
     }
   );
 });
+// --- DATA EXPORT ---
+router.get('/export/:formId', (req, res) => {
+  const formId = req.params.formId;
+  const isAdminOrAnalyst = checkPermission(req.user.role, PERMISSIONS.VIEW_REPORTS);
+  if (!isAdminOrAnalyst) return res.status(403).json({ error: 'Acesso negado: apenas Administradores e Analistas podem exportar dados.' });
+
+  db.get('SELECT * FROM forms WHERE id = ?', [formId], (err, formRow) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!formRow) return res.status(404).json({ error: 'Formulário não encontrado' });
+
+    let questions = [];
+    try {
+      questions = JSON.parse(formRow.questions_json) || [];
+    } catch {}
+
+    db.all('SELECT * FROM interviews WHERE form_id = ? ORDER BY created_at DESC', [formId], (err, interviews) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      const headers = ['ID_Entrevista', 'Data_Hora', 'Pesquisador', 'Dispositivo', 'Latitude', 'Longitude'];
+      questions.forEach(q => headers.push(q.text));
+
+      const rows = [];
+      rows.push(headers.map(h => `"${(h || '').toString().replace(/"/g, '""')}"`).join(','));
+
+      interviews.forEach(int => {
+        const row = [
+          int.id,
+          int.created_at,
+          int.researcher_id,
+          int.device_id || 'N/A',
+          int.latitude || '',
+          int.longitude || ''
+        ];
+        
+        let ans = {};
+        try { ans = JSON.parse(int.data_json) || {}; } catch {}
+
+        questions.forEach(q => {
+          row.push(ans[q.id] || '');
+        });
+
+        rows.push(row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(','));
+      });
+
+      const csvContent = rows.join('\n');
+      res.set({
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="export_${formId}.csv"`
+      });
+      res.send(Buffer.from('\uFEFF' + csvContent, 'utf-8'));
+    });
+  });
+});
 
 module.exports = router;
 
