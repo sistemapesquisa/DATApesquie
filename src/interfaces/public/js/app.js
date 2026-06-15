@@ -228,11 +228,25 @@ function switchTab(targetId) {
   if (targetId === 'view-logs') fetchLogs();
   if (targetId === 'view-team') loadTeam();
   if (targetId === 'view-reports') renderReportsTable();
+  if (targetId === 'view-roles') loadRoles();
+  if (targetId === 'view-mobile-sim') {
+    if (!state.simActiveForm && state.activeForm && state.activeForm.status === 'published') {
+      state.simActiveForm = state.activeForm;
+      state.simAnswers = {};
+      state.simCurrentQuestionIdx = 0;
+    }
+    if (state.simActiveForm) {
+      renderMobileScreen();
+    } else {
+      document.getElementById('phone-screen-body').innerHTML = '<div style="padding:2rem;text-align:center;color:#64748b;">Nenhum formulário publicado selecionado.<br><br>Vá até a aba de Projetos, publique um formulário e clique em Preview.</div>';
+    }
+  }
 }
 
 // ===================== RBAC =====================
 const NAV_PERMISSIONS = {
-  'nav-team-routes': ['DEV','Admin','Coordinator'],
+  'nav-team': ['DEV','Admin','Coordinator'],
+  'nav-roles': ['DEV','Admin'],
   'nav-form-builder': ['DEV','Admin','Analyst'],
   'nav-logs': ['DEV'],
   'nav-ai': ['DEV','Admin','Analyst','Supervisor','Coordinator'],
