@@ -1676,7 +1676,6 @@ window.openAdvLogicModal = function(idx) {
   document.getElementById('adv-logic-q-idx').value = idx;
   const q = state.activeForm.questions[idx];
   
-  // Populate target questions dropdown (only questions before this one)
   const select = document.getElementById('adv-logic-target-q');
   select.innerHTML = '';
   for (let i = 0; i < idx; i++) {
@@ -1691,7 +1690,6 @@ window.openAdvLogicModal = function(idx) {
     return;
   }
 
-  // Ensure q._logic array exists
   if (!q._logic) {
     q._logic = [];
     if (q.relevant) {
@@ -1699,17 +1697,60 @@ window.openAdvLogicModal = function(idx) {
     }
   }
 
+  document.getElementById('adv-logic-join').value = 'and';
+  window.updateAdvLogicOperatorsAndValues();
   renderAdvLogicList(idx);
   document.getElementById('advanced-logic-modal').classList.add('active');
+};
+
+window.updateAdvLogicOperatorsAndValues = function() {
+  const targetId = document.getElementById('adv-logic-target-q').value;
+  const opSelect = document.getElementById('adv-logic-op');
+  const valContainer = document.getElementById('adv-logic-val-container');
+  
+  if (!targetId) return;
+  const targetQ = state.activeForm.questions.find(q => q.id === targetId);
+  if (!targetQ) return;
+  
+  const isSelect = targetQ.type === 'select_one' || targetQ.type === 'select_multiple';
+  const isNumber = targetQ.type === 'integer' || targetQ.type === 'decimal';
+  
+  // Filter operators
+  if (isSelect || targetQ.type === 'text') {
+    Array.from(opSelect.options).forEach(opt => {
+      opt.style.display = (opt.value === '=' || opt.value === '!=') ? 'block' : 'none';
+    });
+    if (opSelect.value === '>' || opSelect.value === '<') opSelect.value = '=';
+  } else {
+    Array.from(opSelect.options).forEach(opt => { opt.style.display = 'block'; });
+  }
+  
+  // Dynamic Input
+  if (isSelect) {
+    let optionsHtml = targetQ.options.map(o => `<option value="${o.name}">${o.label}</option>`).join('');
+    valContainer.innerHTML = `<select class="form-select" id="adv-logic-val" style="width:100%;">${optionsHtml}</select>`;
+  } else if (isNumber) {
+    valContainer.innerHTML = `<input type="number" class="form-input" id="adv-logic-val" placeholder="Valor numérico" style="width:100%;" />`;
+  } else {
+    valContainer.innerHTML = `<input type="text" class="form-input" id="adv-logic-val" placeholder="Texto livre" style="width:100%;" />`;
+  }
 };
 
 window.addAdvLogicCondition = function() {
   const idx = parseInt(document.getElementById('adv-logic-q-idx').value);
   const q = state.activeForm.questions[idx];
   const targetId = document.getElementById('adv-logic-target-q').value;
-  const targetText = document.getElementById('adv-logic-target-q').options[document.getElementById('adv-logic-target-q').selectedIndex]?.text || targetId;
+  const targetQ = state.activeForm.questions.find(que => que.id === targetId);
+  const targetText = targetQ ? targetQ.text : targetId;
+  const join = document.getElementById('adv-logic-join').value;
   const op = document.getElementById('adv-logic-op').value;
-  const val = document.getElementById('adv-logic-val').value.trim();
+  
+  const valElement = document.getElementById('adv-logic-val');
+  const val = valElement.value.trim();
+  let valLabel = val;
+  if (valElement.tagName === 'SELECT') {
+    valLabel = valElement.options[valElement.selectedIndex]?.text || val;
+  }
   
   if (!targetId || !val) {
     showToast('warning', 'Preencha todos os campos da condição.');
@@ -1721,17 +1762,35 @@ window.addAdvLogicCondition = function() {
   else if (op === '!=') syntax = `\${${targetId}} != '${val}'`;
   else syntax = `\${${targetId}} ${op} ${val}`;
 
-  q._logic.push({ targetId, target: targetText, op, val, raw: syntax });
-  q.relevant = q._logic.map(l => l.raw).join(' and ');
+  q._logic.push({ targetId, target: targetText, op, val, valLabel, join, raw: syntax });
   
-  document.getElementById('adv-logic-val').value = '';
+  // Build relevant string
+  let relevantStr = '';
+  q._logic.forEach((rule, i) => {
+    if (i === 0) {
+      relevantStr = `(${rule.raw})`;
+    } else {
+      relevantStr += ` ${rule.join || 'and'} (${rule.raw})`;
+    }
+  });
+  q.relevant = relevantStr;
+  
+  if (valElement.tagName === 'INPUT') valElement.value = '';
   renderAdvLogicList(idx);
 };
 
 window.removeAdvLogicCondition = function(idx, logicIdx) {
   const q = state.activeForm.questions[idx];
   q._logic.splice(logicIdx, 1);
-  q.relevant = q._logic.map(l => l.raw).join(' and ');
+  let relevantStr = '';
+  q._logic.forEach((rule, i) => {
+    if (i === 0) {
+      relevantStr = `(${rule.raw})`;
+    } else {
+      relevantStr += ` ${rule.join || 'and'} (${rule.raw})`;
+    }
+  });
+  q.relevant = relevantStr;
   renderAdvLogicList(idx);
 };
 
@@ -1746,10 +1805,12 @@ window.renderAdvLogicList = function(idx) {
   }
 
   q._logic.forEach((rule, i) => {
-    let display = rule.target ? `${rule.target} ${rule.op} ${rule.val}` : rule.raw;
+    let joinBadge = i === 0 ? '' : `<span class="badge badge-info" style="margin-right:0.5rem;">${rule.join === 'or' ? 'OU' : 'E'}</span>`;
+    let display = rule.target ? `${joinBadge}<span style="font-weight:600;">[${rule.target}]</span> ${rule.op} <span style="font-weight:600; color:var(--primary);">${rule.valLabel || rule.val}</span>` : `${joinBadge}${rule.raw}`;
+    
     tbody.innerHTML += `
       <tr>
-        <td style="font-family:monospace; font-size:0.85rem;">${display}</td>
+        <td style="font-size:0.85rem;">${display}</td>
         <td><button class="btn btn-sm" style="color:#dc2626;background:transparent;border:none;" onclick="removeAdvLogicCondition(${idx}, ${i})"><i class="fa-solid fa-trash"></i></button></td>
       </tr>
     `;
