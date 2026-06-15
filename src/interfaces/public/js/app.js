@@ -867,6 +867,54 @@ async function saveActiveForm() {
   setButtonLoading(btn, false);
 }
 
+// ===================== KOBO BUTTON HANDLERS =====================
+window.closeFormBuilder = () => {
+  switchTab('view-dashboard');
+};
+
+window.previewActiveForm = () => {
+  if (state.activeForm.status !== 'published') {
+    showToast('warning', 'Salve o projeto como Publicado para visualizar no Simulador.');
+    return;
+  }
+  downloadTemplates();
+  switchTab('view-mobile-sim');
+  showToast('success', 'Projeto carregado no modo de visualização.');
+};
+
+window.toggleCollapseQuestions = () => {
+  const container = document.getElementById('builder-questions-list');
+  const isCollapsed = container.classList.toggle('kobo-collapsed-view');
+  const bodies = container.querySelectorAll('.kobo-question-center, .kobo-question-right');
+  bodies.forEach(b => {
+    b.style.display = isCollapsed ? 'none' : 'flex';
+  });
+  showToast('info', isCollapsed ? 'Perguntas recolhidas (Visão em lista).' : 'Perguntas expandidas.');
+};
+
+window.duplicateActiveForm = () => {
+  if (!state.activeForm.id) {
+    showToast('warning', 'Salve o projeto original primeiro antes de duplicar.');
+    return;
+  }
+  showConfirm('Duplicar Projeto', 'Deseja criar uma cópia exata deste formulário?', () => {
+    const clone = JSON.parse(JSON.stringify(state.activeForm));
+    delete clone.id;
+    clone.title = clone.title + ' (Cópia)';
+    clone.status = 'draft';
+    loadFormIntoBuilder(clone);
+    saveActiveForm();
+  });
+};
+
+window.showComingSoonToast = (feature) => {
+  showToast('info', `A funcionalidade "${feature}" será liberada na próxima versão.`);
+};
+
+window.openFormSettings = () => {
+  showToast('info', 'As configurações globais de estilo (CSS) estão aplicadas. O layout padrão já está no padrão Kobo.');
+};
+
 // ===================== MOBILE SIMULATOR =====================
 function initMobileSimulator() {
   document.getElementById('sim-toggle-network').addEventListener('change', (e) => {

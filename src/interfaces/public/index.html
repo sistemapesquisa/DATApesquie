@@ -124,19 +124,19 @@
               <div class="kobo-actions">
                 <select id="form-edit-status" style="border:1px solid #ccc; border-radius:4px; padding:4px; margin-right:8px; font-size:12px; height:32px;"><option value="draft">Rascunho</option><option value="published">Publicado</option></select>
                 <button class="kobo-btn-save" id="btn-save-form">SALVAR</button>
-                <button class="kobo-btn-close"><i class="fa-solid fa-xmark"></i></button>
+                <button class="kobo-btn-close" onclick="closeFormBuilder()"><i class="fa-solid fa-xmark"></i></button>
               </div>
             </div>
             <div class="kobo-sub-bar">
               <div class="kobo-sub-left">
-                <button><i class="fa-solid fa-eye"></i></button>
-                <button><i class="fa-solid fa-list-ul"></i></button>
-                <button><i class="fa-solid fa-copy"></i></button>
-                <button><i class="fa-solid fa-code-branch"></i></button>
+                <button onclick="previewActiveForm()" title="Visualizar (Simulador)"><i class="fa-solid fa-eye"></i></button>
+                <button onclick="toggleCollapseQuestions()" title="Expandir/Recolher"><i class="fa-solid fa-list-ul"></i></button>
+                <button onclick="duplicateActiveForm()" title="Duplicar Formulário"><i class="fa-solid fa-copy"></i></button>
+                <button onclick="showComingSoonToast('Lógica de Pulo Avançada')" title="Lógica Avançada"><i class="fa-solid fa-code-branch"></i></button>
               </div>
               <div class="kobo-sub-right">
-                <button><i class="fa-solid fa-book"></i> Adicionar da Biblioteca</button>
-                <button><i class="fa-solid fa-gear"></i> Layout e Configurações</button>
+                <button onclick="showComingSoonToast('Biblioteca de Perguntas')"><i class="fa-solid fa-book"></i> Adicionar da Biblioteca</button>
+                <button onclick="openFormSettings()"><i class="fa-solid fa-gear"></i> Layout e Configurações</button>
               </div>
             </div>
             
