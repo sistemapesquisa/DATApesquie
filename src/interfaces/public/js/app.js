@@ -738,36 +738,39 @@ function renderBuilderQuestions() {
     }
 
     card.innerHTML = `
-      <div class="question-header" style="cursor: grab;">
-        <div style="display:flex;align-items:center;gap:0.5rem;"><div class="question-number">${idx+1}</div><span style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);">${q.id}</span></div>
+      <div class="question-header">
+        <div style="display:flex;align-items:center;gap:0.5rem;flex:1;">
+          <div style="opacity:0.5;cursor:grab;margin-right:0.25rem;"><i class="fa-solid fa-grip-vertical"></i></div>
+          <span style="font-size:0.85rem;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Questão ${idx+1} <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;font-family:var(--font-mono);margin-left:0.5rem;">[${q.id}]</span></span>
+        </div>
         <div class="question-actions">
-          <button class="btn btn-sm" onclick="openQuestionSettingsModal(${idx})" title="Configurações Avançadas"><i class="fa-solid fa-gear"></i></button>
-          <button class="btn btn-sm" onclick="duplicateQuestion(${idx})" title="Duplicar"><i class="fa-solid fa-copy"></i></button>
-          <button class="btn btn-sm btn-danger" onclick="confirmDeleteQuestion(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+          <button class="btn-icon" onclick="openQuestionSettingsModal(${idx})" title="Configurações"><i class="fa-solid fa-gear"></i></button>
+          <button class="btn-icon" onclick="duplicateQuestion(${idx})" title="Duplicar"><i class="fa-solid fa-copy"></i></button>
+          <button class="btn-icon" style="color:var(--danger);" onclick="confirmDeleteQuestion(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;margin-bottom:0.5rem;">
-        <div class="form-group"><label class="form-label">Texto da Pergunta</label><input type="text" class="form-input" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="Escreva a pergunta aqui..." /></div>
-        <div class="form-group"><label class="form-label">Tipo de Entrada <span class="tooltip-trigger"><span class="tooltip-icon">?</span><span class="tooltip-text">Escolha como o pesquisador vai responder esta pergunta.</span></span></label>
-        <select class="form-select" onchange="updateQType(${idx},this.value)">
-          <option value="text" ${q.type==='text'?'selected':''}>Texto Livre</option>
-          <option value="number" ${q.type==='number'||q.type==='decimal'?'selected':''}>Número (Decimal)</option>
-          <option value="integer" ${q.type==='integer'?'selected':''}>Número (Inteiro)</option>
-          <option value="single_choice" ${q.type==='single_choice'||q.type==='select_one'?'selected':''}>Seleção Única</option>
-          <option value="multiple_choice" ${q.type==='multiple_choice'||q.type==='select_multiple'?'selected':''}>Múltipla Escolha</option>
-          <option value="geopoint" ${q.type==='geopoint'?'selected':''}>Localização (GPS)</option>
-          <option value="image" ${q.type==='image'?'selected':''}>Foto / Imagem</option>
-          <option value="video" ${q.type==='video'?'selected':''}>Vídeo</option>
-          <option value="audio_record" ${q.type==='audio_record'||q.type==='audio'?'selected':''}>Gravação de Áudio</option>
-        </select></div>
-      </div>
-      ${optionsHtml}
-      <div style="margin-top:0.75rem;padding-top:0.6rem;border-top:1px solid var(--border);">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
-          <span style="font-size:0.78rem;font-weight:600;color:var(--text-secondary);">Regras de Pulo <span class="tooltip-trigger"><span class="tooltip-icon">?</span><span class="tooltip-text">Se o entrevistado responder algo específico, pule para outra pergunta automaticamente.</span></span></span>
-          <button class="btn btn-sm" onclick="addSkipRule(${idx})"><i class="fa-solid fa-plus"></i> Regra</button>
+      <div class="question-body">
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;margin-bottom:0.5rem;">
+          <div class="form-group" style="margin:0;"><label class="form-label" style="font-size:0.65rem;color:var(--text-muted);">Texto da Pergunta</label><input type="text" class="form-input" style="border:none;border-bottom:1px solid var(--border);border-radius:0;padding:0.4rem 0;font-size:0.95rem;font-weight:500;box-shadow:none;" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="Escreva a pergunta aqui..." /></div>
+          <div class="form-group" style="margin:0;"><label class="form-label" style="font-size:0.65rem;color:var(--text-muted);">Tipo de Entrada</label>
+          <select class="form-select" onchange="updateQType(${idx},this.value)" style="border:none;border-bottom:1px solid var(--border);border-radius:0;padding:0.4rem 0;font-size:0.85rem;box-shadow:none;cursor:pointer;">
+            <option value="text" ${q.type==='text'?'selected':''}>Texto Livre</option>
+            <option value="number" ${q.type==='number'||q.type==='decimal'?'selected':''}>Número (Decimal)</option>
+            <option value="integer" ${q.type==='integer'?'selected':''}>Número (Inteiro)</option>
+            <option value="single_choice" ${q.type==='single_choice'||q.type==='select_one'?'selected':''}>Seleção Única</option>
+            <option value="multiple_choice" ${q.type==='multiple_choice'||q.type==='select_multiple'?'selected':''}>Múltipla Escolha</option>
+            <option value="geopoint" ${q.type==='geopoint'?'selected':''}>Localização (GPS)</option>
+            <option value="image" ${q.type==='image'?'selected':''}>Foto / Imagem</option>
+            <option value="video" ${q.type==='video'?'selected':''}>Vídeo</option>
+            <option value="audio_record" ${q.type==='audio_record'||q.type==='audio'?'selected':''}>Gravação de Áudio</option>
+          </select></div>
         </div>
-        ${rulesHtml}
+        ${optionsHtml}
+        <div style="margin-top:0.75rem;padding-top:0.6rem;font-size:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+          ${q.required?'<span class="badge badge-danger">Obrigatória</span>':''}
+          ${q.relevant?`<span class="badge badge-info" title="Pulo"><i class="fa-solid fa-code-branch"></i> ${q.relevant}</span>`:''}
+          ${q.constraint?`<span class="badge badge-warning" title="Regra"><i class="fa-solid fa-shield"></i> ${q.constraint}</span>`:''}
+        </div>
       </div>`;
     container.appendChild(card);
   });
