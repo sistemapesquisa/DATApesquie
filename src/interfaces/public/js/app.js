@@ -555,12 +555,17 @@ window.renderCharts = function() {
       });
       window._analyticsCharts.push(chart);
     }
-  });
-
   if (container.innerHTML === '') {
     container.innerHTML = '<p class="text-muted" style="grid-column: 1 / -1; text-align: center;">Nenhuma questão de múltipla escolha para gerar gráficos.</p>';
   }
 };
+
+function formatDeviceId(deviceId) {
+  if (!deviceId) return 'N/A';
+  if (deviceId.startsWith('collect:')) return 'Aplicativo Mobile (Android)';
+  if (deviceId === 'Simulador Web' || deviceId.startsWith('enketo')) return 'Formulário Web';
+  return deviceId;
+}
 
 window.renderReportsTable = function() {
   const tbody = document.getElementById('reports-tbody');
@@ -586,7 +591,7 @@ window.renderReportsTable = function() {
       <td><input type="checkbox" class="cb-interview-select" value="${int.id}"></td>
       <td>${int.id.substring(0,8)}</td>
       <td>${researcher.name}</td>
-      <td>${int.device_id || 'N/A'}</td>
+      <td>${formatDeviceId(int.device_id)}</td>
       <td>${date}</td>
       <td><button class="btn btn-sm btn-primary" onclick="openInterviewDetails('${int.id}')"><i class="fa-solid fa-eye"></i> Ver</button></td>
     `;
@@ -603,7 +608,7 @@ window.openInterviewDetails = function(id) {
   document.getElementById('interview-modal-form').textContent = form.title;
   document.getElementById('interview-modal-researcher').textContent = researcher.name;
   document.getElementById('interview-modal-date').textContent = new Date(int.created_at).toLocaleString('pt-BR');
-  document.getElementById('interview-modal-device').textContent = int.device_id || 'N/A';
+  document.getElementById('interview-modal-device').textContent = formatDeviceId(int.device_id);
   document.getElementById('interview-modal-gps').textContent = (int.latitude && int.longitude) ? `${int.latitude}, ${int.longitude}` : 'Não registrada';
   
   const answersDiv = document.getElementById('interview-modal-answers');
