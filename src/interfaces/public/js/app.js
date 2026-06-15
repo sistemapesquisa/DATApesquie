@@ -386,7 +386,7 @@ window.koboSwitchTab = function(tabId) {
   const target = document.getElementById(tabId);
   if (target) target.style.display = 'block';
   
-  if (tabId === 'proj-tab-dados' && state.map) {
+  if (tabId === 'proj-tab-mapa' && state.map) {
     setTimeout(() => state.map.invalidateSize(), 150);
   }
 };
