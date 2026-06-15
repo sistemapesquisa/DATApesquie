@@ -720,6 +720,13 @@ body {
 .kobo-btn-add-q { width: 40px; height: 40px; border-radius: 50%; background: #3b82f6; color: white; border: none; font-size: 1.2rem; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 .kobo-btn-add-q:hover { background: #2563eb; }
 
+/* Collapsed View */
+.kobo-collapsed-view .kobo-question-center, .kobo-collapsed-view .kobo-question-right { display: none !important; }
+.kobo-collapsed-view .kobo-question-row { min-height: 40px; align-items: center; border-bottom: 1px solid #dbe2e8; }
+.kobo-collapsed-title { display: none; font-weight: 600; font-size: 0.9rem; color: #333; margin-left: 0.8rem; flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kobo-collapsed-view .kobo-collapsed-title { display: block; }
+.kobo-collapsed-view .kobo-question-left { width: 100%; border-right: none; flex-direction: row; padding: 0.8rem 1rem; cursor: grab; align-items: center; justify-content: flex-start; }
+
 /* ========== KOBO DASHBOARD UI ========== */
 .kobo-dashboard-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding: 1rem 0; border-bottom: 1px solid #e2e8f0; }
 .kobo-dashboard-title { font-size: 1.3rem; font-weight: 700; color: #333; }

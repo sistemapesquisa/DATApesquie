@@ -681,12 +681,25 @@ function initFormBuilder() {
     loadFormIntoBuilder({ id:'', title:'Novo Formulário', status:'draft', version:1, questions:[] });
   });
   document.getElementById('btn-add-question').addEventListener('click', () => {
-    const qId = 'Q' + (state.activeForm.questions.length + 1);
-    state.activeForm.questions.push({ id:qId, text:'', type:'text', options:[], required: false });
-    renderBuilderQuestions();
+    document.getElementById('question-type-modal').classList.add('active');
   });
   document.getElementById('btn-save-form').addEventListener('click', saveActiveForm);
 }
+
+window.addNewQuestion = function(type) {
+  const qId = 'Q' + (state.activeForm.questions.length + 1);
+  const q = { id:qId, text:'', type: type, options:[], required: false };
+  if (type === 'select_one' || type === 'select_multiple') {
+    q.options = ['Opção 1', 'Opção 2'];
+  }
+  state.activeForm.questions.push(q);
+  renderBuilderQuestions();
+  document.getElementById('question-type-modal').classList.remove('active');
+  
+  // Scroll to bottom
+  const container = document.querySelector('.kobo-workspace-body');
+  if (container) container.scrollTop = container.scrollHeight;
+};
 
 function renderFormBuilderList() {
   const container = document.getElementById('forms-list-container');
@@ -708,7 +721,7 @@ function renderFormBuilderList() {
 function loadFormIntoBuilder(form) {
   state.activeForm = JSON.parse(JSON.stringify(form));
   document.getElementById('form-edit-title').value = state.activeForm.title;
-  document.getElementById('form-edit-version').textContent = state.activeForm.version;
+  // Remove form-edit-version as it's no longer in the HTML
   document.getElementById('form-edit-status').value = state.activeForm.status;
   document.getElementById('skip-logic-errors').classList.remove('visible');
   renderBuilderQuestions();
@@ -777,6 +790,7 @@ function renderBuilderQuestions() {
     card.innerHTML = `
       <div class="kobo-question-left">
         <i class="kobo-question-icon fa-solid fa-circle-dot"></i>
+        <div class="kobo-collapsed-title">${idx+1}. ${q.text || 'Nova Pergunta'}</div>
       </div>
       <div class="kobo-question-center">
         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -927,10 +941,6 @@ window.previewActiveForm = () => {
 window.toggleCollapseQuestions = () => {
   const container = document.getElementById('builder-questions-list');
   const isCollapsed = container.classList.toggle('kobo-collapsed-view');
-  const bodies = container.querySelectorAll('.kobo-question-center, .kobo-question-right');
-  bodies.forEach(b => {
-    b.style.display = isCollapsed ? 'none' : 'flex';
-  });
   showToast('info', isCollapsed ? 'Perguntas recolhidas (Visão em lista).' : 'Perguntas expandidas.');
 };
 
@@ -1526,4 +1536,95 @@ window.addLibraryQuestion = function(type) {
   renderBuilderQuestions();
   document.getElementById('question-library-modal').classList.remove('active');
   showToast('success', 'Pergunta adicionada da biblioteca!');
+};
+
+// ===================== ADVANCED LOGIC MODAL =====================
+window.openAdvLogicModal = function(idx) {
+  document.getElementById('adv-logic-q-idx').value = idx;
+  const q = state.activeForm.questions[idx];
+  
+  // Populate target questions dropdown (only questions before this one)
+  const select = document.getElementById('adv-logic-target-q');
+  select.innerHTML = '';
+  for (let i = 0; i < idx; i++) {
+    const prevQ = state.activeForm.questions[i];
+    if (prevQ.text) {
+      select.innerHTML += `<option value="${prevQ.id}">${prevQ.text}</option>`;
+    }
+  }
+  
+  if (idx === 0) {
+    showToast('warning', 'A primeira pergunta não pode ter regras de pulo baseadas em perguntas anteriores.');
+    return;
+  }
+
+  // Ensure q._logic array exists
+  if (!q._logic) {
+    q._logic = [];
+    if (q.relevant) {
+      q._logic.push({ raw: q.relevant });
+    }
+  }
+
+  renderAdvLogicList(idx);
+  document.getElementById('advanced-logic-modal').classList.add('active');
+};
+
+window.addAdvLogicCondition = function() {
+  const idx = parseInt(document.getElementById('adv-logic-q-idx').value);
+  const q = state.activeForm.questions[idx];
+  const targetId = document.getElementById('adv-logic-target-q').value;
+  const targetText = document.getElementById('adv-logic-target-q').options[document.getElementById('adv-logic-target-q').selectedIndex]?.text || targetId;
+  const op = document.getElementById('adv-logic-op').value;
+  const val = document.getElementById('adv-logic-val').value.trim();
+  
+  if (!targetId || !val) {
+    showToast('warning', 'Preencha todos os campos da condição.');
+    return;
+  }
+
+  let syntax = '';
+  if (op === '=') syntax = `\${${targetId}} = '${val}'`;
+  else if (op === '!=') syntax = `\${${targetId}} != '${val}'`;
+  else syntax = `\${${targetId}} ${op} ${val}`;
+
+  q._logic.push({ target: targetText, op, val, raw: syntax });
+  q.relevant = q._logic.map(l => l.raw).join(' and ');
+  
+  document.getElementById('adv-logic-val').value = '';
+  renderAdvLogicList(idx);
+};
+
+window.removeAdvLogicCondition = function(idx, logicIdx) {
+  const q = state.activeForm.questions[idx];
+  q._logic.splice(logicIdx, 1);
+  q.relevant = q._logic.map(l => l.raw).join(' and ');
+  renderAdvLogicList(idx);
+};
+
+window.renderAdvLogicList = function(idx) {
+  const q = state.activeForm.questions[idx];
+  const tbody = document.getElementById('adv-logic-list');
+  tbody.innerHTML = '';
+  
+  if (!q._logic || q._logic.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#64748b;">Nenhuma regra definida. A pergunta sempre será exibida.</td></tr>';
+    return;
+  }
+
+  q._logic.forEach((rule, i) => {
+    let display = rule.target ? `${rule.target} ${rule.op} ${rule.val}` : rule.raw;
+    tbody.innerHTML += `
+      <tr>
+        <td style="font-family:monospace; font-size:0.85rem;">${display}</td>
+        <td><button class="btn btn-sm" style="color:#dc2626;background:transparent;border:none;" onclick="removeAdvLogicCondition(${idx}, ${i})"><i class="fa-solid fa-trash"></i></button></td>
+      </tr>
+    `;
+  });
+};
+
+window.closeAdvLogicModal = function() {
+  document.getElementById('advanced-logic-modal').classList.remove('active');
+  renderBuilderQuestions();
+  showToast('success', 'Regras de pulo atualizadas!');
 };

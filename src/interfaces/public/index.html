@@ -245,6 +245,30 @@
           </div>
         </div>
 
+        <!-- Question Type Selection Modal -->
+        <div class="modal-overlay" id="question-type-modal">
+          <div class="modal-box" style="max-width: 500px;">
+            <div class="modal-title"><i class="fa-solid fa-layer-group" style="color:var(--primary);"></i> Selecionar Tipo de Pergunta</div>
+            <p class="modal-message" style="margin-bottom:1rem;">Escolha o tipo de dado que você deseja coletar.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1.5rem;">
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('text')"><i class="fa-solid fa-font fa-2x"></i> Texto Livre</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('number')"><i class="fa-solid fa-hashtag fa-2x"></i> Número</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('select_one')"><i class="fa-regular fa-circle-dot fa-2x"></i> Sel. Única</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('select_multiple')"><i class="fa-regular fa-square-check fa-2x"></i> Múltipla Esc.</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('geopoint')"><i class="fa-solid fa-location-dot fa-2x"></i> GPS</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('image')"><i class="fa-solid fa-camera fa-2x"></i> Imagem</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('audio')"><i class="fa-solid fa-microphone fa-2x"></i> Áudio</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('video')"><i class="fa-solid fa-video fa-2x"></i> Vídeo</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('date')"><i class="fa-solid fa-calendar-days fa-2x"></i> Data</button>
+            </div>
+            
+            <div class="modal-actions" style="justify-content: flex-end;">
+              <button class="btn" onclick="document.getElementById('question-type-modal').classList.remove('active')">Cancelar</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Advanced Logic Modal -->
         <div class="modal-overlay" id="advanced-logic-modal">
           <div class="modal-box" style="max-width: 600px;">
