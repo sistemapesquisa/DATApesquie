@@ -306,6 +306,32 @@ router.post('/forms', async (req, res) => {
   }
 });
 
+router.patch('/forms/:id/archive', (req, res) => {
+  const formId = req.params.id;
+  if (!checkPermission(req.user.role, PERMISSIONS.BUILD_FORMS)) {
+    return res.status(403).json({ error: 'Acesso negado.' });
+  }
+
+  db.run('UPDATE forms SET status = ? WHERE id = ?', ['archived', formId], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    jsonLogger.info(`Form archived: ${formId} by ${req.user.id}`);
+    res.json({ success: true });
+  });
+});
+
+router.delete('/forms/:id', (req, res) => {
+  const formId = req.params.id;
+  if (!checkPermission(req.user.role, PERMISSIONS.BUILD_FORMS)) {
+    return res.status(403).json({ error: 'Acesso negado.' });
+  }
+
+  db.run('DELETE FROM forms WHERE id = ?', [formId], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    jsonLogger.info(`Form deleted: ${formId} by ${req.user.id}`);
+    res.json({ success: true });
+  });
+});
+
 // --- INTERVIEWS SUBMISSION & MONITORING (Researcher / Supervisor / Analyst / Coordinator) ---
 router.get('/interviews', (req, res) => {
   db.all('SELECT * FROM interviews ORDER BY created_at DESC', [], (err, rows) => {

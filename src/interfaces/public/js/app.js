@@ -420,7 +420,16 @@ function renderDashboard() {
   publishedForms.forEach(form => {
     const ints = state.interviews.filter(i => i.form_id === form.id);
     const isPub = form.status === 'published';
-    const statusBadge = isPub ? '<span class="kobo-status-badge"><i class="fa-solid fa-satellite-dish"></i> disponibilizado</span>' : '<span class="kobo-status-badge" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-pen"></i> rascunho</span>';
+    const isArchived = form.status === 'archived';
+    
+    let statusBadge = '';
+    if (isArchived) {
+      statusBadge = '<span class="kobo-status-badge" style="background:#475569;color:#f8fafc;"><i class="fa-solid fa-box-archive"></i> arquivado</span>';
+    } else if (isPub) {
+      statusBadge = '<span class="kobo-status-badge"><i class="fa-solid fa-satellite-dish"></i> disponibilizado</span>';
+    } else {
+      statusBadge = '<span class="kobo-status-badge" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-pen"></i> rascunho</span>';
+    }
     
     // Fallbacks for missing dates since the DB schema didn't track these closely initially
     const modDateStr = form.updated_at ? new Date(form.updated_at).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
@@ -449,18 +458,26 @@ window.openProject = function(formId) {
 
   const ints = state.interviews.filter(i => i.form_id === formId);
   const isPub = form.status === 'published';
+  const isArchived = form.status === 'archived';
 
   document.getElementById('project-details-title-top').textContent = form.title;
   
   // Populate Resumo Info
-  document.getElementById('pd-status-badge').innerHTML = isPub ? '<i class="fa-solid fa-satellite-dish"></i> disponibilizado' : '<i class="fa-solid fa-pen"></i> rascunho';
-  if (!isPub) {
-    document.getElementById('pd-status-badge').style.background = '#f1f5f9';
-    document.getElementById('pd-status-badge').style.color = '#64748b';
-  } else {
+  let statusBadgeHtml = '';
+  if (isArchived) {
+    statusBadgeHtml = '<i class="fa-solid fa-box-archive"></i> arquivado';
+    document.getElementById('pd-status-badge').style.background = '#475569';
+    document.getElementById('pd-status-badge').style.color = '#f8fafc';
+  } else if (isPub) {
+    statusBadgeHtml = '<i class="fa-solid fa-satellite-dish"></i> disponibilizado';
     document.getElementById('pd-status-badge').style.background = '#e0f2fe';
     document.getElementById('pd-status-badge').style.color = '#0369a1';
+  } else {
+    statusBadgeHtml = '<i class="fa-solid fa-pen"></i> rascunho';
+    document.getElementById('pd-status-badge').style.background = '#f1f5f9';
+    document.getElementById('pd-status-badge').style.color = '#64748b';
   }
+  document.getElementById('pd-status-badge').innerHTML = statusBadgeHtml;
   
   document.getElementById('pd-questions-count').textContent = form.questions.length;
   
@@ -1756,7 +1773,18 @@ window.archiveSelectedProjects = function() {
     showToast('warning', 'Selecione pelo menos um projeto para arquivar.');
     return;
   }
-  showToast('info', 'Arquivamento será implementado na próxima versão. (Mocked)');
+  showConfirm('Arquivar Projetos', `Tem certeza que deseja arquivar ${checkboxes.length} projeto(s)? Eles não receberão novas coletas.`, async () => {
+    try {
+      for (const cb of checkboxes) {
+        await apiFetch(`/api/forms/${cb.value}/archive`, { method: 'PATCH' });
+      }
+      showToast('success', 'Projetos arquivados com sucesso.');
+      await loadServerData();
+      renderDashboard();
+    } catch (err) {
+      showToast('error', 'Erro ao arquivar projetos: ' + err.message);
+    }
+  });
 };
 
 window.dashboardShareSelected = function() {
