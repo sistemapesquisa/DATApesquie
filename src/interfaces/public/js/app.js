@@ -882,8 +882,8 @@ function renderBuilderQuestions() {
         optionsHtml += `
           <div class="kobo-choice-row">
             <button class="kobo-choice-trash" onclick="removeOption(${idx},${oi})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-            <input type="text" class="kobo-choice-input" value="${val}" onchange="updateOption(${idx},${oi},this.value)" />
-            <div class="kobo-choice-pill">${nameVal}</div>
+            <input type="text" class="kobo-choice-input" value="${val}" onchange="updateOption(${idx},${oi},this.value)" placeholder="Texto da Opção" />
+            <input type="text" class="kobo-choice-pill" value="${nameVal}" onchange="updateOptionName(${idx},${oi},this.value)" style="border:none; outline:none; font-family:var(--font-mono); cursor:text; width:150px;" title="Editar Nome Interno (ID)" />
           </div>
         `;
       });
@@ -949,6 +949,12 @@ window.updateOption = (idx, oi, val) => {
   let opt = state.activeForm.questions[idx].options[oi];
   if(typeof opt === 'string') state.activeForm.questions[idx].options[oi] = { name: opt, label: val };
   else opt.label = val; 
+};
+window.updateOptionName = (idx, oi, val) => { 
+  let opt = state.activeForm.questions[idx].options[oi];
+  let safeVal = val.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  if(typeof opt === 'string') state.activeForm.questions[idx].options[oi] = { name: safeVal, label: opt };
+  else opt.name = safeVal; 
 };
 window.updateQHint = (idx, val) => { state.activeForm.questions[idx].hint = val; };
 window.toggleQRequired = (idx) => { 
