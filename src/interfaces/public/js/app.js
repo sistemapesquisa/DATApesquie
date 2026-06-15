@@ -5,8 +5,9 @@
 
 // ===================== STATE =====================
 const state = {
-  activeRole: 'Coordinator',
-  activeUserId: 'coord_user',
+  activeRole: null,
+  activeUserId: null,
+  activeUserName: null,
   forms: [],
   interviews: [],
   users: [],
@@ -43,214 +44,6 @@ const RESEARCHER_COLORS = {
 };
 const STATUS_LABELS = { approved: 'Aprovada', pending: 'Pendente', rejected: 'Rejeitada' };
 
-// ===================== OFFLINE DETECTION =====================
-const IS_OFFLINE_PREVIEW = window.location.protocol === 'file:' || window.location.hostname === '';
-
-// ===================== VIRTUAL DATABASE =====================
-const virtualDb = {
-  _getStore(key) {
-    try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; }
-  },
-  _setStore(key, data) { localStorage.setItem(key, JSON.stringify(data)); },
-  ensureSeeded() {
-    if (this._getStore('vdb_users').length === 0) {
-      this._setStore('vdb_users', [
-        { id:'dev_user', name:'Gustavo Dev', email:'dev@corp.com', role:'DEV', status:'active', created_at:new Date().toISOString() },
-        { id:'admin_user', name:'Clara Admin', email:'admin@cliente.com', role:'Admin', status:'active', created_at:new Date().toISOString() },
-        { id:'analyst_user', name:'Felipe Analista', email:'analyst@cliente.com', role:'Analyst', status:'active', created_at:new Date().toISOString() },
-        { id:'coord_user', name:'Helena Coordenadora', email:'coord@cliente.com', role:'Coordinator', status:'active', created_at:new Date().toISOString() },
-        { id:'super_user', name:'Marcos Supervisor', email:'super@cliente.com', role:'Supervisor', status:'active', created_at:new Date().toISOString() },
-        { id:'researcher_1', name:'Ana Pesquisadora', email:'ana@freelancer.com', role:'Researcher', status:'active', created_at:new Date().toISOString() },
-        { id:'researcher_2', name:'Bruno Pesquisador', email:'bruno@freelancer.com', role:'Researcher', status:'active', created_at:new Date().toISOString() },
-        { id:'researcher_3', name:'Carla Pesquisadora', email:'carla@freelancer.com', role:'Researcher', status:'active', created_at:new Date().toISOString() },
-        { id:'researcher_4', name:'Daniel Pesquisador', email:'daniel@freelancer.com', role:'Researcher', status:'active', created_at:new Date().toISOString() }
-      ]);
-    }
-    if (this._getStore('vdb_forms').length === 0) {
-      this._setStore('vdb_forms', [
-        { id:'form_censo', title:'Censo Sócio-Econômico do Sertão', version:2, status:'published', questions:[
-          { id:'Q1', text:'Qual a sua faixa etária?', type:'single_choice', options:['Menos de 18 anos','18 a 35 anos','36 a 60 anos','Mais de 60 anos'], skipRules:[] },
-          { id:'Q2', text:'Você possui acesso à energia elétrica estável?', type:'single_choice', options:['Sim','Não'], skipRules:[{conditionValue:'Não',targetQuestionId:'Q4'}] },
-          { id:'Q3', text:'Qual a principal fonte de energia usada em sua casa?', type:'single_choice', options:['Rede pública','Painel Solar','Gerador próprio','Outros'], skipRules:[] },
-          { id:'Q4', text:'Descreva brevemente os principais desafios na sua região.', type:'text', options:[], skipRules:[] },
-          { id:'Q5', text:'Por favor, grave o depoimento final do entrevistado.', type:'audio_record', options:[], skipRules:[] }
-        ]},
-        { id:'form_saneamento', title:'Pesquisa Saneamento Interiorano', version:1, status:'published', questions:[
-          { id:'S1', text:'Tem água encanada?', type:'single_choice', options:['Sim','Não'], skipRules:[{conditionValue:'Sim',targetQuestionId:'S3'}] },
-          { id:'S2', text:'Como você obtém água?', type:'single_choice', options:['Poço artesiano','Caminhão pipa','Chuva/Cisterna','Rio/Lago'], skipRules:[] },
-          { id:'S3', text:'Qualidade percebida da água?', type:'single_choice', options:['Excelente','Boa','Regular','Ruim'], skipRules:[] }
-        ]}
-      ]);
-    }
-    if (this._getStore('vdb_interviews').length === 0) {
-      this._setStore('vdb_interviews', [
-        { id:'int_001', form_id:'form_censo', form_version:2, researcher_id:'researcher_1', data:{Q1:'18 a 35 anos',Q2:'Sim',Q3:'Rede pública',Q4:'Falta de pavimentação nas ruas',Q5:'audio_001.mp3'}, latitude:-9.3833, longitude:-40.5, audio_url:'audio_001.mp3', status:'approved', created_at:'2026-06-01T10:30:00Z', approved_by:'analyst_user', notes:'Entrevista bem estruturada e áudio claro.' },
-        { id:'int_002', form_id:'form_censo', form_version:2, researcher_id:'researcher_1', data:{Q1:'36 a 60 anos',Q2:'Não',Q4:'Acesso à saúde é muito demorado',Q5:'audio_002.mp3'}, latitude:-9.4122, longitude:-40.5134, audio_url:'audio_002.mp3', status:'pending', created_at:'2026-06-02T14:15:00Z', approved_by:null, notes:'' },
-        { id:'int_003', form_id:'form_censo', form_version:2, researcher_id:'researcher_2', data:{Q1:'Mais de 60 anos',Q2:'Sim',Q3:'Painel Solar',Q4:'Segurança no período da noite',Q5:'audio_003.mp3'}, latitude:-3.6888, longitude:-40.3498, audio_url:'audio_003.mp3', status:'pending', created_at:'2026-06-02T11:00:00Z', approved_by:null, notes:'' },
-        { id:'int_004', form_id:'form_saneamento', form_version:1, researcher_id:'researcher_3', data:{S1:'Não',S2:'Caminhão pipa',S3:'Regular'}, latitude:-9.897, longitude:-38.6941, audio_url:'audio_004.mp3', status:'approved', created_at:'2026-05-30T16:45:00Z', approved_by:'analyst_user', notes:'Validada.' },
-        { id:'int_005', form_id:'form_saneamento', form_version:1, researcher_id:'researcher_4', data:{S1:'Sim',S3:'Excelente'}, latitude:-8.8123, longitude:-38.5678, audio_url:'audio_005.mp3', status:'rejected', created_at:'2026-06-01T09:20:00Z', approved_by:null, notes:'Áudio com chiado excessivo.' }
-      ]);
-    }
-    if (this._getStore('vdb_logs').length === 0) {
-      this._setStore('vdb_logs', [
-        { id:'log_001', type:'COMMAND_EXECUTION', severity:'LOW', command_requested:'show version', user_role:'DEV', timestamp:new Date().toISOString() },
-        { id:'log_002', type:'DESTRUCTIVE_COMMAND_BLOCKED', severity:'CRITICAL', command_requested:'reboot', user_role:'Coordinator', timestamp:new Date().toISOString() },
-        { id:'log_003', type:'DESTRUCTIVE_COMMAND_BLOCKED', severity:'HIGH', command_requested:'/interface disable ether1', user_role:'Admin', timestamp:new Date().toISOString() },
-        { id:'log_004', type:'UNAUTHORIZED_ACCESS', severity:'MEDIUM', command_requested:'view financials', user_role:'Researcher', timestamp:new Date().toISOString() }
-      ]);
-    }
-    if (this._getStore('vdb_routes').length === 0) {
-      this._setStore('vdb_routes', [
-        { id: 'route_1', researcher_id: 'researcher_1', form_id: 'form_censo', city: 'Petrolina', created_at: new Date().toISOString() },
-        { id: 'route_2', researcher_id: 'researcher_2', form_id: 'form_censo', city: 'Juazeiro', created_at: new Date().toISOString() }
-      ]);
-    }
-    if (this._getStore('vdb_roles').length === 0) {
-      this._setStore('vdb_roles', [
-        { id: 'role_coord', name: 'Coordenador Master', permissions: 'view_projects,view_map,export_data,delete_data,manage_forms,manage_users', created_at: new Date().toISOString() },
-        { id: 'role_super', name: 'Supervisor de Campo', permissions: 'view_projects,view_map,submit_data', created_at: new Date().toISOString() }
-      ]);
-    }
-  }
-};
-
-function simulateOfflineApi(endpoint, options = {}) {
-  virtualDb.ensureSeeded();
-  const method = (options.method || 'GET').toUpperCase();
-  const body = options.body ? JSON.parse(options.body) : {};
-
-  if (endpoint === '/api/users' && method === 'GET') return virtualDb._getStore('vdb_users');
-  if (endpoint === '/api/forms' && method === 'GET') return virtualDb._getStore('vdb_forms');
-  if (endpoint === '/api/interviews' && method === 'GET') return virtualDb._getStore('vdb_interviews');
-  if (endpoint === '/api/logs' && method === 'GET') return virtualDb._getStore('vdb_logs');
-
-  if (endpoint === '/api/users' && method === 'POST') {
-    const users = virtualDb._getStore('vdb_users');
-    const newUser = { id:'user_'+Math.random().toString(36).substr(2,8), name:body.name, email:body.email, role:body.role, status:'active', created_at:new Date().toISOString() };
-    users.push(newUser);
-    virtualDb._setStore('vdb_users', users);
-    return { success:true, user:newUser };
-  }
-  if (endpoint.match(/\/api\/users\//) && method === 'PUT') {
-    const uid = endpoint.split('/').pop();
-    let users = virtualDb._getStore('vdb_users');
-    users = users.map(u => u.id === uid ? {...u, name: body.name, email: body.email, role: body.role} : u);
-    virtualDb._setStore('vdb_users', users);
-    return { success:true };
-  }
-  if (endpoint.match(/\/api\/users\//) && method === 'DELETE') {
-    const uid = endpoint.split('/').pop();
-    let users = virtualDb._getStore('vdb_users');
-    users = users.map(u => u.id === uid ? {...u, status:'deleted'} : u);
-    virtualDb._setStore('vdb_users', users);
-    return { success:true };
-  }
-  if (endpoint === '/api/roles' && method === 'GET') return virtualDb._getStore('vdb_roles');
-  if (endpoint === '/api/roles' && method === 'POST') {
-    const roles = virtualDb._getStore('vdb_roles');
-    const newRole = { id: 'role_'+Math.random().toString(36).substr(2,8), name: body.name, permissions: body.permissions, created_at: new Date().toISOString() };
-    roles.push(newRole);
-    virtualDb._setStore('vdb_roles', roles);
-    return { success: true, role: newRole };
-  }
-  if (endpoint.match(/\/api\/roles\//) && method === 'DELETE') {
-    const rid = endpoint.split('/').pop();
-    let roles = virtualDb._getStore('vdb_roles');
-    roles = roles.filter(r => r.id !== rid);
-    virtualDb._setStore('vdb_roles', roles);
-    return { success: true };
-  }
-  if (endpoint === '/api/routes' && method === 'GET') {
-    const routes = virtualDb._getStore('vdb_routes');
-    const users = virtualDb._getStore('vdb_users');
-    const forms = virtualDb._getStore('vdb_forms');
-    return routes.map(r => ({
-      ...r,
-      researcher_name: (users.find(u => u.id === r.researcher_id) || {}).name || 'Desconhecido',
-      form_title: (forms.find(f => f.id === r.form_id) || {}).title || 'Desconhecido'
-    }));
-  }
-  if (endpoint === '/api/routes' && method === 'POST') {
-    const routes = virtualDb._getStore('vdb_routes');
-    const newRoute = { id: 'route_'+Math.random().toString(36).substr(2,8), researcher_id: body.researcher_id, form_id: body.form_id, city: body.city, created_at: new Date().toISOString() };
-    routes.push(newRoute);
-    virtualDb._setStore('vdb_routes', routes);
-    return { success: true, routeId: newRoute.id };
-  }
-  if (endpoint.match(/\/api\/routes\//) && method === 'DELETE') {
-    const rid = endpoint.split('/').pop();
-    let routes = virtualDb._getStore('vdb_routes');
-    routes = routes.filter(r => r.id !== rid);
-    virtualDb._setStore('vdb_routes', routes);
-    return { success: true };
-  }
-  if (endpoint === '/api/forms' && method === 'POST') {
-    const forms = virtualDb._getStore('vdb_forms');
-    const id = body.id || 'form_'+Math.random().toString(36).substr(2,8);
-    const existing = forms.find(f => f.id === id);
-    const validation = validateSkipLogicLocal(body.questions || []);
-    if (existing) {
-      let ver = existing.version;
-      if (existing.status === 'published' && JSON.stringify(existing.questions) !== JSON.stringify(body.questions)) ver++;
-      existing.title = body.title; existing.questions = body.questions; existing.status = body.status; existing.version = ver;
-      virtualDb._setStore('vdb_forms', forms);
-      return { success:true, form:existing, validation };
-    } else {
-      const newForm = { id, title:body.title, version:1, status:body.status||'draft', questions:body.questions||[] };
-      forms.push(newForm);
-      virtualDb._setStore('vdb_forms', forms);
-      return { success:true, form:newForm, validation };
-    }
-  }
-  if (endpoint.match(/\/api\/forms\/.*\/archive/) && method === 'PATCH') {
-    const fid = endpoint.split('/')[3];
-    let forms = virtualDb._getStore('vdb_forms');
-    forms = forms.map(f => f.id === fid ? {...f, status:'archived'} : f);
-    virtualDb._setStore('vdb_forms', forms);
-    return { success: true };
-  }
-  if (endpoint.match(/\/api\/forms\//) && method === 'DELETE') {
-    const fid = endpoint.split('/')[3];
-    let forms = virtualDb._getStore('vdb_forms');
-    forms = forms.filter(f => f.id !== fid);
-    virtualDb._setStore('vdb_forms', forms);
-    return { success: true };
-  }
-  if (endpoint === '/api/interviews' && method === 'POST') {
-    const interviews = virtualDb._getStore('vdb_interviews');
-    const intId = 'int_'+Math.random().toString(36).substr(2,8);
-    const newInt = { id:intId, form_id:body.formId, form_version:body.formVersion, researcher_id:body.researcherId||state.activeUserId, data:body.data, latitude:body.latitude, longitude:body.longitude, audio_url:body.audioFileName?'/audio-vault/'+body.audioFileName:null, status:'pending', created_at:new Date().toISOString(), approved_by:null, notes:'' };
-    interviews.push(newInt);
-    virtualDb._setStore('vdb_interviews', interviews);
-    return { success:true, interviewId:intId };
-  }
-  if (endpoint.match(/\/api\/interviews\/.*\/status/) && method === 'PUT') {
-    const iid = endpoint.split('/')[3];
-    let interviews = virtualDb._getStore('vdb_interviews');
-    interviews = interviews.map(i => i.id === iid ? {...i, status:body.status, approved_by:state.activeUserId, notes:body.notes||''} : i);
-    virtualDb._setStore('vdb_interviews', interviews);
-    return { success:true };
-  }
-  if (endpoint === '/api/network/command' && method === 'POST') {
-    const cmd = (body.command || '').trim();
-    const destructive = [/reset/i, /reboot/i, /shutdown/i, /format/i, /\/interface disable/i];
-    const isDestructive = destructive.some(p => p.test(cmd));
-    if (isDestructive) {
-      const logId = 'sec_'+Math.random().toString(36).substr(2,8);
-      const logs = virtualDb._getStore('vdb_logs');
-      logs.unshift({ id:logId, type:'DESTRUCTIVE_COMMAND_BLOCKED', severity:'CRITICAL', command_requested:cmd, user_role:state.activeRole, timestamp:new Date().toISOString() });
-      virtualDb._setStore('vdb_logs', logs);
-      return { allowed:false, severity:'CRITICAL', message:'Bloqueado: Comando destrutivo detectado.', suggestion:'Esta ação precisa ser feita presencialmente no equipamento.' };
-    }
-    if (/show version/i.test(cmd)) return { allowed:false, severity:'LOW', message:'RouterOS v7.12 (stable) - Firmware: 7.12 - Uptime: 14d 03:22:15\nBoard: RB750Gr3 (hEX) - Serial: HEX-2024-BR-4491\nMemória: 256MB RAM - Armazenamento: 16MB Flash', suggestion:'Equipamento operando normalmente.' };
-    if (/ping/i.test(cmd)) return { allowed:false, severity:'LOW', message:'PING 8.8.8.8: 56 bytes - seq=1 ttl=118 time=23.4ms\nPING 8.8.8.8: 56 bytes - seq=2 ttl=118 time=21.8ms\nPING 8.8.8.8: 56 bytes - seq=3 ttl=118 time=22.1ms\n--- 3 pacotes transmitidos, 3 recebidos, 0% perda ---', suggestion:'Conexão com internet estável.' };
-    if (/ip address/i.test(cmd)) return { allowed:false, severity:'LOW', message:'#0 | 192.168.88.1/24  | ether1 (LAN)\n#1 | 10.0.0.2/30      | ether2 (WAN)\n#2 | 172.16.0.1/16    | bridge-local', suggestion:'Interfaces de rede configuradas.' };
-    if (/show status/i.test(cmd)) return { allowed:false, severity:'LOW', message:'Latência média de sincronização: 145ms\nÚltimo sync bem-sucedido: há 3 minutos\nQualidade do sinal: EXCELENTE (-42 dBm)\nClientes conectados: 7', suggestion:'Sincronização funcionando corretamente.' };
-    const isConfig = /set|add|remove|enable|disable|configure/i.test(cmd);
-    return { allowed:false, severity:isConfig?'MEDIUM':'LOW', message:'Sistema opera em modo somente leitura.', suggestion:isConfig?'Este comando altera configurações. Execute manualmente no equipamento.':'Execute o comando diretamente no terminal do equipamento.' };
-  }
-  return { error:'Endpoint não encontrado na simulação offline.' };
-}
 
 function validateSkipLogicLocal(questions) {
   const feedback = [];
@@ -272,7 +65,6 @@ function validateSkipLogicLocal(questions) {
 }
 
 async function apiFetch(endpoint, options = {}) {
-  if (IS_OFFLINE_PREVIEW) return simulateOfflineApi(endpoint, options);
   try {
     const headers = { 'Content-Type':'application/json', 'x-user-role':state.activeRole, 'x-user-id':state.activeUserId, ...(options.headers||{}) };
     const res = await fetch(endpoint, { ...options, headers });
@@ -282,15 +74,80 @@ async function apiFetch(endpoint, options = {}) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.error || 'Algo deu errado.');
     }
+    // Handle 204 No Content
+    if (res.status === 204) return { success: true };
     return await res.json();
   } catch (err) {
     if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-      console.warn('Backend indisponível, usando modo offline.');
-      return simulateOfflineApi(endpoint, options);
+      throw new Error('Servidor indisponível. Verifique se o backend está rodando.');
     }
     throw err;
   }
 }
+
+// ===================== AUTHENTICATION =====================
+window.fazerLogin = async () => {
+  const userEl = document.getElementById('login-username');
+  const passEl = document.getElementById('login-password');
+  const username = userEl.value.trim();
+  const password = passEl.value;
+
+  if (!username || !password) {
+    return showToast('error', 'Preencha o usuário e a senha.');
+  }
+
+  const btn = document.getElementById('btn-login');
+  const oldText = btn.innerHTML;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Entrando...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao realizar login');
+
+    localStorage.setItem('auth_user', JSON.stringify(data.user));
+    state.activeRole = data.user.role;
+    state.activeUserId = data.user.id;
+    state.activeUserName = data.user.name;
+
+    document.querySelector('.sidebar').style.display = 'flex';
+    
+    await loadServerData();
+    updateUserUI();
+    applyRoleRestrictions();
+    renderDashboard();
+    initFormBuilder();
+    renderFormBuilderList();
+    if (state.forms.length > 0) loadFormIntoBuilder(state.forms[0]);
+    initMobileSimulator();
+    initDataExporter();
+    renderAudioReviewList();
+
+    switchTab('view-dashboard');
+    showToast('success', 'Bem-vindo(a) ao DATApesquise!');
+  } catch (err) {
+    showToast('error', err.message);
+  } finally {
+    btn.innerHTML = oldText;
+    btn.disabled = false;
+  }
+};
+
+window.logout = () => {
+  localStorage.removeItem('auth_user');
+  state.activeRole = null;
+  state.activeUserId = null;
+  state.activeUserName = null;
+  document.querySelector('.sidebar').style.display = 'none';
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  switchTab('view-login');
+};
 
 // ===================== TOAST SYSTEM =====================
 function showToast(type, message) {
@@ -495,9 +352,9 @@ window.openProject = function(formId) {
   
   document.getElementById('pd-questions-count').textContent = form.questions.length;
   
-  const name = MOCK_USER_NAMES[state.activeRole] || state.activeRole;
+  const name = state.activeUserName || MOCK_USER_NAMES[state.activeRole] || state.activeRole || 'Usuário';
   const initial = name.charAt(0).toUpperCase();
-  const shortName = name.split(' ')[0].toLowerCase();
+  const shortName = name.split(' ')[0];
 
   document.getElementById('pd-owner-initial').textContent = initial;
   document.getElementById('pd-owner-name').textContent = shortName;
@@ -514,6 +371,7 @@ window.openProject = function(formId) {
   koboSwitchTab('proj-tab-resumo');
 
   renderReportsTable();
+  renderCharts();
   if (!state.map) initMap();
   else renderMapMarkers();
   renderAudioReviewList();
@@ -608,6 +466,97 @@ function renderMapMarkers() {
 }
 
 // ===================== REPORTS =====================
+window.renderCharts = function() {
+  const container = document.getElementById('analytics-charts-container');
+  if (!container) return;
+
+  const formId = state.activeProjectFormId;
+  const form = state.forms.find(f => f.id === formId);
+  const interviews = state.interviews.filter(i => i.form_id === formId);
+
+  if (!form || !form.questions || form.questions.length === 0 || interviews.length === 0) {
+    container.innerHTML = '<p class="text-muted" style="grid-column: 1 / -1; text-align: center;">Não há dados suficientes para gerar relatórios gráficos.</p>';
+    return;
+  }
+
+  container.innerHTML = '';
+  if (window._analyticsCharts) {
+    window._analyticsCharts.forEach(c => c.destroy());
+  }
+  window._analyticsCharts = [];
+
+  form.questions.forEach(q => {
+    if (q.type === 'single_choice' || q.type === 'multiple_choice') {
+      const counts = {};
+      q.options.forEach(opt => counts[opt] = 0);
+      let totalResponses = 0;
+
+      interviews.forEach(int => {
+        const val = int.data && int.data[q.id];
+        if (val) {
+          if (q.type === 'single_choice') {
+            if (counts[val] !== undefined) counts[val]++;
+            else counts[val] = 1;
+            totalResponses++;
+          } else if (q.type === 'multiple_choice' && Array.isArray(val)) {
+            val.forEach(v => {
+              if (counts[v] !== undefined) counts[v]++;
+              else counts[v] = 1;
+            });
+            totalResponses++;
+          }
+        }
+      });
+
+      if (totalResponses === 0) return;
+
+      const card = document.createElement('div');
+      card.style.background = '#f8fafc';
+      card.style.border = '1px solid #e2e8f0';
+      card.style.borderRadius = '8px';
+      card.style.padding = '1rem';
+      
+      const title = document.createElement('h4');
+      title.style.fontSize = '0.9rem';
+      title.style.marginBottom = '1rem';
+      title.style.color = 'var(--text-primary)';
+      title.textContent = q.text;
+      card.appendChild(title);
+
+      const canvas = document.createElement('canvas');
+      canvas.style.maxHeight = '250px';
+      card.appendChild(canvas);
+
+      container.appendChild(card);
+
+      const ctx = canvas.getContext('2d');
+      const chart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: Object.keys(counts),
+          datasets: [{
+            data: Object.values(counts),
+            backgroundColor: ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0284c7', '#14b8a6', '#f43f5e'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+          }
+        }
+      });
+      window._analyticsCharts.push(chart);
+    }
+  });
+
+  if (container.innerHTML === '') {
+    container.innerHTML = '<p class="text-muted" style="grid-column: 1 / -1; text-align: center;">Nenhuma questão de múltipla escolha para gerar gráficos.</p>';
+  }
+};
+
 window.renderReportsTable = function() {
   const tbody = document.getElementById('reports-tbody');
   if (!tbody) return;
@@ -1598,31 +1547,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('sidebar').classList.toggle('mobile-open');
   });
 
-  // Role switcher
-  document.getElementById('role-select').addEventListener('change', async (e) => {
-    state.activeRole = e.target.value;
-    state.activeUserId = MOCK_USER_IDS[state.activeRole] || 'anonymous';
+  // Authentication Check
+  const savedUser = localStorage.getItem('auth_user');
+  if (savedUser) {
+    const u = JSON.parse(savedUser);
+    state.activeRole = u.role;
+    state.activeUserId = u.id;
+    state.activeUserName = u.name;
+    document.querySelector('.sidebar').style.display = 'flex';
+    await loadServerData();
     updateUserUI();
     applyRoleRestrictions();
-    await loadServerData();
     renderDashboard();
+    initFormBuilder();
     renderFormBuilderList();
+    if (state.forms.length > 0) loadFormIntoBuilder(state.forms[0]);
+    initMobileSimulator();
+    initDataExporter();
     renderAudioReviewList();
-  });
+  } else {
+    document.querySelector('.sidebar').style.display = 'none';
+    switchTab('view-login');
+  }
 
-  // Load data
-  await loadServerData();
 
-  // Initialize components
-  updateUserUI();
-  applyRoleRestrictions();
-  renderDashboard();
-  initFormBuilder();
-  renderFormBuilderList();
-  if (state.forms.length > 0) loadFormIntoBuilder(state.forms[0]);
-  initMobileSimulator();
-  initDataExporter();
-  renderAudioReviewList();
 
   // Refresh logs button
   document.getElementById('btn-refresh-logs').addEventListener('click', fetchLogs);

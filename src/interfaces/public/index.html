@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -50,19 +51,34 @@
             <div class="sidebar-user-role" id="current-user-role-label">Coordenador</div>
           </div>
         </div>
-        <select class="form-select" id="role-select">
-          <option value="Coordinator" selected>Coordenador</option>
-          <option value="Admin">Administrador</option>
-          <option value="Analyst">Analista</option>
-          <option value="Supervisor">Supervisor</option>
-          <option value="Researcher">Pesquisador</option>
-          <option value="DEV">Suporte Técnico (DEV)</option>
-        </select>
+        <button class="btn btn-sm" style="width: 100%; justify-content: center; background: rgba(255,255,255,0.1); color: #fff; border: none; margin-top: 0.5rem;" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button>
       </div>
     </aside>
 
     <!-- MAIN CONTENT -->
     <main class="main-content" id="main-content">
+
+      <!-- ===== VIEW: LOGIN ===== -->
+      <section id="view-login" class="view-panel" style="display: none; height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg-page); margin-left: -260px;">
+        <div class="card" style="width: 100%; max-width: 400px; padding: 2rem;">
+          <div style="text-align: center; margin-bottom: 2rem;">
+            <div class="sidebar-logo" style="justify-content: center; color: var(--primary); font-size: 1.8rem; margin-bottom: 0.5rem;">
+              <div class="logo-icon" style="margin-right: 10px; display: inline-flex; width: 40px; height: 40px;"><i class="fa-solid fa-chart-pie"></i></div>
+              DATApesquise
+            </div>
+            <p class="text-muted">Acesse a plataforma de pesquisa</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Usuário</label>
+            <input type="text" id="login-username" class="form-input" placeholder="Digite seu usuário" />
+          </div>
+          <div class="form-group" style="margin-bottom: 2rem;">
+            <label class="form-label">Senha</label>
+            <input type="password" id="login-password" class="form-input" placeholder="••••••••" />
+          </div>
+          <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.8rem;" id="btn-login" onclick="fazerLogin()">ENTRAR</button>
+        </div>
+      </section>
 
       <!-- Toast Container -->
       <div class="toast-container" id="toast-container"></div>
@@ -455,6 +471,14 @@
                 <button class="btn btn-primary" id="btn-export-data" onclick="exportProjectData()"><i class="fa-solid fa-file-csv"></i> Exportar Dados</button>
                 <button class="btn btn-danger" id="btn-clear-tests" onclick="clearTestInterviews()"><i class="fa-solid fa-trash"></i> Apagar Selecionados</button>
               </div>
+
+              <div class="card" style="margin-bottom:2rem;">
+                <h3 class="card-title" style="margin-bottom:1rem;"><i class="fa-solid fa-chart-pie"></i> Relatórios Analíticos</h3>
+                <div id="analytics-charts-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                  <p class="text-muted" style="grid-column: 1 / -1; text-align: center;">Não há dados suficientes para gerar relatórios gráficos.</p>
+                </div>
+              </div>
+
               <div class="card" style="margin-bottom:2rem;">
                 <h3 class="card-title" style="margin-bottom:1rem;"><i class="fa-solid fa-table"></i> Tabela de Respostas</h3>
                 <div class="table-wrapper" style="max-height:400px;overflow-y:auto;">

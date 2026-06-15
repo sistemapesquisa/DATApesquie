@@ -119,12 +119,12 @@ router.all('/', (req, res) => {
 
 // --- AUTHENTICATION ---
 router.post('/auth/login', (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'E-mail e senha são obrigatórios' });
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
   }
 
-  db.get('SELECT id, name, email, role, status FROM users WHERE email = ? AND password = ?', [email, password], (err, user) => {
+  db.get('SELECT id, name, email, role, status FROM users WHERE (id = ? OR name = ? OR email = ?) AND password = ?', [username, username, username, password], (err, user) => {
     if (err) {
       jsonLogger.error('Login error', { error: err.message });
       return res.status(500).json({ error: 'Erro interno no banco de dados' });
