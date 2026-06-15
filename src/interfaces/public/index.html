@@ -128,6 +128,43 @@
             <div id="builder-questions-list"></div>
           </div>
         </div>
+        
+        <!-- Advanced Settings Modal -->
+        <div class="modal-overlay" id="question-settings-modal">
+          <div class="modal-box" style="max-width: 500px;">
+            <div class="modal-title">Configurações Avançadas</div>
+            <p class="modal-message" style="margin-bottom:1rem;">Defina regras ODK (XLSForm) para esta pergunta.</p>
+            
+            <input type="hidden" id="q-settings-id" />
+            
+            <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1.5rem;">
+              <input type="checkbox" id="q-settings-required" style="width:18px;height:18px;" />
+              <label for="q-settings-required" class="form-label" style="margin-bottom:0; cursor:pointer;">Pergunta Obrigatória (Required)</label>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Lógica de Pulo / Exibição (Relevant)</label>
+              <input type="text" class="form-input" id="q-settings-relevant" placeholder="Ex: ${age} > 18" />
+              <div class="form-hint">A pergunta só aparecerá se esta condição for verdadeira.</div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Regra de Validação (Constraint)</label>
+              <input type="text" class="form-input" id="q-settings-constraint" placeholder="Ex: . >= 0 and . <= 100" />
+              <div class="form-hint">A resposta só será aceita se obedecer a esta regra. Use '.' para representar o valor digitado.</div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Mensagem de Erro (Constraint Message)</label>
+              <input type="text" class="form-input" id="q-settings-constraint-msg" placeholder="Ex: O valor não pode ser negativo." />
+            </div>
+            
+            <div class="modal-actions" style="margin-top:1.5rem; justify-content: space-between;">
+              <button class="btn" onclick="closeQuestionSettingsModal()">Cancelar</button>
+              <button class="btn btn-primary" onclick="saveQuestionSettings()">Aplicar Regras</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- ===== VIEW: PROJECT DETAILS ===== -->

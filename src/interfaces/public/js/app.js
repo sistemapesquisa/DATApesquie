@@ -632,13 +632,15 @@ function renderAudioReviewList() {
 }
 
 // ===================== FORM BUILDER =====================
+let draggedQuestionIndex = null;
+
 function initFormBuilder() {
   document.getElementById('btn-new-form').addEventListener('click', () => {
     loadFormIntoBuilder({ id:'', title:'Novo Formulário', status:'draft', version:1, questions:[] });
   });
   document.getElementById('btn-add-question').addEventListener('click', () => {
     const qId = 'Q' + (state.activeForm.questions.length + 1);
-    state.activeForm.questions.push({ id:qId, text:'', type:'single_choice', options:['Sim','Não'], skipRules:[] });
+    state.activeForm.questions.push({ id:qId, text:'', type:'text', options:[], required: false });
     renderBuilderQuestions();
   });
   document.getElementById('btn-save-form').addEventListener('click', saveActiveForm);
@@ -681,17 +683,49 @@ function renderBuilderQuestions() {
   state.activeForm.questions.forEach((q, idx) => {
     const card = document.createElement('div');
     card.className = 'question-card';
+    card.draggable = true;
+    card.dataset.index = idx;
+    
+    // Drag & Drop Listeners
+    card.addEventListener('dragstart', (e) => {
+      draggedQuestionIndex = idx;
+      setTimeout(() => card.style.opacity = '0.5', 0);
+    });
+    card.addEventListener('dragend', (e) => {
+      card.style.opacity = '1';
+      draggedQuestionIndex = null;
+    });
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      card.style.borderTop = '2px solid var(--primary)';
+    });
+    card.addEventListener('dragleave', (e) => {
+      card.style.borderTop = '';
+    });
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.style.borderTop = '';
+      if (draggedQuestionIndex !== null && draggedQuestionIndex !== idx) {
+        // Move item in array
+        const draggedItem = state.activeForm.questions.splice(draggedQuestionIndex, 1)[0];
+        state.activeForm.questions.splice(idx, 0, draggedItem);
+        renderBuilderQuestions();
+      }
+    });
+
     const isChoice = q.type === 'single_choice' || q.type === 'multiple_choice';
     // Options HTML
     let optionsHtml = '';
     if (isChoice) {
       optionsHtml = '<div style="margin-top:0.5rem;"><label class="form-label">Opções de resposta</label>';
       q.options.forEach((opt, oi) => {
-        optionsHtml += `<div class="option-item"><input type="text" class="form-input" value="${opt}" onchange="updateOption(${idx},${oi},this.value)" /><button class="btn btn-sm btn-danger" onclick="removeOption(${idx},${oi})" title="Remover opção"><i class="fa-solid fa-minus"></i></button></div>`;
+        const val = typeof opt === 'object' ? opt.label : opt;
+        optionsHtml += `<div class="option-item"><input type="text" class="form-input" value="${val}" onchange="updateOption(${idx},${oi},this.value)" /><button class="btn btn-sm btn-danger" onclick="removeOption(${idx},${oi})" title="Remover opção"><i class="fa-solid fa-minus"></i></button></div>`;
       });
       optionsHtml += `<button class="btn btn-sm" onclick="addOption(${idx})" style="margin-top:0.3rem;"><i class="fa-solid fa-plus"></i> Nova opção</button></div>`;
     }
-    // Skip rules HTML
+    
+    // Skip rules HTML (Backwards compatibility)
     let rulesHtml = '';
     if (q.skipRules && q.skipRules.length > 0) {
       let targetOpts = '<option value="">(Próxima pergunta)</option>';
@@ -702,17 +736,30 @@ function renderBuilderQuestions() {
         rulesHtml += `<div class="skip-rule-row"><span>Se resposta =</span><input type="text" class="form-input" value="${rule.conditionValue||''}" onchange="updateSkipValue(${idx},${ri},this.value)" style="width:90px;" placeholder="valor" /><span>→ Ir para</span><select class="form-select" onchange="updateSkipTarget(${idx},${ri},this.value)" style="width:auto;">${targetOpts.replace(`value="${rule.targetQuestionId}"`,`value="${rule.targetQuestionId}" selected`)}</select><button class="btn btn-sm btn-danger" onclick="confirmDeleteSkipRule(${idx},${ri})" title="Remover regra"><i class="fa-solid fa-trash"></i></button></div>`;
       });
     }
+
     card.innerHTML = `
-      <div class="question-header">
+      <div class="question-header" style="cursor: grab;">
         <div style="display:flex;align-items:center;gap:0.5rem;"><div class="question-number">${idx+1}</div><span style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);">${q.id}</span></div>
         <div class="question-actions">
+          <button class="btn btn-sm" onclick="openQuestionSettingsModal(${idx})" title="Configurações Avançadas"><i class="fa-solid fa-gear"></i></button>
           <button class="btn btn-sm" onclick="duplicateQuestion(${idx})" title="Duplicar"><i class="fa-solid fa-copy"></i></button>
           <button class="btn btn-sm btn-danger" onclick="confirmDeleteQuestion(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;margin-bottom:0.5rem;">
         <div class="form-group"><label class="form-label">Texto da Pergunta</label><input type="text" class="form-input" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="Escreva a pergunta aqui..." /></div>
-        <div class="form-group"><label class="form-label">Tipo de Entrada <span class="tooltip-trigger"><span class="tooltip-icon">?</span><span class="tooltip-text">Escolha como o pesquisador vai responder esta pergunta.</span></span></label><select class="form-select" onchange="updateQType(${idx},this.value)"><option value="text" ${q.type==='text'?'selected':''}>Texto Livre</option><option value="single_choice" ${q.type==='single_choice'?'selected':''}>Seleção Única</option><option value="multiple_choice" ${q.type==='multiple_choice'?'selected':''}>Múltipla Escolha</option><option value="number" ${q.type==='number'?'selected':''}>Numérico</option><option value="audio_record" ${q.type==='audio_record'?'selected':''}>Gravação de Áudio</option><option value="geopoint" ${q.type==='geopoint'?'selected':''}>Ponto de GPS</option></select></div>
+        <div class="form-group"><label class="form-label">Tipo de Entrada <span class="tooltip-trigger"><span class="tooltip-icon">?</span><span class="tooltip-text">Escolha como o pesquisador vai responder esta pergunta.</span></span></label>
+        <select class="form-select" onchange="updateQType(${idx},this.value)">
+          <option value="text" ${q.type==='text'?'selected':''}>Texto Livre</option>
+          <option value="number" ${q.type==='number'||q.type==='decimal'?'selected':''}>Número (Decimal)</option>
+          <option value="integer" ${q.type==='integer'?'selected':''}>Número (Inteiro)</option>
+          <option value="single_choice" ${q.type==='single_choice'||q.type==='select_one'?'selected':''}>Seleção Única</option>
+          <option value="multiple_choice" ${q.type==='multiple_choice'||q.type==='select_multiple'?'selected':''}>Múltipla Escolha</option>
+          <option value="geopoint" ${q.type==='geopoint'?'selected':''}>Localização (GPS)</option>
+          <option value="image" ${q.type==='image'?'selected':''}>Foto / Imagem</option>
+          <option value="video" ${q.type==='video'?'selected':''}>Vídeo</option>
+          <option value="audio_record" ${q.type==='audio_record'||q.type==='audio'?'selected':''}>Gravação de Áudio</option>
+        </select></div>
       </div>
       ${optionsHtml}
       <div style="margin-top:0.75rem;padding-top:0.6rem;border-top:1px solid var(--border);">
@@ -728,13 +775,21 @@ function renderBuilderQuestions() {
 
 // Question handlers
 window.updateQText = (idx, val) => { state.activeForm.questions[idx].text = val; };
-window.updateQType = (idx, val) => { state.activeForm.questions[idx].type = val; renderBuilderQuestions(); };
-window.addOption = (idx) => { state.activeForm.questions[idx].options.push('Nova opção'); renderBuilderQuestions(); };
+window.updateQType = (idx, val) => { state.activeForm.questions[idx].type = val; if(!state.activeForm.questions[idx].options) state.activeForm.questions[idx].options=[]; renderBuilderQuestions(); };
+window.addOption = (idx) => { 
+  if(!state.activeForm.questions[idx].options) state.activeForm.questions[idx].options=[];
+  state.activeForm.questions[idx].options.push({ name: 'opt_'+crypto.randomUUID().substring(0,6), label: 'Nova opção' }); 
+  renderBuilderQuestions(); 
+};
 window.removeOption = (idx, oi) => {
   if (state.activeForm.questions[idx].options.length <= 1) { showToast('warning', 'A pergunta precisa ter pelo menos uma opção.'); return; }
   state.activeForm.questions[idx].options.splice(oi, 1); renderBuilderQuestions();
 };
-window.updateOption = (idx, oi, val) => { state.activeForm.questions[idx].options[oi] = val; };
+window.updateOption = (idx, oi, val) => { 
+  let opt = state.activeForm.questions[idx].options[oi];
+  if(typeof opt === 'string') state.activeForm.questions[idx].options[oi] = { name: opt, label: val };
+  else opt.label = val; 
+};
 window.addSkipRule = (idx) => {
   if (!state.activeForm.questions[idx].skipRules) state.activeForm.questions[idx].skipRules = [];
   state.activeForm.questions[idx].skipRules.push({ conditionValue:'Sim', targetQuestionId:'' });
@@ -742,6 +797,42 @@ window.addSkipRule = (idx) => {
 };
 window.updateSkipValue = (qi, ri, val) => { state.activeForm.questions[qi].skipRules[ri].conditionValue = val; };
 window.updateSkipTarget = (qi, ri, val) => { state.activeForm.questions[qi].skipRules[ri].targetQuestionId = val; };
+window.confirmDeleteQuestion = (idx) => {
+  showConfirm('Excluir Pergunta', 'Tem certeza?', () => { state.activeForm.questions.splice(idx,1); renderBuilderQuestions(); });
+};
+
+window.openQuestionSettingsModal = (idx) => {
+  const q = state.activeForm.questions[idx];
+  document.getElementById('q-settings-id').value = idx;
+  document.getElementById('q-settings-required').checked = !!q.required;
+  document.getElementById('q-settings-relevant').value = q.relevant || '';
+  document.getElementById('q-settings-constraint').value = q.constraint || '';
+  document.getElementById('q-settings-constraint-msg').value = q.constraint_message || '';
+  document.getElementById('question-settings-modal').classList.add('active');
+};
+
+window.closeQuestionSettingsModal = () => {
+  document.getElementById('question-settings-modal').classList.remove('active');
+};
+
+window.saveQuestionSettings = () => {
+  const idx = parseInt(document.getElementById('q-settings-id').value, 10);
+  const q = state.activeForm.questions[idx];
+  
+  q.required = document.getElementById('q-settings-required').checked;
+  
+  const relevantVal = document.getElementById('q-settings-relevant').value.trim();
+  if (relevantVal) q.relevant = relevantVal; else delete q.relevant;
+  
+  const constraintVal = document.getElementById('q-settings-constraint').value.trim();
+  if (constraintVal) q.constraint = constraintVal; else delete q.constraint;
+  
+  const constraintMsgVal = document.getElementById('q-settings-constraint-msg').value.trim();
+  if (constraintMsgVal) q.constraint_message = constraintMsgVal; else delete q.constraint_message;
+  
+  closeQuestionSettingsModal();
+  renderBuilderQuestions();
+};
 window.confirmDeleteSkipRule = (qi, ri) => { showConfirm('Remover Regra', 'Deseja remover esta regra de pulo?', () => { state.activeForm.questions[qi].skipRules.splice(ri,1); renderBuilderQuestions(); }, { type:'warning' }); };
 window.duplicateQuestion = (idx) => {
   const clone = JSON.parse(JSON.stringify(state.activeForm.questions[idx]));

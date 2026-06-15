@@ -55,17 +55,27 @@ function convertToXForm(form) {
   let bindsHtml = '';
   questions.forEach(q => {
     let typeAttr = 'string';
-    if (q.type === 'number') typeAttr = 'decimal';
-    else if (q.type === 'single_choice') typeAttr = 'select1';
-    else if (q.type === 'multiple_choice') typeAttr = 'select';
-    else if (q.type === 'audio_record') typeAttr = 'binary';
+    if (q.type === 'number' || q.type === 'decimal') typeAttr = 'decimal';
+    else if (q.type === 'integer') typeAttr = 'int';
+    else if (q.type === 'single_choice' || q.type === 'select_one') typeAttr = 'select1';
+    else if (q.type === 'multiple_choice' || q.type === 'select_multiple') typeAttr = 'select';
+    else if (q.type === 'audio_record' || q.type === 'audio') typeAttr = 'binary';
+    else if (q.type === 'image' || q.type === 'video') typeAttr = 'binary';
+    else if (q.type === 'geopoint') typeAttr = 'geopoint';
 
-    const relevanceList = relevanceMap[q.id];
-    const relevanceAttr = relevanceList && relevanceList.length > 0
+    // Backwards compat with skipRules
+    const relevanceList = relevanceMap[q.id] || [];
+    if (q.relevant) relevanceList.push(q.relevant);
+    
+    const relevanceAttr = relevanceList.length > 0
       ? ` relevant="${relevanceList.join(' and ')}"`
       : '';
+      
+    const requiredAttr = q.required ? ` required="true()"` : '';
+    const constraintAttr = q.constraint ? ` constraint="${q.constraint.replace(/"/g, '&quot;')}"` : '';
+    const constraintMsgAttr = q.constraint_message ? ` jr:constraintMsg="${q.constraint_message.replace(/"/g, '&quot;')}"` : '';
 
-    bindsHtml += `    <bind nodeset="/data/${q.id}" type="${typeAttr}"${relevanceAttr}/>\n`;
+    bindsHtml += `    <bind nodeset="/data/${q.id}" type="${typeAttr}"${requiredAttr}${relevanceAttr}${constraintAttr}${constraintMsgAttr}/>\n`;
   });
   
   // Bind for internal audit and mandatory geolocation
@@ -75,17 +85,23 @@ function convertToXForm(form) {
   // 4. Build Body elements
   let bodyHtml = '';
   questions.forEach(q => {
-    if (q.type === 'text' || q.type === 'number') {
+    if (q.type === 'text' || q.type === 'number' || q.type === 'decimal' || q.type === 'integer' || q.type === 'geopoint') {
       bodyHtml += `    <input ref="/data/${q.id}">\n      <label>${q.text}</label>\n    </input>\n`;
-    } else if (q.type === 'single_choice' || q.type === 'multiple_choice') {
-      const tag = q.type === 'single_choice' ? 'select1' : 'select';
+    } else if (q.type === 'single_choice' || q.type === 'select_one' || q.type === 'multiple_choice' || q.type === 'select_multiple') {
+      const tag = (q.type === 'single_choice' || q.type === 'select_one') ? 'select1' : 'select';
       bodyHtml += `    <${tag} ref="/data/${q.id}">\n      <label>${q.text}</label>\n`;
       (q.options || []).forEach(opt => {
-        bodyHtml += `      <item>\n        <label>${opt}</label>\n        <value>${opt}</value>\n      </item>\n`;
+        const val = typeof opt === 'object' ? opt.name : opt;
+        const lbl = typeof opt === 'object' ? opt.label : opt;
+        bodyHtml += `      <item>\n        <label>${lbl}</label>\n        <value>${val}</value>\n      </item>\n`;
       });
       bodyHtml += `    </${tag}>\n`;
-    } else if (q.type === 'audio_record') {
+    } else if (q.type === 'audio_record' || q.type === 'audio') {
       bodyHtml += `    <upload ref="/data/${q.id}" mediatype="audio/*">\n      <label>${q.text}</label>\n    </upload>\n`;
+    } else if (q.type === 'image') {
+      bodyHtml += `    <upload ref="/data/${q.id}" mediatype="image/*">\n      <label>${q.text}</label>\n    </upload>\n`;
+    } else if (q.type === 'video') {
+      bodyHtml += `    <upload ref="/data/${q.id}" mediatype="video/*">\n      <label>${q.text}</label>\n    </upload>\n`;
     }
   });
 
