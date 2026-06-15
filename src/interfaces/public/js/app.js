@@ -943,19 +943,26 @@ function renderMobileScreen() {
       const isLast = ci === qList.length - 1;
       let inputHtml = '';
       if (q.type === 'text') inputHtml = `<input type="text" id="sim-ans-${q.id}" class="form-input" style="margin-top:0.6rem;" value="${state.simAnswers[q.id]||''}" placeholder="Escreva a resposta..." />`;
-      else if (q.type === 'number') inputHtml = `<input type="number" id="sim-ans-${q.id}" class="form-input" style="margin-top:0.6rem;" value="${state.simAnswers[q.id]||''}" placeholder="Digite um número..." />`;
-      else if (q.type === 'single_choice') {
+      else if (q.type === 'number' || q.type === 'integer' || q.type === 'decimal') inputHtml = `<input type="number" id="sim-ans-${q.id}" class="form-input" style="margin-top:0.6rem;" value="${state.simAnswers[q.id]||''}" ${q.type==='integer'?'step="1"':''} placeholder="Digite um número..." />`;
+      else if (q.type === 'single_choice' || q.type === 'select_one') {
         inputHtml = '<div style="margin-top:0.6rem;">';
-        q.options.forEach(opt => { const chk = state.simAnswers[q.id]===opt?'checked':''; inputHtml += `<label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.88rem;cursor:pointer;"><input type="radio" name="sim-rad-${q.id}" value="${opt}" ${chk} style="transform:scale(1.15);" /> ${opt}</label>`; });
+        if(q.options) q.options.forEach(opt => { const val = typeof opt==='object'?opt.label:opt; const chk = state.simAnswers[q.id]===val?'checked':''; inputHtml += `<label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.88rem;cursor:pointer;"><input type="radio" name="sim-rad-${q.id}" value="${val}" ${chk} style="transform:scale(1.15);" /> ${val}</label>`; });
         inputHtml += '</div>';
-      } else if (q.type === 'multiple_choice') {
+      } else if (q.type === 'multiple_choice' || q.type === 'select_multiple') {
         const arr = state.simAnswers[q.id] || [];
         inputHtml = '<div style="margin-top:0.6rem;">';
-        q.options.forEach(opt => { const chk = arr.includes(opt)?'checked':''; inputHtml += `<label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.88rem;cursor:pointer;"><input type="checkbox" name="sim-chk-${q.id}" value="${opt}" ${chk} style="transform:scale(1.15);" /> ${opt}</label>`; });
+        if(q.options) q.options.forEach(opt => { const val = typeof opt==='object'?opt.label:opt; const chk = arr.includes(val)?'checked':''; inputHtml += `<label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.88rem;cursor:pointer;"><input type="checkbox" name="sim-chk-${q.id}" value="${val}" ${chk} style="transform:scale(1.15);" /> ${val}</label>`; });
         inputHtml += '</div>';
-      } else if (q.type === 'audio_record') {
+      } else if (q.type === 'geopoint') {
+        const val = state.simAnswers[q.id] || '';
+        inputHtml = `<div style="margin-top:0.6rem;padding:1rem;background:#f3f4f6;border-radius:8px;text-align:center;"><i class="fa-solid fa-location-dot" style="font-size:2rem;color:var(--primary);margin-bottom:0.5rem;display:block;"></i><input type="hidden" id="sim-ans-${q.id}" value="${val?val:'-9.38,-40.50'}"><button class="btn btn-sm btn-primary" onclick="document.getElementById('sim-ans-${q.id}').value='-9.3833,-40.5000';this.innerHTML='<i class=\\'fa-solid fa-check\\'></i> Localização Capturada';this.classList.add('btn-success');"><i class="fa-solid fa-satellite-dish"></i> Obter Coordenadas GPS</button>${val?'<div style="font-size:0.75rem;margin-top:0.5rem;color:var(--success);">GPS salvo!</div>':''}</div>`;
+      } else if (q.type === 'image' || q.type === 'video') {
+        const val = state.simAnswers[q.id] || '';
+        const icon = q.type === 'image' ? 'fa-camera' : 'fa-video';
+        inputHtml = `<div style="margin-top:0.6rem;padding:1rem;background:#f3f4f6;border-radius:8px;text-align:center;"><i class="fa-solid ${icon}" style="font-size:2rem;color:var(--text-muted);margin-bottom:0.5rem;display:block;"></i><input type="hidden" id="sim-ans-${q.id}" value="${val?val:'midia_capturada.jpg'}"><button class="btn btn-sm" onclick="document.getElementById('sim-ans-${q.id}').value='arquivo_simulado.${q.type==='video'?'mp4':'jpg'}';this.innerHTML='<i class=\\'fa-solid fa-check\\'></i> Arquivo Anexado';this.classList.add('btn-success');"><i class="fa-solid fa-paperclip"></i> Capturar ou Anexar</button>${val?'<div style="font-size:0.75rem;margin-top:0.5rem;color:var(--success);">Arquivo salvo!</div>':''}</div>`;
+      } else if (q.type === 'audio_record' || q.type === 'audio') {
         const isRec = state.simIsRecording;
-        inputHtml = `<div class="sim-audio-widget"><p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.4rem;">${isRec?'Gravando... Fale no microfone.':'Pressione para iniciar.'}</p><div class="wave-container ${isRec?'recording':''}"><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span></div><button class="record-btn ${isRec?'recording':''}" onclick="simToggleRecord()"></button><div style="font-size:0.75rem;margin-top:0.3rem;">${state.simAudioFile?`<span style="color:var(--success);"><i class="fa-solid fa-file-audio"></i> ${state.simAudioFile}</span>`:'<span style="color:var(--text-muted);">Nenhum áudio gravado</span>'}</div></div>`;
+        inputHtml = `<div class="sim-audio-widget"><p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.4rem;">${isRec?'Gravando... Fale no microfone.':'Pressione para iniciar.'}</p><div class="wave-container ${isRec?'recording':''}"><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span></div><button class="record-btn ${isRec?'recording':''}" onclick="simToggleRecord()"></button><div style="font-size:0.75rem;margin-top:0.3rem;">${state.simAudioFile?`<span style="color:var(--success);"><i class="fa-solid fa-file-audio"></i> ${state.simAudioFile}</span>`:'<span style="color:var(--text-muted);">Nenhum áudio gravado</span>'}</div><input type="hidden" id="sim-ans-${q.id}" value="${state.simAudioFile||''}"></div>`;
       }
       screen.innerHTML = `<div style="flex:1;display:flex;flex-direction:column;padding:0.25rem;"><div style="font-size:0.7rem;color:var(--primary);font-weight:700;margin-bottom:0.15rem;">Questão ${ci+1} de ${qList.length}</div><div class="progress-bar" style="margin-bottom:0.75rem;"><div class="progress-fill blue" style="width:${((ci+1)/qList.length*100).toFixed(0)}%;"></div></div><h4 style="font-size:1rem;line-height:1.4;margin-bottom:0.25rem;">${q.text}</h4>${inputHtml}<div style="display:flex;gap:0.5rem;margin-top:auto;padding-top:1rem;"><button class="btn" style="flex:1;" onclick="simPrev()"><i class="fa-solid fa-arrow-left"></i> Voltar</button><button class="btn btn-primary" style="flex:2;" onclick="simNext()">${isLast?'<i class="fa-solid fa-circle-check"></i> Finalizar':'Avançar <i class="fa-solid fa-arrow-right"></i>'}</button></div><button class="btn btn-sm" style="margin-top:0.5rem;width:100%;border:none;color:var(--danger);font-size:0.75rem;" onclick="simAbort()"><i class="fa-solid fa-ban"></i> Cancelar Coleta</button></div>`;
     } else {
@@ -978,10 +985,10 @@ window.simPrev = function() { if (state.simCurrentQuestionIdx > 0) { state.simCu
 window.simNext = function() {
   const q = state.simActiveForm.questions[state.simCurrentQuestionIdx];
   let val = '';
-  if (q.type === 'text' || q.type === 'number') { const el = document.getElementById(`sim-ans-${q.id}`); val = el ? el.value.trim() : ''; }
-  else if (q.type === 'single_choice') { const r = document.querySelector(`input[name="sim-rad-${q.id}"]:checked`); val = r ? r.value : ''; }
-  else if (q.type === 'multiple_choice') { val = Array.from(document.querySelectorAll(`input[name="sim-chk-${q.id}"]:checked`)).map(c => c.value); }
-  else if (q.type === 'audio_record') { val = state.simAudioFile || ''; }
+  if (q.type === 'text' || q.type === 'number' || q.type === 'integer' || q.type === 'decimal' || q.type === 'geopoint' || q.type === 'image' || q.type === 'video') { const el = document.getElementById(`sim-ans-${q.id}`); val = el ? el.value.trim() : ''; }
+  else if (q.type === 'single_choice' || q.type === 'select_one') { const r = document.querySelector(`input[name="sim-rad-${q.id}"]:checked`); val = r ? r.value : ''; }
+  else if (q.type === 'multiple_choice' || q.type === 'select_multiple') { val = Array.from(document.querySelectorAll(`input[name="sim-chk-${q.id}"]:checked`)).map(c => c.value); }
+  else if (q.type === 'audio_record' || q.type === 'audio') { val = state.simAudioFile || document.getElementById(`sim-ans-${q.id}`)?.value || ''; }
   if (!val || (Array.isArray(val) && val.length === 0)) { showToast('warning', 'Preencha esta questão para continuar.'); return; }
   state.simAnswers[q.id] = val;
   // Skip logic
