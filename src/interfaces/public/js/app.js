@@ -236,7 +236,6 @@ const NAV_PERMISSIONS = {
   'nav-form-builder': ['DEV','Admin','Analyst'],
   'nav-logs': ['DEV'],
   'nav-ai': ['DEV','Admin','Analyst','Supervisor','Coordinator'],
-  'nav-equipment': ['DEV','Admin','Coordinator'],
   'nav-reports': ['DEV','Admin','Analyst','Supervisor','Coordinator'],
 };
 const SECTION_PERMISSIONS = {
@@ -1235,21 +1234,6 @@ window.simSubmit = async function() {
   simReset();
 };
 
-// ===================== EQUIPMENT =====================
-window.runEquipmentCommand = async function(command) {
-  const container = document.getElementById('equipment-results');
-  container.innerHTML = '<div class="equipment-result"><i class="fa-solid fa-spinner fa-spin"></i> Consultando equipamento...</div>';
-  try {
-    const result = await apiFetch('/api/network/command', { method:'POST', body:JSON.stringify({ command }) });
-    let cssClass = '';
-    if (result.severity === 'CRITICAL' || result.severity === 'HIGH') {
-      cssClass = 'color:var(--danger);';
-      showToast('error', 'Comando bloqueado por segurança.');
-      await loadServerData(); renderDashboard();
-    }
-    container.innerHTML = `<div class="equipment-result"><div style="${cssClass}font-weight:600;margin-bottom:0.4rem;">${result.message}</div><div style="color:var(--success);font-size:0.8rem;margin-top:0.3rem;"><i class="fa-solid fa-lightbulb"></i> ${result.suggestion}</div></div>`;
-  } catch (err) { container.innerHTML = `<div class="equipment-result" style="color:var(--danger);">Erro: ${err.message}</div>`; }
-};
 
 // ===================== AI ANALYSIS =====================
 window.runAiAnalysis = async function() {

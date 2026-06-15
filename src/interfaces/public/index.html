@@ -47,7 +47,6 @@
         <div class="nav-divider"></div>
         <a class="nav-item" data-target="view-team" id="nav-team"><i class="fa-solid fa-users"></i><span>Gerenciar Equipe</span></a>
         <a class="nav-item" data-target="view-roles" id="nav-roles"><i class="fa-solid fa-user-shield"></i><span>Cargos e Permissões</span></a>
-        <a class="nav-item" data-target="view-equipment" id="nav-equipment"><i class="fa-solid fa-server"></i><span>Equipamentos</span></a>
         <a class="nav-item" data-target="view-logs" id="nav-logs"><i class="fa-solid fa-shield-halved"></i><span>Auditoria de Logs</span></a>
         
         <!-- Hidden target for active state when inside a project -->
@@ -114,8 +113,6 @@
           <div class="kobo-dashboard-header">
             <h1 class="kobo-dashboard-title">Meus Projetos</h1>
             <div class="kobo-dashboard-filters">
-              <button><i class="fa-solid fa-filter"></i> filtro</button>
-              <button><i class="fa-solid fa-table-columns"></i> campos</button>
             </div>
             <div style="flex:1;"></div>
             <div class="kobo-dashboard-actions">
@@ -193,11 +190,9 @@
                 <button onclick="previewActiveForm()" title="Visualizar (Simulador)"><i class="fa-solid fa-eye"></i></button>
                 <button onclick="toggleCollapseQuestions()" title="Expandir/Recolher"><i class="fa-solid fa-list-ul"></i></button>
                 <button onclick="duplicateActiveForm()" title="Duplicar Formulário"><i class="fa-solid fa-copy"></i></button>
-                <button onclick="showToast('info', 'Para configurar regras de exibição (Lógica de Pulo), clique no ícone de ramificação (galhos) à direita da própria pergunta!')" title="Lógica Avançada"><i class="fa-solid fa-code-branch"></i></button>
               </div>
               <div class="kobo-sub-right">
                 <button onclick="document.getElementById('question-library-modal').classList.add('active')"><i class="fa-solid fa-book"></i> Adicionar da Biblioteca</button>
-                <button onclick="showToast('success', 'Layout padrão Kobo 100% aplicado. Cores e fontes configuradas com sucesso!')"><i class="fa-solid fa-gear"></i> Layout e Configurações</button>
               </div>
             </div>
             
@@ -472,7 +467,6 @@
                     <button class="kobo-list-btn" onclick="koboPreviewForm()"><i class="fa-solid fa-mobile-screen kobo-list-icon"></i> Collect data <i class="fa-solid fa-chevron-right kobo-list-arrow"></i></button>
                     <button class="kobo-list-btn" onclick="koboSwitchTab('proj-tab-config')"><i class="fa-solid fa-user-plus kobo-list-icon"></i> Compartilhar projeto <i class="fa-solid fa-chevron-right kobo-list-arrow"></i></button>
                     <button class="kobo-list-btn" onclick="koboEditForm()"><i class="fa-solid fa-pen kobo-list-icon"></i> Editar formulário <i class="fa-solid fa-chevron-right kobo-list-arrow"></i></button>
-                    <button class="kobo-list-btn" onclick="koboPreviewForm()"><i class="fa-solid fa-eye kobo-list-icon"></i> Pré-visualizar formulário <i class="fa-solid fa-chevron-right kobo-list-arrow"></i></button>
                   </div>
 
                   <h3 style="font-size: 1rem; color: #333; margin-top: 2rem; margin-bottom: 1rem;">Dados</h3>
@@ -669,22 +663,6 @@
           </div>
         </div>
 
-      </section>
-
-      <!-- ===== VIEW: EQUIPMENT ===== -->
-      <section id="view-equipment" class="view-panel">
-        <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-server"></i> Equipamentos de Campo</h1><p class="page-subtitle">Consulte informações dos roteadores e equipamentos de sincronização.</p></div>
-        <div class="card">
-          <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-circle-info"></i> Ações Disponíveis</h3><span class="badge badge-info">Somente Leitura</span></div>
-          <p class="text-muted" style="margin-bottom:1rem;">Selecione uma ação abaixo. Por segurança, todas as consultas são apenas de leitura.</p>
-          <div class="equipment-grid">
-            <div class="equipment-action-card" onclick="runEquipmentCommand('show version')"><div class="action-icon" style="background:var(--primary-light);color:var(--primary);"><i class="fa-solid fa-microchip"></i></div><div class="action-title">Versão do Equipamento</div><div class="action-desc">Ver firmware instalado</div></div>
-            <div class="equipment-action-card" onclick="runEquipmentCommand('ping 8.8.8.8')"><div class="action-icon" style="background:var(--success-light);color:var(--success);"><i class="fa-solid fa-wifi"></i></div><div class="action-title">Testar Conexão</div><div class="action-desc">Verificar acesso à internet</div></div>
-            <div class="equipment-action-card" onclick="runEquipmentCommand('/ip address print')"><div class="action-icon" style="background:var(--warning-light);color:var(--warning);"><i class="fa-solid fa-network-wired"></i></div><div class="action-title">Endereços de Rede</div><div class="action-desc">Listar IPs configurados</div></div>
-            <div class="equipment-action-card" onclick="runEquipmentCommand('show status')"><div class="action-icon" style="background:var(--info-light);color:var(--info);"><i class="fa-solid fa-gauge-high"></i></div><div class="action-title">Status de Sincronização</div><div class="action-desc">Latência e qualidade</div></div>
-          </div>
-          <div id="equipment-results"></div>
-        </div>
       </section>
 
       <!-- ===== VIEW: LOGS ===== -->
