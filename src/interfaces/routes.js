@@ -270,16 +270,21 @@ router.post('/routes', (req, res) => {
     return res.status(403).json({ error: 'Acesso negado: apenas coordenadores ou admins.' });
   }
 
-  const routeId = 'route_' + crypto.randomBytes(6).toString('hex');
-  db.run(
-    'INSERT INTO routes (id, researcher_id, form_id, city) VALUES (?, ?, ?, ?)',
-    [routeId, researcher_id, form_id, city || ''],
-    (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      jsonLogger.info(`Route assignment created: ${routeId} by ${req.user.id}`);
-      res.json({ success: true, routeId });
-    }
-  );
+  db.get('SELECT id FROM routes WHERE researcher_id = ? AND form_id = ?', [researcher_id, form_id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (row) return res.status(400).json({ error: 'Este pesquisador já possui acesso a este projeto.' });
+
+    const routeId = 'route_' + crypto.randomBytes(6).toString('hex');
+    db.run(
+      'INSERT INTO routes (id, researcher_id, form_id, city) VALUES (?, ?, ?, ?)',
+      [routeId, researcher_id, form_id, city || ''],
+      (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        jsonLogger.info(`Route assignment created: ${routeId} by ${req.user.id}`);
+        res.json({ success: true, routeId });
+      }
+    );
+  });
 });
 
 router.delete('/routes/:id', (req, res) => {
