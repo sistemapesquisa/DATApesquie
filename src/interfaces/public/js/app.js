@@ -1076,7 +1076,39 @@ window.simStartInterview = function() {
 };
 window.simAbort = function() { showConfirm('Cancelar Coleta', 'Todas as respostas preenchidas serão perdidas. Continuar?', () => simReset(), { type:'danger', confirmText:'Sim, cancelar' }); };
 function simReset() { state.simActiveForm = null; state.simAnswers = {}; state.simCurrentQuestionIdx = 0; state.simAudioFile = null; state.simIsRecording = false; renderMobileScreen(); }
-window.simPrev = function() { if (state.simCurrentQuestionIdx > 0) { state.simCurrentQuestionIdx--; renderMobileScreen(); } else { state.simActiveForm = null; renderMobileScreen(); } };
+function evaluateSimLogic(logicArray) {
+  if (!logicArray || logicArray.length === 0) return true;
+  for (let l of logicArray) {
+    if (!l.targetId) continue;
+    const ans = state.simAnswers[l.targetId];
+    if (ans === undefined) return false;
+    let numAns = parseFloat(ans);
+    let numVal = parseFloat(l.val);
+    let isNum = !isNaN(numAns) && !isNaN(numVal);
+    
+    if (l.op === '=') { if (ans != l.val) return false; }
+    else if (l.op === '!=') { if (ans == l.val) return false; }
+    else if (l.op === '>') { if (!isNum || numAns <= numVal) return false; }
+    else if (l.op === '<') { if (!isNum || numAns >= numVal) return false; }
+  }
+  return true;
+}
+
+window.simPrev = function() {
+  let prevIdx = state.simCurrentQuestionIdx - 1;
+  while (prevIdx >= 0) {
+    const q = state.simActiveForm.questions[prevIdx];
+    if (evaluateSimLogic(q._logic)) {
+      state.simCurrentQuestionIdx = prevIdx;
+      renderMobileScreen();
+      return;
+    }
+    prevIdx--;
+  }
+  state.simActiveForm = null; 
+  renderMobileScreen();
+};
+
 window.simNext = function() {
   const q = state.simActiveForm.questions[state.simCurrentQuestionIdx];
   let val = '';
@@ -1084,13 +1116,21 @@ window.simNext = function() {
   else if (q.type === 'single_choice' || q.type === 'select_one') { const r = document.querySelector(`input[name="sim-rad-${q.id}"]:checked`); val = r ? r.value : ''; }
   else if (q.type === 'multiple_choice' || q.type === 'select_multiple') { val = Array.from(document.querySelectorAll(`input[name="sim-chk-${q.id}"]:checked`)).map(c => c.value); }
   else if (q.type === 'audio_record' || q.type === 'audio') { val = state.simAudioFile || document.getElementById(`sim-ans-${q.id}`)?.value || ''; }
+  
   if (!val || (Array.isArray(val) && val.length === 0)) { showToast('warning', 'Preencha esta questão para continuar.'); return; }
   state.simAnswers[q.id] = val;
-  // Skip logic
-  let nextId = null;
-  if (q.skipRules && q.skipRules.length > 0) { for (const rule of q.skipRules) { if (!rule.conditionValue || String(val) === String(rule.conditionValue)) { nextId = rule.targetQuestionId; break; } } }
-  if (nextId) { const ni = state.simActiveForm.questions.findIndex(x => x.id === nextId); state.simCurrentQuestionIdx = ni !== -1 ? ni : state.simActiveForm.questions.length; }
-  else { state.simCurrentQuestionIdx++; }
+  
+  // Find next visible question
+  let nextIdx = state.simCurrentQuestionIdx + 1;
+  while (nextIdx < state.simActiveForm.questions.length) {
+    const nextQ = state.simActiveForm.questions[nextIdx];
+    if (evaluateSimLogic(nextQ._logic)) {
+      break;
+    }
+    nextIdx++;
+  }
+  
+  state.simCurrentQuestionIdx = nextIdx;
   renderMobileScreen();
 };
 window.simToggleRecord = function() {
@@ -1098,9 +1138,12 @@ window.simToggleRecord = function() {
   else { state.simIsRecording = true; renderMobileScreen(); setTimeout(() => { if (state.simIsRecording) { state.simIsRecording = false; state.simAudioFile = `https://actions.google.com/sounds/v1/alarms/beep_short.ogg`; renderMobileScreen(); } }, 3000); }
 };
 window.simSubmit = async function() {
-  const researcherId = document.getElementById('sim-active-researcher').value;
-  const lat = parseFloat(document.getElementById('sim-lat').value);
-  const lng = parseFloat(document.getElementById('sim-lng').value);
+  const researcherEl = document.getElementById('sim-active-researcher');
+  const researcherId = researcherEl ? researcherEl.value : state.activeUserId;
+  const latEl = document.getElementById('sim-lat');
+  const lngEl = document.getElementById('sim-lng');
+  const lat = latEl ? parseFloat(latEl.value) : -3.1190;
+  const lng = lngEl ? parseFloat(lngEl.value) : -60.0217;
   const deviceId = "Simulador Web";
   const payload = { formId:state.simActiveForm.id, formVersion:state.simActiveForm.version, data:state.simAnswers, latitude:lat, longitude:lng, audioFileName:state.simAudioFile, researcherId, deviceId };
   if (state.simIsOnline) {
@@ -1594,7 +1637,7 @@ window.addAdvLogicCondition = function() {
   else if (op === '!=') syntax = `\${${targetId}} != '${val}'`;
   else syntax = `\${${targetId}} ${op} ${val}`;
 
-  q._logic.push({ target: targetText, op, val, raw: syntax });
+  q._logic.push({ targetId, target: targetText, op, val, raw: syntax });
   q.relevant = q._logic.map(l => l.raw).join(' and ');
   
   document.getElementById('adv-logic-val').value = '';
