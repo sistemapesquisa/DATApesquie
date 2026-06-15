@@ -474,7 +474,7 @@ window.openProject = function(formId) {
 // ===================== MAP =====================
 function initMap() {
   if (state.map) return;
-  state.map = L.map('map').setView([-9.3833, -40.5], 7);
+  state.map = L.map('map').setView([-3.1190, -60.0217], 7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 18 }).addTo(state.map);
   
   state.markerCluster = L.markerClusterGroup({
@@ -1089,11 +1089,11 @@ function initDataExporter() {
     });
     const dataKeys = Array.from(keys);
     
-    let csv = 'ID;FormId;Versao;Pesquisador;DeviceID;Latitude;Longitude;AudioUrl;DataCriacao;AprovadoPor;';
+    let csv = '_uuid;start;end;username;deviceid;_gps_latitude;_gps_longitude;audio_url;_submission_time;_status;';
     csv += dataKeys.join(';') + '\r\n';
     
     toExport.forEach(i => {
-      let row = `"${i.id}";"${i.form_id}";${i.form_version};"${i.researcher_id}";"${i.device_id||''}";"${i.latitude||''}";"${i.longitude||''}";"${i.audio_url||''}";"${i.created_at}";"${i.approved_by||''}";`;
+      let row = `"${i.id}";"${i.created_at}";"${i.created_at}";"${i.researcher_id}";"${i.device_id||''}";"${i.latitude||''}";"${i.longitude||''}";"${i.audio_url||''}";"${i.created_at}";"${i.approved_by?'approved':'submitted'}";`;
       let ansVals = dataKeys.map(k => {
         let val = (i.data && i.data[k]) ? i.data[k] : '';
         if (Array.isArray(val)) val = val.join(', ');
