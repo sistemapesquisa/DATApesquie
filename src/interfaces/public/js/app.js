@@ -130,6 +130,8 @@ window.fazerLogin = async () => {
     initMobileSimulator();
     initDataExporter();
     renderAudioReviewList();
+    
+    if (typeof window.initWebSocket === 'function') window.initWebSocket();
 
     switchTab('view-dashboard');
     showToast('success', 'Bem-vindo(a) ao DATApesquise!');
@@ -736,6 +738,42 @@ function initFormBuilder() {
     document.getElementById('question-type-modal').classList.add('active');
   });
   document.getElementById('btn-save-form').addEventListener('click', saveActiveForm);
+  
+  const importInput = document.getElementById('import-xlsform-input');
+  if (importInput) {
+    importInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      showToast('info', 'Processando arquivo XLSForm...');
+      try {
+        const token = localStorage.getItem('auth_token');
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        if (state.activeRole) headers['x-user-role'] = state.activeRole;
+        
+        const res = await fetch('/api/forms/upload-xlsform', {
+          method: 'POST',
+          headers,
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro na importação.');
+        
+        showToast('success', 'Formulário importado com sucesso!');
+        await loadServerData();
+        renderFormBuilderList();
+        loadFormIntoBuilder(data.form || state.forms.find(f => f.id === data.id) || state.forms[0]);
+      } catch (err) {
+        showToast('error', err.message);
+      } finally {
+        e.target.value = '';
+      }
+    });
+  }
 }
 
 window.addNewQuestion = function(type) {
@@ -1570,6 +1608,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initMobileSimulator();
     initDataExporter();
     renderAudioReviewList();
+    if (typeof window.initWebSocket === 'function') window.initWebSocket();
   } else {
     document.querySelector('.sidebar').style.display = 'none';
     switchTab('view-login');
@@ -1793,4 +1832,52 @@ window.deleteSelectedProjects = function() {
       showToast('error', 'Erro ao excluir projetos: ' + err.message);
     }
   });
+};
+
+// ===================== WEBSOCKETS =====================
+let wsClient = null;
+window.initWebSocket = function() {
+  if (wsClient) return;
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws`;
+  
+  wsClient = new WebSocket(wsUrl);
+  
+  wsClient.onmessage = async (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.topic === 'new_submission') {
+        const payload = data.payload;
+        if (state.activeProjectFormId === payload.form_id) {
+          showToast('info', 'Nova coleta recebida! Atualizando painel...');
+          
+          // Soft reload data
+          const [users, forms, interviews] = await Promise.all([
+            apiFetch('/api/users'), apiFetch('/api/forms'), apiFetch('/api/interviews')
+          ]);
+          state.users = users || [];
+          state.forms = forms || [];
+          state.interviews = interviews || [];
+          
+          // Re-render project components silently
+          if (state.map) renderMapMarkers();
+          renderCharts();
+          renderReportsTable();
+          renderAudioReviewList();
+          
+          // Refresh dashboard stats if viewing dashboard
+          if (document.getElementById('view-dashboard').classList.contains('active')) {
+            renderDashboard();
+          }
+        }
+      }
+    } catch(err) {
+      console.error('WS parse error', err);
+    }
+  };
+  
+  wsClient.onclose = () => {
+    wsClient = null;
+    setTimeout(window.initWebSocket, 5000);
+  };
 };

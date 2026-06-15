@@ -23,10 +23,31 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'interfaces', 'public', 'index.html'));
 });
 
+const http = require('http');
+const WebSocket = require('ws');
+
 // Initialize database schema and seeds before listening
 initDb()
   .then(() => {
-    app.listen(PORT, () => {
+    const server = http.createServer(app);
+    
+    // Initialize WebSockets
+    const wss = new WebSocket.Server({ server, path: '/ws' });
+    
+    // Broadcast function attached to app locals so routes can use it
+    app.locals.broadcast = (topic, payload) => {
+      wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({ topic, payload }));
+        }
+      });
+    };
+
+    wss.on('connection', (ws) => {
+      jsonLogger.info('New WebSocket connection established.');
+    });
+
+    server.listen(PORT, () => {
       jsonLogger.info(`DATApesquise Monolith Server booted successfully!`);
       jsonLogger.info(`Local Dashboard available at http://localhost:${PORT}`);
     });

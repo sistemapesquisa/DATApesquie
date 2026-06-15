@@ -11,6 +11,7 @@ const { evaluateCommand } = require('../orchestration/commandGuard');
 const { uploadAudioMock } = require('../services/audioStorage');
 const { convertToXForm } = require('../core/rules/xformSerializer');
 const jsonLogger = require('../infrastructure/logger/jsonLogger');
+const xlsx = require('xlsx');
 
 // Configure multer to save ODK file submissions in public audio-vault
 const uploadDir = path.join(__dirname, 'public', 'audio-vault');
@@ -325,6 +326,75 @@ router.post('/forms', async (req, res) => {
   }
 });
 
+router.post('/forms/upload-xlsform', upload.single('file'), async (req, res) => {
+  if (!checkPermission(req.user.role, PERMISSIONS.BUILD_FORMS)) {
+    return res.status(403).json({ error: 'Acesso negado.' });
+  }
+
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
+    
+    const workbook = xlsx.readFile(req.file.path);
+    const surveySheet = workbook.Sheets['survey'];
+    const choicesSheet = workbook.Sheets['choices'];
+    
+    if (!surveySheet) return res.status(400).json({ error: 'Aba "survey" não encontrada na planilha.' });
+    
+    const surveyData = xlsx.utils.sheet_to_json(surveySheet);
+    const choicesData = choicesSheet ? xlsx.utils.sheet_to_json(choicesSheet) : [];
+    
+    const questions = [];
+    surveyData.forEach((row, i) => {
+      const typeStr = row.type || '';
+      const name = row.name || `q_${i}`;
+      const label = row.label || row['label::Portuguese'] || name;
+      
+      let type = 'text';
+      let options = [];
+      
+      if (typeStr.startsWith('select_one') || typeStr.startsWith('select multiple')) {
+        type = typeStr.startsWith('select_one') ? 'select_one' : 'select_multiple';
+        const listName = typeStr.split(' ')[1];
+        options = choicesData.filter(c => c.list_name === listName).map(c => ({
+          name: c.name,
+          label: c.label || c['label::Portuguese'] || c.name
+        }));
+      } else if (typeStr === 'integer') type = 'integer';
+      else if (typeStr === 'decimal') type = 'decimal';
+      else if (typeStr === 'geopoint') type = 'geopoint';
+      else if (typeStr === 'audio') type = 'audio';
+      else if (typeStr === 'image') type = 'image';
+      
+      if (typeStr && typeStr !== 'begin group' && typeStr !== 'end group' && typeStr !== 'note') {
+        questions.push({
+          id: name,
+          type: type,
+          text: label,
+          required: row.required === 'yes' || row.required === 'true',
+          options: options,
+          relevant: row.relevant || ''
+        });
+      }
+    });
+
+    const formTitle = req.file.originalname.replace('.xlsx', '').replace('.xls', '');
+    const formId = 'prj_' + crypto.randomBytes(4).toString('hex');
+    
+    const formData = {
+      id: formId,
+      title: formTitle,
+      status: 'draft',
+      version: 1,
+      questions: questions
+    };
+
+    const result = await saveForm(formData);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.patch('/forms/:id/archive', (req, res) => {
   const formId = req.params.id;
   if (!checkPermission(req.user.role, PERMISSIONS.BUILD_FORMS)) {
@@ -404,6 +474,12 @@ router.post('/interviews', async (req, res) => {
         return res.status(500).json({ error: 'Falha ao salvar respostas no banco.' });
       }
       jsonLogger.info(`Saved interview [${interviewId}] for form [${formId}] V${formVersion} submitted by [${req.user.id}]`);
+      if (req.app.locals.broadcast) {
+        req.app.locals.broadcast('new_submission', {
+          id: interviewId, form_id: formId, researcher_id: req.user.id,
+          latitude, longitude, created_at: now
+        });
+      }
       res.json({ success: true, interviewId, audioUrl });
     }
   );
@@ -666,6 +742,13 @@ router.post(['/submission', '/odk/submission'], upload.any(), (req, res) => {
       }
       
       jsonLogger.info(`ODK submission successfully processed: ${interviewId} (Form: ${formId} V${formVersion} Device: ${deviceId})`);
+      
+      if (req.app.locals.broadcast) {
+        req.app.locals.broadcast('new_submission', {
+          id: interviewId, form_id: formId, researcher_id: researcherId,
+          latitude, longitude, created_at: now
+        });
+      }
       
       res.set({
         'Content-Type': 'text/xml; charset=utf-8',

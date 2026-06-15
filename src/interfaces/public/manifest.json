@@ -1,0 +1,21 @@
+{
+  "name": "DATApesquise Platform",
+  "short_name": "DATApesquise",
+  "description": "Plataforma de pesquisa de campo e controle de qualidade anti-fraudes",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzI1NjNlYiI+PHBhdGggZD0iTTEyIDJMNiAxMXY5bTYgMnYtNW0wIDB2NW0wLTVMNiAyMm02LTVsNiA1bS02LTVWMm0wIDBsNiA5djltLTYtMnY1bS02LTVINW0xNCAwaC0xTTEyIDJWME01IDEwaDFtMTIgMGgxIi8+PC9zdmc+",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzI1NjNlYiI+PHBhdGggZD0iTTEyIDJMNiAxMXY5bTYgMnYtNW0wIDB2NW0wLTVMNiAyMm02LTVsNiA1bS02LTVWMm0wIDBsNiA5djltLTYtMnY1bS02LTVINW0xNCAwaC0xTTEyIDJWME01IDEwaDFtMTIgMGgxIi8+PC9zdmc+",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
