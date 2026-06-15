@@ -221,6 +221,19 @@
               </table>
             </div>
           </div>
+          </div>
+        </div>
+
+        <div class="modal-overlay" id="route-modal">
+          <div class="modal-box">
+            <div class="modal-title">Atribuir Acesso ao Projeto</div>
+            <p class="modal-message" style="margin-bottom:1rem;">Selecione o pesquisador que poderá realizar as coletas deste projeto no aplicativo.</p>
+            <div class="form-group"><label class="form-label">Pesquisador</label><select class="form-select" id="route-form-researcher"></select></div>
+            <div class="modal-actions" style="margin-top:1.5rem;">
+              <button class="btn" onclick="closeRouteModal()">Cancelar</button>
+              <button class="btn btn-primary" onclick="saveRoute()">Confirmar Atribuição</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -348,17 +361,6 @@
           </div>
         </div>
 
-        <div class="modal-overlay" id="route-modal">
-          <div class="modal-box">
-            <div class="modal-title">Atribuir Acesso ao Projeto</div>
-            <p class="modal-message" style="margin-bottom:1rem;">Selecione o pesquisador que poderá realizar as coletas deste projeto no aplicativo.</p>
-            <div class="form-group"><label class="form-label">Pesquisador</label><select class="form-select" id="route-form-researcher"></select></div>
-            <div class="modal-actions" style="margin-top:1.5rem;">
-              <button class="btn" onclick="closeRouteModal()">Cancelar</button>
-              <button class="btn btn-primary" onclick="saveRoute()">Confirmar Atribuição</button>
-            </div>
-          </div>
-        </div>
       </section>
 
       <!-- ===== VIEW: EQUIPMENT ===== -->
