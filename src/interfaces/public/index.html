@@ -359,17 +359,18 @@
       </section>
 
       <!-- ===== VIEW: PROJECT DETAILS ===== -->
-      <section id="view-project-details" class="view-panel" style="background: #f2f6f9; display: flex; flex-direction: column; height: 100vh; overflow: hidden;">
-        <!-- Kobo Project Top Bar -->
-        <div class="kobo-project-header" style="background: #2c3238; color: #fff; display: flex; align-items: center; padding: 0 1.5rem; height: 50px; flex-shrink: 0;">
-          <button style="background: transparent; border: none; color: #fff; cursor: pointer; font-size: 1.1rem; margin-right: 1.5rem;" onclick="switchTab('view-dashboard')"><i class="fa-solid fa-arrow-left"></i></button>
-          <i class="fa-solid fa-clipboard-list" style="margin-right: 0.5rem; color: #a1a1aa;"></i>
-          <h1 id="project-details-title-top" style="font-size: 1.1rem; font-weight: 600; margin: 0; text-transform: uppercase;">CARREGANDO PROJETO...</h1>
-          <div style="flex:1;"></div>
-          <div class="kobo-owner-circle" style="background: #84cc16; border: 2px solid #fff;">C</div>
-        </div>
-        
-        <!-- Kobo Project Tabs -->
+      <section id="view-project-details" class="view-panel" style="background: #f2f6f9;">
+        <div style="display: flex; flex-direction: column; height: 100vh; overflow: hidden;">
+          <!-- Kobo Project Top Bar -->
+          <div class="kobo-project-header" style="background: #2c3238; color: #fff; display: flex; align-items: center; padding: 0 1.5rem; height: 50px; flex-shrink: 0;">
+            <button style="background: transparent; border: none; color: #fff; cursor: pointer; font-size: 1.1rem; margin-right: 1.5rem;" onclick="switchTab('view-dashboard')"><i class="fa-solid fa-arrow-left"></i></button>
+            <i class="fa-solid fa-clipboard-list" style="margin-right: 0.5rem; color: #a1a1aa;"></i>
+            <h1 id="project-details-title-top" style="font-size: 1.1rem; font-weight: 600; margin: 0; text-transform: uppercase;">CARREGANDO PROJETO...</h1>
+            <div style="flex:1;"></div>
+            <div class="kobo-owner-circle" style="background: #84cc16; border: 2px solid #fff;">C</div>
+          </div>
+          
+          <!-- Kobo Project Tabs -->
         <div style="background: #ffffff; border-bottom: 1px solid #dbe2e8; display: flex; justify-content: center; padding-top: 0.5rem; flex-shrink: 0;">
           <div class="kobo-proj-tabs">
             <div class="kobo-proj-tab active" data-tab="proj-tab-resumo" onclick="koboSwitchTab('proj-tab-resumo')">RESUMO</div>
@@ -521,6 +522,7 @@
 
           </div>
         </div>
+        </div> <!-- Closes the inner wrapper -->
 
         <div class="modal-overlay" id="route-modal">
           <div class="modal-box">
