@@ -911,6 +911,9 @@ function renderBuilderQuestions() {
             <option value="image" ${q.type==='image'?'selected':''}>Foto / Imagem</option>
             <option value="video" ${q.type==='video'?'selected':''}>Vídeo</option>
             <option value="audio_record" ${q.type==='audio_record'||q.type==='audio'?'selected':''}>Áudio</option>
+            <option value="date" ${q.type==='date'?'selected':''}>Data</option>
+            <option value="time" ${q.type==='time'?'selected':''}>Hora</option>
+            <option value="note" ${q.type==='note'?'selected':''}>Nota / Aviso</option>
           </select>
         </div>
         <input type="text" class="kobo-question-hint" value="${q.hint || ''}" onchange="updateQHint(${idx},this.value)" placeholder="Dica de preenchimento (opcional)..." style="margin-left: 40px; width: calc(100% - 40px);" />
@@ -919,6 +922,7 @@ function renderBuilderQuestions() {
         </div>
       </div>
       <div class="kobo-question-right">
+        <button class="kobo-btn-required ${q.required ? 'active' : ''}" onclick="toggleQRequired(${idx})" title="Tornar Obrigatória" style="color: ${q.required ? 'var(--danger)' : '#cbd5e1'};"><i class="fa-solid fa-asterisk"></i></button>
         <button class="kobo-btn-gear" onclick="openQuestionSettingsModal(${idx})" title="Configurações"><i class="fa-solid fa-gear"></i></button>
         <button class="kobo-btn-trash" onclick="confirmDeleteQuestion(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
         <button class="kobo-btn-copy" onclick="duplicateQuestion(${idx})" title="Duplicar"><i class="fa-solid fa-copy"></i></button>
@@ -947,6 +951,10 @@ window.updateOption = (idx, oi, val) => {
   else opt.label = val; 
 };
 window.updateQHint = (idx, val) => { state.activeForm.questions[idx].hint = val; };
+window.toggleQRequired = (idx) => { 
+  state.activeForm.questions[idx].required = !state.activeForm.questions[idx].required; 
+  renderBuilderQuestions(); 
+};
 window.confirmDeleteQuestion = (idx) => {
   showConfirm('Excluir Pergunta', 'Tem certeza?', () => { state.activeForm.questions.splice(idx,1); renderBuilderQuestions(); });
 };
@@ -954,9 +962,16 @@ window.confirmDeleteQuestion = (idx) => {
 window.openQuestionSettingsModal = (idx) => {
   const q = state.activeForm.questions[idx];
   document.getElementById('q-settings-id').value = idx;
-  document.getElementById('q-settings-required').checked = !!q.required;
-  document.getElementById('q-settings-relevant').value = q.relevant || '';
-  document.getElementById('q-settings-constraint').value = q.constraint || '';
+  
+  const match = (q.constraint || '').match(/^\.\s*(=|!=|>|<|>=|<=)\s*([^ ]+)$/);
+  if (match) {
+    document.getElementById('q-settings-constraint-op').value = match[1];
+    document.getElementById('q-settings-constraint-val').value = match[2];
+  } else {
+    document.getElementById('q-settings-constraint-op').value = '';
+    document.getElementById('q-settings-constraint-val').value = '';
+  }
+  
   document.getElementById('q-settings-constraint-msg').value = q.constraint_message || '';
   document.getElementById('question-settings-modal').classList.add('active');
 };
@@ -969,13 +984,10 @@ window.saveQuestionSettings = () => {
   const idx = parseInt(document.getElementById('q-settings-id').value, 10);
   const q = state.activeForm.questions[idx];
   
-  q.required = document.getElementById('q-settings-required').checked;
-  
-  const relevantVal = document.getElementById('q-settings-relevant').value.trim();
-  if (relevantVal) q.relevant = relevantVal; else delete q.relevant;
-  
-  const constraintVal = document.getElementById('q-settings-constraint').value.trim();
-  if (constraintVal) q.constraint = constraintVal; else delete q.constraint;
+  const op = document.getElementById('q-settings-constraint-op').value;
+  const val = document.getElementById('q-settings-constraint-val').value;
+  if (op && val) q.constraint = `. ${op} ${val}`;
+  else delete q.constraint;
   
   const constraintMsgVal = document.getElementById('q-settings-constraint-msg').value.trim();
   if (constraintMsgVal) q.constraint_message = constraintMsgVal; else delete q.constraint_message;

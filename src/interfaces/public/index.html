@@ -245,26 +245,27 @@
             
             <input type="hidden" id="q-settings-id" />
             
-            <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1.5rem;">
-              <input type="checkbox" id="q-settings-required" style="width:18px;height:18px;" />
-              <label for="q-settings-required" class="form-label" style="margin-bottom:0; cursor:pointer;">Pergunta Obrigatória (Required)</label>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label">Lógica de Pulo / Exibição (Relevant)</label>
-              <input type="text" class="form-input" id="q-settings-relevant" placeholder="Ex: ${age} > 18" />
-              <div class="form-hint">A pergunta só aparecerá se esta condição for verdadeira.</div>
-            </div>
-            
             <div class="form-group">
               <label class="form-label">Regra de Validação (Constraint)</label>
-              <input type="text" class="form-input" id="q-settings-constraint" placeholder="Ex: . >= 0 and . <= 100" />
-              <div class="form-hint">A resposta só será aceita se obedecer a esta regra. Use '.' para representar o valor digitado.</div>
+              <div style="display:flex; gap:0.5rem; align-items:center;">
+                <span style="font-size: 0.85rem; color: #475569;">A resposta deve ser</span>
+                <select class="form-select" id="q-settings-constraint-op" style="flex:1;">
+                  <option value="">(Sem validação)</option>
+                  <option value="=">Igual a</option>
+                  <option value="!=">Diferente de</option>
+                  <option value="&gt;">Maior que</option>
+                  <option value="&lt;">Menor que</option>
+                  <option value="&gt;=">Maior ou igual a</option>
+                  <option value="&lt;=">Menor ou igual a</option>
+                </select>
+                <input type="number" class="form-input" id="q-settings-constraint-val" placeholder="Valor" style="flex:1;" />
+              </div>
+              <div class="form-hint" style="margin-top:0.5rem;">Defina regras para evitar dados errados (Ex: Maior que 18).</div>
             </div>
             
             <div class="form-group">
-              <label class="form-label">Mensagem de Erro (Constraint Message)</label>
-              <input type="text" class="form-input" id="q-settings-constraint-msg" placeholder="Ex: O valor não pode ser negativo." />
+              <label class="form-label">Mensagem de Erro Personalizada</label>
+              <input type="text" class="form-input" id="q-settings-constraint-msg" placeholder="Ex: O valor precisa ser maior que 18." />
             </div>
             
             <div class="modal-actions" style="margin-top:1.5rem; justify-content: space-between;">
