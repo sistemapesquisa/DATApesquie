@@ -713,7 +713,7 @@ function renderBuilderQuestions() {
       }
     });
 
-    const isChoice = q.type === 'single_choice' || q.type === 'multiple_choice';
+    const isChoice = q.type === 'single_choice' || q.type === 'select_one' || q.type === 'multiple_choice' || q.type === 'select_multiple';
     // Options HTML
     let optionsHtml = '';
     if (isChoice) {
@@ -1159,7 +1159,6 @@ async function loadProjectAccess() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>${r.researcher_name}</strong></td>
-        <td>${r.city || '-'}</td>
         <td>${date}</td>
         <td>
           <button class="btn-icon" style="color:var(--danger)" onclick="deleteRoute('${r.id}')" title="Remover Acesso"><i class="fa-solid fa-trash"></i></button>
@@ -1241,17 +1240,15 @@ window.openRouteModal = function() {
     showToast('error', 'Nenhum projeto selecionado.');
     return;
   }
-  document.getElementById('route-form-city').value = '';
   document.getElementById('route-modal').classList.add('active');
 };
 window.closeRouteModal = function() { document.getElementById('route-modal').classList.remove('active'); };
 window.saveRoute = async function() {
   const researcher_id = document.getElementById('route-form-researcher').value;
   const form_id = state.activeProjectFormId;
-  const city = document.getElementById('route-form-city').value;
   if(!researcher_id || !form_id) { showToast('warning', 'Selecione o pesquisador.'); return; }
   try {
-    await apiFetch('/api/routes', { method: 'POST', body: JSON.stringify({ researcher_id, form_id, city }) });
+    await apiFetch('/api/routes', { method: 'POST', body: JSON.stringify({ researcher_id, form_id }) });
     showToast('success', 'Acesso habilitado para o projeto!');
     closeRouteModal();
     loadProjectAccess();
