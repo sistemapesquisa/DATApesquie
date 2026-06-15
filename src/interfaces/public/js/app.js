@@ -955,7 +955,7 @@ function renderMobileScreen() {
         inputHtml += '</div>';
       } else if (q.type === 'geopoint') {
         const val = state.simAnswers[q.id] || '';
-        inputHtml = `<div style="margin-top:0.6rem;padding:1rem;background:#f3f4f6;border-radius:8px;text-align:center;"><i class="fa-solid fa-location-dot" style="font-size:2rem;color:var(--primary);margin-bottom:0.5rem;display:block;"></i><input type="hidden" id="sim-ans-${q.id}" value="${val?val:'-9.38,-40.50'}"><button class="btn btn-sm btn-primary" onclick="document.getElementById('sim-ans-${q.id}').value='-9.3833,-40.5000';this.innerHTML='<i class=\\'fa-solid fa-check\\'></i> Localização Capturada';this.classList.add('btn-success');"><i class="fa-solid fa-satellite-dish"></i> Obter Coordenadas GPS</button>${val?'<div style="font-size:0.75rem;margin-top:0.5rem;color:var(--success);">GPS salvo!</div>':''}</div>`;
+        inputHtml = `<div style="margin-top:0.6rem;padding:1rem;background:#f3f4f6;border-radius:8px;text-align:center;"><i class="fa-solid fa-location-dot" style="font-size:2rem;color:var(--primary);margin-bottom:0.5rem;display:block;"></i><input type="hidden" id="sim-ans-${q.id}" value="${val?val:'-3.1190,-60.0217'}"><button class="btn btn-sm btn-primary" onclick="document.getElementById('sim-ans-${q.id}').value='-3.1190,-60.0217';this.innerHTML='<i class=\\'fa-solid fa-check\\'></i> Localização Capturada';this.classList.add('btn-success');"><i class="fa-solid fa-satellite-dish"></i> Obter Coordenadas GPS</button>${val?'<div style="font-size:0.75rem;margin-top:0.5rem;color:var(--success);">GPS salvo!</div>':''}</div>`;
       } else if (q.type === 'image' || q.type === 'video') {
         const val = state.simAnswers[q.id] || '';
         const icon = q.type === 'image' ? 'fa-camera' : 'fa-video';
@@ -999,14 +999,15 @@ window.simNext = function() {
   renderMobileScreen();
 };
 window.simToggleRecord = function() {
-  if (state.simIsRecording) { state.simIsRecording = false; state.simAudioFile = `audio_${Math.floor(Math.random()*900)+100}.mp3`; renderMobileScreen(); }
-  else { state.simIsRecording = true; renderMobileScreen(); setTimeout(() => { if (state.simIsRecording) { state.simIsRecording = false; state.simAudioFile = `audio_${Math.floor(Math.random()*900)+100}.mp3`; renderMobileScreen(); } }, 3000); }
+  if (state.simIsRecording) { state.simIsRecording = false; state.simAudioFile = `https://actions.google.com/sounds/v1/alarms/beep_short.ogg`; renderMobileScreen(); }
+  else { state.simIsRecording = true; renderMobileScreen(); setTimeout(() => { if (state.simIsRecording) { state.simIsRecording = false; state.simAudioFile = `https://actions.google.com/sounds/v1/alarms/beep_short.ogg`; renderMobileScreen(); } }, 3000); }
 };
 window.simSubmit = async function() {
   const researcherId = document.getElementById('sim-active-researcher').value;
   const lat = parseFloat(document.getElementById('sim-lat').value);
   const lng = parseFloat(document.getElementById('sim-lng').value);
-  const payload = { formId:state.simActiveForm.id, formVersion:state.simActiveForm.version, data:state.simAnswers, latitude:lat, longitude:lng, audioFileName:state.simAudioFile, researcherId };
+  const deviceId = "Simulador Web";
+  const payload = { formId:state.simActiveForm.id, formVersion:state.simActiveForm.version, data:state.simAnswers, latitude:lat, longitude:lng, audioFileName:state.simAudioFile, researcherId, deviceId };
   if (state.simIsOnline) {
     try {
       const result = await apiFetch('/api/interviews', { method:'POST', body:JSON.stringify(payload) });

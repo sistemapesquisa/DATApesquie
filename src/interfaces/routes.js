@@ -324,7 +324,7 @@ router.post('/interviews', async (req, res) => {
     return res.status(403).json({ error: 'Acesso negado: pesquisadores freelancer apenas podem enviar entrevistas.' });
   }
 
-  const { formId, formVersion, data, latitude, longitude, audioFileName } = req.body;
+  const { formId, formVersion, data, latitude, longitude, audioFileName, deviceId } = req.body;
   if (!formId || !formVersion || !data) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes.' });
   }
@@ -334,12 +334,15 @@ router.post('/interviews', async (req, res) => {
 
   // Handle mock audio upload if applicable
   if (audioFileName) {
-    const uploadRes = await uploadAudioMock(interviewId, audioFileName);
-    if (uploadRes.success) {
-      audioUrl = uploadRes.audioUrl;
+    if (audioFileName.startsWith('http') || audioFileName.startsWith('data:')) {
+      audioUrl = audioFileName;
     } else {
-      // Return details of fallback
-      jsonLogger.warn(`Audio upload failed for ${interviewId}, continuing submission with empty recording file.`);
+      const uploadRes = await uploadAudioMock(interviewId, audioFileName);
+      if (uploadRes && uploadRes.success) {
+        audioUrl = uploadRes.audioUrl;
+      } else {
+        jsonLogger.warn(`Audio upload failed for ${interviewId}, continuing submission with empty recording file.`);
+      }
     }
   }
 
@@ -349,7 +352,7 @@ router.post('/interviews', async (req, res) => {
   db.run(
     `INSERT INTO interviews (id, form_id, form_version, researcher_id, data_json, latitude, longitude, audio_url, device_id, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [interviewId, formId, parseInt(formVersion), req.user.id, qJson, parseFloat(latitude) || null, parseFloat(longitude) || null, audioUrl, 'simulator', now],
+    [interviewId, formId, parseInt(formVersion), req.user.id, qJson, parseFloat(latitude) || null, parseFloat(longitude) || null, audioUrl, deviceId || 'simulator', now],
     (err) => {
       if (err) {
         jsonLogger.error('Failed to save interview response', { error: err.message });
@@ -575,13 +578,29 @@ router.post(['/submission', '/odk/submission'], upload.any(), (req, res) => {
   let latitude = -9.3833 + (Math.random() - 0.5) * 0.05;
   let longitude = -40.5000 + (Math.random() - 0.5) * 0.05;
 
-  const geopointMatch = xmlText.match(/<[a-zA-Z_]+gps[^>]*>([^<]+)<\/[a-zA-Z_]+gps>/i) || 
-                        xmlText.match(/<[a-zA-Z_]+geopoint[^>]*>([^<]+)<\/[a-zA-Z_]+geopoint>/i);
-  if (geopointMatch) {
-    const parts = geopointMatch[1].trim().split(/\s+/);
-    if (parts.length >= 2) {
-      latitude = parseFloat(parts[0]);
-      longitude = parseFloat(parts[1]);
+  let foundGps = false;
+  for (const key in parsedAnswers) {
+    const val = parsedAnswers[key].trim();
+    // Match ODK geopoint format: "lat lon alt acc"
+    // e.g., "-3.119027 -60.021731 0.0 5.0"
+    const coordsMatch = val.match(/^(-?\d+\.\d{3,})\s+(-?\d+\.\d{3,})(\s+-?\d+(\.\d+)?\s+\d+(\.\d+)?)?$/);
+    if (coordsMatch) {
+      latitude = parseFloat(coordsMatch[1]);
+      longitude = parseFloat(coordsMatch[2]);
+      foundGps = true;
+      break;
+    }
+  }
+
+  // Se a tag contiver explícitamente gps ou geopoint e não bateu no regex (fallback antigo)
+  if (!foundGps) {
+    const geopointMatch = xmlText.match(/<[a-zA-Z0-9_]+(gps|geopoint)[^>]*>([^<]+)<\/[a-zA-Z0-9_]+(gps|geopoint)>/i);
+    if (geopointMatch) {
+      const parts = geopointMatch[2].trim().split(/\s+/);
+      if (parts.length >= 2) {
+        latitude = parseFloat(parts[0]);
+        longitude = parseFloat(parts[1]);
+      }
     }
   }
 
