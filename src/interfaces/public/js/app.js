@@ -407,34 +407,29 @@ function renderDashboard() {
   if (!grid) return;
   grid.innerHTML = '';
 
-  const publishedForms = state.forms.filter(f => f.status === 'published');
+  const publishedForms = state.forms; // Show all forms in the dashboard for Kobo style
   
   if (publishedForms.length === 0) {
-    grid.innerHTML = '<div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3rem;"><i class="fa-solid fa-folder-open" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i><h3 style="margin-bottom: 0.5rem;">Nenhum Projeto Ativo</h3><p class="text-muted">Crie um formulário e publique para iniciar um novo projeto de coleta.</p></div>';
+    grid.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color: #64748b;">Nenhum projeto encontrado. Clique em NOVO para começar.</td></tr>';
     return;
   }
 
   publishedForms.forEach(form => {
     const ints = state.interviews.filter(i => i.form_id === form.id);
-    const lastCollect = ints.length > 0 ? new Date(ints[ints.length-1].created_at).toLocaleDateString('pt-BR') : 'Sem dados';
+    const isPub = form.status === 'published';
+    const statusBadge = isPub ? '<span class="kobo-status-badge"><i class="fa-solid fa-satellite-dish"></i> disponibilizado</span>' : '<span class="kobo-status-badge" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-pen"></i> rascunho</span>';
     
     grid.innerHTML += `
-      <div class="card" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; padding: 1rem 1.5rem; transition:transform 0.2s;" onclick="openProject('${form.id}')" onmouseover="this.style.background='var(--bg-sidebar-hover)'; this.style.color='white';" onmouseout="this.style.background='var(--bg-card)'; this.style.color='var(--text-primary)';">
-        <div style="display:flex; align-items:center; gap: 1rem;">
-          <div style="width: 40px; height: 40px; border-radius: 8px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
-            <i class="fa-solid fa-clipboard-list"></i>
-          </div>
-          <div>
-            <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0;">${form.title} <span class="badge badge-success" style="margin-left:0.5rem;font-size:0.7rem;">V${form.version}</span></h3>
-            <p class="text-muted" style="font-size: 0.85rem; margin: 0; color:inherit; opacity:0.8;">Clique para gerenciar dados, exportar base ou visualizar mapa.</p>
-          </div>
-        </div>
-        <div style="display:flex; align-items:center; gap: 2rem; text-align:right;">
-          <div><span class="text-muted" style="font-size: 0.75rem; display:block; color:inherit; opacity:0.8;">COLETAS</span><strong style="font-size: 1.1rem;">${ints.length}</strong></div>
-          <div><span class="text-muted" style="font-size: 0.75rem; display:block; color:inherit; opacity:0.8;">ÚLTIMA COLETA</span><strong style="font-size: 0.9rem;">${lastCollect}</strong></div>
-          <i class="fa-solid fa-chevron-right text-muted" style="color:inherit; opacity:0.8;"></i>
-        </div>
-      </div>
+      <tr>
+        <td><input type="checkbox"></td>
+        <td><span class="kobo-project-name" onclick="openProject('${form.id}')">${form.title}</span></td>
+        <td>${statusBadge}</td>
+        <td><div class="kobo-owner-badge"><div class="kobo-owner-circle">C</div> cleuton</div></td>
+        <td>Última Sexta-feira</td>
+        <td>Última Sexta-feira</td>
+        <td>${isPub ? 'Última Sexta-feira' : '-'}</td>
+        <td><span class="kobo-count-pill">${ints.length}</span></td>
+      </tr>
     `;
   });
 }

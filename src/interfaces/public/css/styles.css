@@ -524,3 +524,22 @@ body {
 
 .kobo-btn-add-q { width: 40px; height: 40px; border-radius: 50%; background: #3b82f6; color: white; border: none; font-size: 1.2rem; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 .kobo-btn-add-q:hover { background: #2563eb; }
+
+/* ========== KOBO DASHBOARD UI ========== */
+.kobo-dashboard-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding: 1rem 0; border-bottom: 1px solid #e2e8f0; }
+.kobo-dashboard-title { font-size: 1.3rem; font-weight: 700; color: #333; }
+.kobo-dashboard-filters button { background: transparent; border: none; color: #0284c7; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; margin-left: 1rem; }
+.kobo-dashboard-actions { display: flex; align-items: center; }
+.kobo-dashboard-actions button { background: #f8f9fa; border: 1px solid #dbe2e8; color: #64748b; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-left: 0.5rem; }
+
+.kobo-table-wrapper { background: #ffffff; border-radius: 4px; overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.kobo-projects-table { width: 100%; border-collapse: collapse; text-align: left; }
+.kobo-projects-table th { padding: 12px; font-size: 0.75rem; color: #64748b; font-weight: 700; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; letter-spacing: 0.5px; }
+.kobo-projects-table td { padding: 12px; font-size: 0.85rem; color: #333; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+.kobo-projects-table tr:hover { background: #f8fafc; }
+.kobo-project-name { color: #0284c7; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; }
+.kobo-project-name:hover { text-decoration: underline; }
+.kobo-status-badge { display: inline-flex; align-items: center; gap: 0.3rem; background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+.kobo-owner-badge { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; font-size: 0.8rem; }
+.kobo-owner-circle { width: 20px; height: 20px; border-radius: 50%; background: #84cc16; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; }
+.kobo-count-pill { background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; }

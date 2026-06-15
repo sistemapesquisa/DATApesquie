@@ -81,14 +81,41 @@
       </div>
 
       <!-- ===== VIEW: DASHBOARD (PROJECTS) ===== -->
-      <section id="view-dashboard" class="view-panel active">
-        <div class="page-header">
-          <h1 class="page-title" id="dashboard-welcome">Projetos Ativos 👋</h1>
-          <p class="page-subtitle">Selecione um projeto para visualizar o mapa de coleta, gerenciar dados e metadados.</p>
-        </div>
+      <section id="view-dashboard" class="view-panel active" style="background: #f2f6f9; padding: 2rem;">
+        <div style="max-width: 1200px; margin: 0 auto;">
+          <div class="kobo-dashboard-header">
+            <h1 class="kobo-dashboard-title">Meus Projetos</h1>
+            <div class="kobo-dashboard-filters">
+              <button><i class="fa-solid fa-filter"></i> filtro</button>
+              <button><i class="fa-solid fa-table-columns"></i> campos</button>
+            </div>
+            <div style="flex:1;"></div>
+            <div class="kobo-dashboard-actions">
+              <button><i class="fa-solid fa-box-archive"></i></button>
+              <button><i class="fa-solid fa-user-plus"></i></button>
+              <button style="color: #dc2626;"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
 
-        <div class="projects-grid" id="projects-grid" style="display:flex; flex-direction:column; gap: 0.75rem;">
-          <!-- Projects cards will be injected here via JS -->
+          <div class="kobo-table-wrapper">
+            <table class="kobo-projects-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px;"><input type="checkbox"></th>
+                  <th>Nome do projeto</th>
+                  <th>Status</th>
+                  <th>Proprietário</th>
+                  <th>Última edição</th>
+                  <th>Data de modificação</th>
+                  <th>Data de disponibilização</th>
+                  <th>Envios</th>
+                </tr>
+              </thead>
+              <tbody id="projects-grid">
+                <!-- Projects rows injected here via JS -->
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div class="card" id="odk-guide-section" style="margin-top: 2rem;">
@@ -186,6 +213,43 @@
             </div>
           </div>
         </div>
+
+        <!-- Advanced Logic Modal -->
+        <div class="modal-overlay" id="advanced-logic-modal">
+          <div class="modal-box" style="max-width: 600px;">
+            <div class="modal-title"><i class="fa-solid fa-code-branch" style="color:var(--primary);"></i> Lógica de Pulo Avançada</div>
+            <p class="modal-message" style="margin-bottom:1rem;">Defina a lógica que determinará se esta pergunta será exibida.</p>
+            <input type="hidden" id="adv-logic-q-idx" />
+            
+            <div class="form-group">
+              <label class="form-label">Adicionar Condição</label>
+              <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom: 0.5rem;">
+                <select class="form-select" id="adv-logic-target-q" style="flex:2;"></select>
+                <select class="form-select" id="adv-logic-op" style="flex:1;">
+                  <option value="=">Igual a (=)</option>
+                  <option value="!=">Diferente de (!=)</option>
+                  <option value="&gt;">Maior que (&gt;)</option>
+                  <option value="&lt;">Menor que (&lt;)</option>
+                </select>
+                <input type="text" class="form-input" id="adv-logic-val" style="flex:1;" placeholder="Valor" />
+                <button class="btn btn-primary" onclick="addAdvLogicCondition()"><i class="fa-solid fa-plus"></i></button>
+              </div>
+              <div class="form-hint">A pergunta atual só aparecerá se a condição acima for verdadeira.</div>
+            </div>
+            
+            <div class="table-wrapper" style="margin-bottom:1rem;">
+              <table class="data-table">
+                <thead><tr><th>Critério ODK (Relevant)</th><th>Ação</th></tr></thead>
+                <tbody id="adv-logic-list"></tbody>
+              </table>
+            </div>
+
+            <div class="modal-actions" style="margin-top:1.5rem; justify-content:flex-end;">
+              <button class="btn btn-primary" onclick="closeAdvLogicModal()">Pronto</button>
+            </div>
+          </div>
+        </div>
+
       </section>
 
       <!-- ===== VIEW: PROJECT DETAILS ===== -->
