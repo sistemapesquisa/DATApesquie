@@ -424,7 +424,7 @@ function renderDashboard() {
     
     grid.innerHTML += `
       <tr>
-        <td><input type="checkbox"></td>
+        <td><input type="checkbox" class="proj-checkbox" value="${form.id}"></td>
         <td><span class="kobo-project-name" onclick="openProject('${form.id}')">${form.title}</span></td>
         <td>${statusBadge}</td>
         <td><div class="kobo-owner-badge"><div class="kobo-owner-circle">${initial}</div> ${name.split(' ')[0].toLowerCase()}</div></td>
@@ -509,8 +509,21 @@ window.koboEditForm = function() {
 
 window.koboPreviewForm = function() {
   if (!state.activeProjectFormId) return;
-  loadFormIntoSimulator(state.activeProjectFormId);
-  switchTab('view-mobile-sim');
+  const form = state.forms.find(f => f.id === state.activeProjectFormId);
+  if (form) {
+    if (form.status !== 'published') {
+      showToast('warning', 'O formulário precisa ser publicado para ser pré-visualizado.');
+      return;
+    }
+    state.simActiveForm = form;
+    state.simAnswers = {};
+    state.simCurrentQuestionIdx = 0;
+    state.simAudioFile = null;
+    state.simIsRecording = false;
+    
+    switchTab('view-mobile-sim');
+    renderMobileScreen();
+  }
 };
 
 // ===================== MAP =====================
@@ -639,6 +652,60 @@ window.clearTestInterviews = function() {
       }
     } catch(err) { showToast('error', err.message); }
   }, { type:'danger', confirmText:'Apagar Dados' });
+};
+
+window.exportProjectData = function() {
+  if (!state.activeProjectFormId) return;
+  const form = state.forms.find(f => f.id === state.activeProjectFormId);
+  const interviews = state.interviews.filter(i => i.form_id === state.activeProjectFormId);
+  if (interviews.length === 0) {
+    showToast('warning', 'Não há dados para exportar.');
+    return;
+  }
+  
+  // Collect columns
+  const baseCols = ['_id', '_uuid', 'start', 'end', 'deviceid', 'username'];
+  const dataCols = new Set();
+  interviews.forEach(int => {
+    Object.keys(int.data || {}).forEach(k => dataCols.add(k));
+  });
+  const allCols = [...baseCols, ...Array.from(dataCols), 'audio_url', '_status'];
+  
+  // Build CSV
+  let csv = allCols.join(',') + '\n';
+  interviews.forEach(int => {
+    const row = [];
+    allCols.forEach(col => {
+      let val = '';
+      if (col === '_id') val = int.id;
+      else if (col === '_uuid') val = int.id;
+      else if (col === 'start') val = new Date(int.created_at).toISOString();
+      else if (col === 'end') val = new Date(int.created_at).toISOString();
+      else if (col === 'deviceid') val = int.device_id || 'unknown';
+      else if (col === 'username') val = int.researcher_id || '';
+      else if (col === 'audio_url') val = int.audio_url || '';
+      else if (col === '_status') val = 'submitted_via_web';
+      else val = (int.data && int.data[col] !== undefined) ? int.data[col] : '';
+      
+      // Escape for CSV
+      if (typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))) {
+        val = '"' + val.replace(/"/g, '""') + '"';
+      }
+      row.push(val);
+    });
+    csv += row.join(',') + '\n';
+  });
+  
+  // Download file
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `DATApesquise_${form.title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast('success', 'Download iniciado! Padrão KoboToolbox.');
 };
 
 // ===================== AUDIO REVIEW =====================
@@ -1134,8 +1201,8 @@ window.simNext = function() {
   renderMobileScreen();
 };
 window.simToggleRecord = function() {
-  if (state.simIsRecording) { state.simIsRecording = false; state.simAudioFile = `https://actions.google.com/sounds/v1/alarms/beep_short.ogg`; renderMobileScreen(); }
-  else { state.simIsRecording = true; renderMobileScreen(); setTimeout(() => { if (state.simIsRecording) { state.simIsRecording = false; state.simAudioFile = `https://actions.google.com/sounds/v1/alarms/beep_short.ogg`; renderMobileScreen(); } }, 3000); }
+  if (state.simIsRecording) { state.simIsRecording = false; state.simAudioFile = `https://actions.google.com/sounds/v1/water/rain_on_roof.ogg`; renderMobileScreen(); }
+  else { state.simIsRecording = true; renderMobileScreen(); setTimeout(() => { if (state.simIsRecording) { state.simIsRecording = false; state.simAudioFile = `https://actions.google.com/sounds/v1/water/rain_on_roof.ogg`; renderMobileScreen(); } }, 3000); }
 };
 window.simSubmit = async function() {
   const researcherEl = document.getElementById('sim-active-researcher');
