@@ -1490,3 +1490,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     rolesNav.addEventListener('click', () => loadRoles());
   }
 });
+
+window.addLibraryQuestion = function(type) {
+  let q = {
+    id: 'q_' + Math.random().toString(36).substr(2, 9),
+    type: 'text',
+    text: '',
+    options: [],
+    required: false,
+    relevant: '',
+    constraint: '',
+    constraint_message: ''
+  };
+
+  if (type === 'age') {
+    q.type = 'number';
+    q.text = 'Qual a sua idade?';
+    q.constraint = '. >= 0 and . <= 120';
+    q.constraint_message = 'Idade inválida.';
+  } else if (type === 'gender') {
+    q.type = 'select_one';
+    q.text = 'Qual o seu gênero?';
+    q.options = ['Masculino', 'Feminino', 'Outro', 'Prefiro não informar'];
+  } else if (type === 'income') {
+    q.type = 'decimal';
+    q.text = 'Qual a sua renda familiar mensal?';
+    q.constraint = '. >= 0';
+    q.constraint_message = 'A renda não pode ser negativa.';
+  } else if (type === 'gps') {
+    q.type = 'geopoint';
+    q.text = 'Capturar Coordenadas GPS';
+  }
+
+  state.activeForm.questions.push(q);
+  renderBuilderQuestions();
+  document.getElementById('question-library-modal').classList.remove('active');
+  showToast('success', 'Pergunta adicionada da biblioteca!');
+};

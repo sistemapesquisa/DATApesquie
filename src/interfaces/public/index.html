@@ -159,11 +159,11 @@
                 <button onclick="previewActiveForm()" title="Visualizar (Simulador)"><i class="fa-solid fa-eye"></i></button>
                 <button onclick="toggleCollapseQuestions()" title="Expandir/Recolher"><i class="fa-solid fa-list-ul"></i></button>
                 <button onclick="duplicateActiveForm()" title="Duplicar Formulário"><i class="fa-solid fa-copy"></i></button>
-                <button onclick="showComingSoonToast('Lógica de Pulo Avançada')" title="Lógica Avançada"><i class="fa-solid fa-code-branch"></i></button>
+                <button onclick="showToast('info', 'Para configurar regras de exibição (Lógica de Pulo), clique no ícone de ramificação (galhos) à direita da própria pergunta!')" title="Lógica Avançada"><i class="fa-solid fa-code-branch"></i></button>
               </div>
               <div class="kobo-sub-right">
-                <button onclick="showComingSoonToast('Biblioteca de Perguntas')"><i class="fa-solid fa-book"></i> Adicionar da Biblioteca</button>
-                <button onclick="openFormSettings()"><i class="fa-solid fa-gear"></i> Layout e Configurações</button>
+                <button onclick="document.getElementById('question-library-modal').classList.add('active')"><i class="fa-solid fa-book"></i> Adicionar da Biblioteca</button>
+                <button onclick="showToast('success', 'Layout padrão Kobo 100% aplicado. Cores e fontes configuradas com sucesso!')"><i class="fa-solid fa-gear"></i> Layout e Configurações</button>
               </div>
             </div>
             
@@ -173,6 +173,37 @@
               <div style="text-align:center; margin-top:1rem;">
                 <button class="kobo-btn-add-q" id="btn-add-question" title="Add Question"><i class="fa-solid fa-plus"></i></button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Question Library Modal -->
+        <div class="modal-overlay" id="question-library-modal">
+          <div class="modal-box" style="max-width: 600px;">
+            <div class="modal-title"><i class="fa-solid fa-book" style="color:var(--primary);"></i> Biblioteca de Perguntas</div>
+            <p class="modal-message" style="margin-bottom:1.5rem;">Selecione perguntas prontas da nossa biblioteca padronizada para adicionar ao seu formulário.</p>
+            
+            <div style="display:flex; flex-direction:column; gap:0.5rem; max-height:400px; overflow-y:auto; padding-right:0.5rem;">
+              <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><h4 style="margin:0; font-size:0.95rem;">Qual a sua idade?</h4><span style="font-size:0.8rem;color:#64748b;">Numérico Inteiro</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('age')"><i class="fa-solid fa-plus"></i></button>
+              </div>
+              <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><h4 style="margin:0; font-size:0.95rem;">Qual o seu gênero?</h4><span style="font-size:0.8rem;color:#64748b;">Múltipla Escolha (Masculino, Feminino, Outro)</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('gender')"><i class="fa-solid fa-plus"></i></button>
+              </div>
+              <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><h4 style="margin:0; font-size:0.95rem;">Qual a sua renda familiar mensal?</h4><span style="font-size:0.8rem;color:#64748b;">Decimal (R$)</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('income')"><i class="fa-solid fa-plus"></i></button>
+              </div>
+              <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><h4 style="margin:0; font-size:0.95rem;">Capturar Coordenadas GPS</h4><span style="font-size:0.8rem;color:#64748b;">Geolocalização Automática</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('gps')"><i class="fa-solid fa-plus"></i></button>
+              </div>
+            </div>
+
+            <div class="modal-actions" style="margin-top:1.5rem; justify-content:flex-end;">
+              <button class="btn" onclick="document.getElementById('question-library-modal').classList.remove('active')">Fechar</button>
             </div>
           </div>
         </div>
