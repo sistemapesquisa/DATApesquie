@@ -897,8 +897,11 @@ function renderBuilderQuestions() {
       </div>
       <div class="kobo-question-center">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <input type="text" class="kobo-question-text" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="${idx+1}. Escreva a pergunta aqui..." />
-          <select style="border:none; color:#64748b; font-size:0.8rem; outline:none; background:transparent; cursor:pointer;" onchange="updateQType(${idx},this.value)">
+          <div style="display:flex; align-items:center; flex:1;">
+            <div style="background: var(--primary-light); color: var(--primary); font-weight: bold; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-size: 0.9rem; flex-shrink: 0;">${idx+1}</div>
+            <input type="text" class="kobo-question-text" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="Escreva a pergunta aqui..." style="flex:1;" />
+          </div>
+          <select style="border:none; color:#64748b; font-size:0.8rem; outline:none; background:transparent; cursor:pointer; margin-left: 10px;" onchange="updateQType(${idx},this.value)">
             <option value="text" ${q.type==='text'?'selected':''}>Texto Livre</option>
             <option value="number" ${q.type==='number'||q.type==='decimal'?'selected':''}>Número (Decimal)</option>
             <option value="integer" ${q.type==='integer'?'selected':''}>Número (Inteiro)</option>
@@ -910,8 +913,10 @@ function renderBuilderQuestions() {
             <option value="audio_record" ${q.type==='audio_record'||q.type==='audio'?'selected':''}>Áudio</option>
           </select>
         </div>
-        <input type="text" class="kobo-question-hint" value="Question hint" readonly />
-        ${optionsHtml}
+        <input type="text" class="kobo-question-hint" value="${q.hint || ''}" onchange="updateQHint(${idx},this.value)" placeholder="Dica de preenchimento (opcional)..." style="margin-left: 40px; width: calc(100% - 40px);" />
+        <div style="margin-left: 40px;">
+          ${optionsHtml}
+        </div>
       </div>
       <div class="kobo-question-right">
         <button class="kobo-btn-gear" onclick="openQuestionSettingsModal(${idx})" title="Configurações"><i class="fa-solid fa-gear"></i></button>
@@ -941,13 +946,7 @@ window.updateOption = (idx, oi, val) => {
   if(typeof opt === 'string') state.activeForm.questions[idx].options[oi] = { name: opt, label: val };
   else opt.label = val; 
 };
-window.addSkipRule = (idx) => {
-  if (!state.activeForm.questions[idx].skipRules) state.activeForm.questions[idx].skipRules = [];
-  state.activeForm.questions[idx].skipRules.push({ conditionValue:'Sim', targetQuestionId:'' });
-  renderBuilderQuestions();
-};
-window.updateSkipValue = (qi, ri, val) => { state.activeForm.questions[qi].skipRules[ri].conditionValue = val; };
-window.updateSkipTarget = (qi, ri, val) => { state.activeForm.questions[qi].skipRules[ri].targetQuestionId = val; };
+window.updateQHint = (idx, val) => { state.activeForm.questions[idx].hint = val; };
 window.confirmDeleteQuestion = (idx) => {
   showConfirm('Excluir Pergunta', 'Tem certeza?', () => { state.activeForm.questions.splice(idx,1); renderBuilderQuestions(); });
 };
