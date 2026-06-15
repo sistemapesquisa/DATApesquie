@@ -40,6 +40,39 @@ function parseDigest(header) {
   return dict;
 }
 
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'datapesquise_super_secret';
+
+// --- AUTHENTICATION ---
+router.post('/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
+  }
+
+  db.get('SELECT id, name, email, role, status FROM users WHERE (id = ? OR name = ? OR email = ?) AND password = ?', [username, username, username, password], (err, user) => {
+    if (err) {
+      jsonLogger.error('Login error', { error: err.message });
+      return res.status(500).json({ error: 'Erro interno no banco de dados' });
+    }
+    if (!user) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+    if (user.status === 'deleted') {
+      return res.status(403).json({ error: 'Conta de usuário inativa/excluída' });
+    }
+    
+    // Generate JWT
+    const token = jwt.sign(
+      { id: user.id, role: user.role, name: user.name },
+      JWT_SECRET,
+      { expiresIn: '12h' }
+    );
+    
+    res.json({ success: true, user, token });
+  });
+});
+
 // Middleware for authentication
 function authenticate(req, res, next) {
   const isOdkEndpoint = req.path.includes('/formList') || req.path.includes('/odk/') || req.path.includes('/submission') || req.path === '/';
@@ -50,10 +83,10 @@ function authenticate(req, res, next) {
     res.set('Access-Control-Allow-Origin', '*');
   }
 
-  // 1. ODK Collect Basic & Digest Authentication
   const authHeader = req.headers.authorization;
   if (isOdkEndpoint) console.log(`ODK Request: ${req.method} ${req.path} | Auth: ${authHeader}`);
   
+  // 1. ODK Collect Digest Authentication
   if (authHeader && authHeader.startsWith('Digest ')) {
     const digest = parseDigest(authHeader);
     const email = digest.username;
@@ -77,6 +110,7 @@ function authenticate(req, res, next) {
     return;
   }
 
+  // 2. ODK Collect Basic Authentication
   if (authHeader && authHeader.startsWith('Basic ')) {
     const credentials = Buffer.from(authHeader.split(' ')[1], 'base64').toString('utf8');
     const [email, password] = credentials.split(':');
@@ -84,7 +118,6 @@ function authenticate(req, res, next) {
     db.get('SELECT id, name, email, role, status FROM users WHERE (email = ? OR name = ?) AND password = ?', [email, email, password], (err, user) => {
       if (!err && user && user.status !== 'deleted') {
         req.user = user;
-        // Mock ID header for logic down the line
         req.headers['x-user-id'] = user.id;
         return next();
       }
@@ -95,18 +128,26 @@ function authenticate(req, res, next) {
     return;
   }
 
-  // 2. Enforce Auth for ODK endpoints if not provided
+  // 3. Web UI Authentication (JWT Bearer Token)
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+      return next();
+    } catch (err) {
+      return res.status(401).json({ error: 'Sessão expirada ou token inválido.' });
+    }
+  }
+
+  // Enforce Auth for ODK endpoints if not provided
   if (isOdkEndpoint) {
     res.set('WWW-Authenticate', `Digest realm="DATApesquise ODK", qop="auth", nonce="${crypto.randomBytes(16).toString('hex')}", opaque="odk"`);
     return res.status(401).send('Autenticação necessária.');
   }
 
-  // 3. Fallback: Mock user parsing from headers (for local web UI tests)
-  const role = req.headers['x-user-role'];
-  const userId = req.headers['x-user-id'] || 'anonymous';
-  
-  req.user = { id: userId, role: role || ROLES.RESEARCHER };
-  next();
+  // Reject all other unauthenticated requests
+  return res.status(401).json({ error: 'Acesso não autorizado. Faça login novamente.' });
 }
 
 router.use(authenticate);
@@ -115,28 +156,6 @@ router.use(authenticate);
 router.all('/', (req, res) => {
   res.set('X-OpenRosa-Version', '1.0');
   res.status(204).send();
-});
-
-// --- AUTHENTICATION ---
-router.post('/auth/login', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
-  }
-
-  db.get('SELECT id, name, email, role, status FROM users WHERE (id = ? OR name = ? OR email = ?) AND password = ?', [username, username, username, password], (err, user) => {
-    if (err) {
-      jsonLogger.error('Login error', { error: err.message });
-      return res.status(500).json({ error: 'Erro interno no banco de dados' });
-    }
-    if (!user) {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
-    }
-    if (user.status === 'deleted') {
-      return res.status(403).json({ error: 'Conta de usuário inativa/excluída' });
-    }
-    res.json({ success: true, user });
-  });
 });
 
 // --- USERS MANAGEMENT (Coordinator / Admin / DEV) ---
@@ -710,6 +729,59 @@ router.get('/export/:formId', (req, res) => {
       });
       res.send(Buffer.from('\uFEFF' + csvContent, 'utf-8'));
     });
+  });
+});
+// --- AI QUALITY ANALYTICS ---
+router.get('/analytics/quality/:formId', (req, res) => {
+  const formId = req.params.formId;
+  const isAuthorized = checkPermission(req.user.role, PERMISSIONS.VIEW_REPORTS);
+  if (!isAuthorized) return res.status(403).json({ error: 'Acesso negado.' });
+
+  db.all('SELECT * FROM interviews WHERE form_id = ?', [formId], (err, interviews) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    if (!interviews || interviews.length === 0) {
+      return res.json({ results: [] });
+    }
+
+    const results = [];
+    const researcherCounts = {};
+    const noGpsCounts = {};
+    const noAudioCounts = {};
+    
+    interviews.forEach(int => {
+      const rid = int.researcher_id;
+      researcherCounts[rid] = (researcherCounts[rid] || 0) + 1;
+      
+      if (!int.latitude || !int.longitude) {
+        noGpsCounts[rid] = (noGpsCounts[rid] || 0) + 1;
+      }
+      if (!int.audio_url) {
+        noAudioCounts[rid] = (noAudioCounts[rid] || 0) + 1;
+      }
+    });
+
+    for (const rid in noGpsCounts) {
+      if (noGpsCounts[rid] > 0 && noGpsCounts[rid] === researcherCounts[rid]) {
+        results.push({ type: 'danger', icon: 'fa-solid fa-location-dot', title: 'Alerta de GPS Crítico', message: `O pesquisador <strong>${rid}</strong> enviou ${researcherCounts[rid]} coletas sem registrar nenhuma localização.` });
+      } else if (noGpsCounts[rid] > 0) {
+        results.push({ type: 'warning', icon: 'fa-solid fa-location-crosshairs', title: 'GPS Incompleto', message: `O pesquisador <strong>${rid}</strong> enviou ${noGpsCounts[rid]} coletas com falha ou sem sinal de localização.` });
+      }
+    }
+    
+    for (const rid in researcherCounts) {
+      if (researcherCounts[rid] > 100) {
+        results.push({ type: 'danger', icon: 'fa-solid fa-triangle-exclamation', title: 'Volume Altamente Suspeito', message: `O pesquisador <strong>${rid}</strong> enviou impressionantes ${researcherCounts[rid]} coletas neste projeto. Verifique risco de fraude automatizada.` });
+      } else if (researcherCounts[rid] > 40) {
+        results.push({ type: 'warning', icon: 'fa-solid fa-gauge-high', title: 'Alto Volume', message: `O pesquisador <strong>${rid}</strong> enviou ${researcherCounts[rid]} coletas. Verifique se condiz com o tempo médio.` });
+      }
+    }
+
+    if (results.length === 0) {
+      results.push({ type: 'ok', icon: 'fa-solid fa-shield-check', title: 'Dados Consistentes', message: 'Nenhuma anomalia de telemetria ou GPS foi detectada no lote atual.' });
+    }
+
+    res.json({ results });
   });
 });
 

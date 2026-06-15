@@ -67,6 +67,8 @@ function validateSkipLogicLocal(questions) {
 async function apiFetch(endpoint, options = {}) {
   try {
     const headers = { 'Content-Type':'application/json', 'x-user-role':state.activeRole, 'x-user-id':state.activeUserId, ...(options.headers||{}) };
+    const token = localStorage.getItem('auth_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(endpoint, { ...options, headers });
     if (!res.ok) {
       if (res.status === 403) throw new Error('Você não tem permissão para esta ação.');
@@ -111,6 +113,7 @@ window.fazerLogin = async () => {
     if (!res.ok) throw new Error(data.error || 'Erro ao realizar login');
 
     localStorage.setItem('auth_user', JSON.stringify(data.user));
+    if (data.token) localStorage.setItem('auth_token', data.token);
     state.activeRole = data.user.role;
     state.activeUserId = data.user.id;
     state.activeUserName = data.user.name;
@@ -140,6 +143,7 @@ window.fazerLogin = async () => {
 
 window.logout = () => {
   localStorage.removeItem('auth_user');
+  localStorage.removeItem('auth_token');
   state.activeRole = null;
   state.activeUserId = null;
   state.activeUserName = null;
@@ -658,11 +662,15 @@ window.exportProjectData = async function() {
   showToast('info', 'Gerando arquivo CSV no servidor...');
   
   try {
+    const headers = {
+      'x-user-id': state.activeUserId,
+      'x-user-role': state.activeRole
+    };
+    const token = localStorage.getItem('auth_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const response = await fetch(`/api/export/${formId}`, {
-      headers: {
-        'x-user-id': state.activeUserId,
-        'x-user-role': state.activeRole
-      }
+      headers
     });
     
     if (!response.ok) {
@@ -1206,19 +1214,44 @@ window.runEquipmentCommand = async function(command) {
 };
 
 // ===================== AI ANALYSIS =====================
-window.runAiAnalysis = function() {
+window.runAiAnalysis = async function() {
+  const formId = state.activeProjectFormId;
+  if (!formId) {
+    showToast('warning', 'Selecione um projeto na aba Projetos primeiro.');
+    return;
+  }
+
   const status = document.getElementById('ai-status');
   const container = document.getElementById('ai-results-container');
   status.innerHTML = '<span style="color:var(--primary);"><i class="fa-solid fa-spinner fa-spin"></i> Analisando dados...</span>';
-  container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin" style="opacity:1;"></i><h4>Processando verificação...</h4><p>Analisando padrões de deslocamento e qualidade do áudio.</p></div>';
-  setTimeout(() => {
+  container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin" style="opacity:1;"></i><h4>Processando verificação...</h4><p>Analisando metadados, consistência de GPS e velocidade de coleta.</p></div>';
+  
+  try {
+    const res = await apiFetch(`/api/analytics/quality/${formId}`);
     status.innerHTML = '<span style="color:var(--success);"><i class="fa-solid fa-check"></i> Verificação concluída.</span>';
-    container.innerHTML = `
-      <div class="ai-result-card anomaly"><h4 style="color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> Anomalia de Velocidade</h4><p>O pesquisador <strong>Bruno Pesquisador</strong> preencheu 3 questionários em menos de 2 minutos. Possível fraude.</p></div>
-      <div class="ai-result-card warning"><h4 style="color:var(--warning);"><i class="fa-solid fa-wave-square"></i> Qualidade de Áudio Suspeita</h4><p>A entrevista <strong>int_005</strong> apresenta 80% de silêncio sem vozes inteligíveis. Recomendada auditoria manual.</p></div>
-      <div class="ai-result-card ok"><h4 style="color:var(--success);"><i class="fa-solid fa-location-dot"></i> GPS Consistente</h4><p>Todos os deslocamentos da <strong>Ana Pesquisadora</strong> hoje (14km) são consistentes com a malha viária e o tempo de coleta.</p></div>`;
+    
+    container.innerHTML = '';
+    if (!res.results || res.results.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>Nenhuma coleta encontrada para análise.</p></div>';
+      return;
+    }
+    
+    res.results.forEach(r => {
+      let cssClass = r.type === 'danger' ? 'anomaly' : (r.type === 'warning' ? 'warning' : 'ok');
+      let color = `var(--${r.type === 'ok' ? 'success' : r.type})`;
+      container.innerHTML += `
+        <div class="ai-result-card ${cssClass}">
+          <h4 style="color:${color};"><i class="${r.icon}"></i> ${r.title}</h4>
+          <p>${r.message}</p>
+        </div>
+      `;
+    });
+    
     showToast('success', 'Verificação de qualidade finalizada.');
-  }, 2500);
+  } catch (err) {
+    status.innerHTML = '<span style="color:var(--danger);"><i class="fa-solid fa-xmark"></i> Falha na análise.</span>';
+    container.innerHTML = `<div class="empty-state" style="color:var(--danger);"><p>Erro: ${err.message}</p></div>`;
+  }
 };
 
 // ===================== LOGS =====================
