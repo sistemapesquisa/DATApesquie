@@ -414,6 +414,9 @@ function renderDashboard() {
     return;
   }
 
+  const name = MOCK_USER_NAMES[state.activeRole] || state.activeRole;
+  const initial = name.charAt(0).toUpperCase();
+
   publishedForms.forEach(form => {
     const ints = state.interviews.filter(i => i.form_id === form.id);
     const isPub = form.status === 'published';
@@ -424,7 +427,7 @@ function renderDashboard() {
         <td><input type="checkbox"></td>
         <td><span class="kobo-project-name" onclick="openProject('${form.id}')">${form.title}</span></td>
         <td>${statusBadge}</td>
-        <td><div class="kobo-owner-badge"><div class="kobo-owner-circle">C</div> cleuton</div></td>
+        <td><div class="kobo-owner-badge"><div class="kobo-owner-circle">${initial}</div> ${name.split(' ')[0].toLowerCase()}</div></td>
         <td>Última Sexta-feira</td>
         <td>Última Sexta-feira</td>
         <td>${isPub ? 'Última Sexta-feira' : '-'}</td>
@@ -440,30 +443,74 @@ window.openProject = function(formId) {
   const form = state.forms.find(f => f.id === formId);
   if (!form) return;
 
-  document.getElementById('project-details-title').innerHTML = `<i class="fa-solid fa-clipboard-list"></i> ${form.title}`;
-  switchTab('view-project-details');
+  const ints = state.interviews.filter(i => i.form_id === formId);
+  const isPub = form.status === 'published';
+
+  document.getElementById('project-details-title-top').textContent = form.title;
   
+  // Populate Resumo Info
+  document.getElementById('pd-status-badge').innerHTML = isPub ? '<i class="fa-solid fa-satellite-dish"></i> disponibilizado' : '<i class="fa-solid fa-pen"></i> rascunho';
+  if (!isPub) {
+    document.getElementById('pd-status-badge').style.background = '#f1f5f9';
+    document.getElementById('pd-status-badge').style.color = '#64748b';
+  } else {
+    document.getElementById('pd-status-badge').style.background = '#e0f2fe';
+    document.getElementById('pd-status-badge').style.color = '#0369a1';
+  }
+  
+  document.getElementById('pd-questions-count').textContent = form.questions.length;
+  
+  const name = MOCK_USER_NAMES[state.activeRole] || state.activeRole;
+  const initial = name.charAt(0).toUpperCase();
+  const shortName = name.split(' ')[0].toLowerCase();
+
+  document.getElementById('pd-owner-initial').textContent = initial;
+  document.getElementById('pd-owner-name').textContent = shortName;
+  document.getElementById('pd-editor-initial').textContent = initial;
+  document.getElementById('pd-editor-name').textContent = shortName;
+  
+  document.getElementById('pd-total-submissions').textContent = ints.length;
+  document.getElementById('pd-last-resp').textContent = ints.length > 0 ? new Date(ints[ints.length-1].created_at).toLocaleDateString('pt-BR') : '-';
+
+  switchTab('view-project-details');
   loadProjectAccess();
 
-  // Setup tabs
-  document.querySelectorAll('#view-project-details .tab-link').forEach(el => {
-    el.onclick = function() {
-      document.querySelectorAll('#view-project-details .tab-link').forEach(t => {
-        t.style.borderBottomColor = 'transparent'; t.style.color = 'var(--text-secondary)';
-      });
-      this.style.borderBottomColor = 'var(--primary)'; this.style.color = 'var(--primary)';
-      document.querySelectorAll('#view-project-details .tab-content').forEach(c => c.style.display = 'none');
-      document.getElementById(this.dataset.tab).style.display = 'block';
-      if (this.dataset.tab === 'proj-tab-map' && state.map) {
-        setTimeout(() => state.map.invalidateSize(), 150);
-      }
-    };
-  });
+  // Reset to default tab (RESUMO)
+  koboSwitchTab('proj-tab-resumo');
 
   renderReportsTable();
   if (!state.map) initMap();
   else renderMapMarkers();
   renderAudioReviewList();
+};
+
+window.koboSwitchTab = function(tabId) {
+  document.querySelectorAll('.kobo-proj-tab').forEach(t => {
+    t.classList.remove('active');
+    if (t.dataset.tab === tabId) t.classList.add('active');
+  });
+  document.querySelectorAll('#view-project-details .tab-content').forEach(c => c.style.display = 'none');
+  const target = document.getElementById(tabId);
+  if (target) target.style.display = 'block';
+  
+  if (tabId === 'proj-tab-dados' && state.map) {
+    setTimeout(() => state.map.invalidateSize(), 150);
+  }
+};
+
+window.koboEditForm = function() {
+  if (!state.activeProjectFormId) return;
+  const form = state.forms.find(f => f.id === state.activeProjectFormId);
+  if (form) {
+    loadFormIntoBuilder(form);
+    switchTab('view-form-builder');
+  }
+};
+
+window.koboPreviewForm = function() {
+  if (!state.activeProjectFormId) return;
+  loadFormIntoSimulator(state.activeProjectFormId);
+  switchTab('view-mobile-sim');
 };
 
 // ===================== MAP =====================
