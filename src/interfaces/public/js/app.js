@@ -202,6 +202,20 @@ function simulateOfflineApi(endpoint, options = {}) {
       return { success:true, form:newForm, validation };
     }
   }
+  if (endpoint.match(/\/api\/forms\/.*\/archive/) && method === 'PATCH') {
+    const fid = endpoint.split('/')[3];
+    let forms = virtualDb._getStore('vdb_forms');
+    forms = forms.map(f => f.id === fid ? {...f, status:'archived'} : f);
+    virtualDb._setStore('vdb_forms', forms);
+    return { success: true };
+  }
+  if (endpoint.match(/\/api\/forms\//) && method === 'DELETE') {
+    const fid = endpoint.split('/')[3];
+    let forms = virtualDb._getStore('vdb_forms');
+    forms = forms.filter(f => f.id !== fid);
+    virtualDb._setStore('vdb_forms', forms);
+    return { success: true };
+  }
   if (endpoint === '/api/interviews' && method === 'POST') {
     const interviews = virtualDb._getStore('vdb_interviews');
     const intId = 'int_'+Math.random().toString(36).substr(2,8);
