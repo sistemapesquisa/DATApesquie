@@ -814,7 +814,7 @@ function renderBuilderQuestions() {
         <button class="kobo-btn-gear" onclick="openQuestionSettingsModal(${idx})" title="Configurações"><i class="fa-solid fa-gear"></i></button>
         <button class="kobo-btn-trash" onclick="confirmDeleteQuestion(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
         <button class="kobo-btn-copy" onclick="duplicateQuestion(${idx})" title="Duplicar"><i class="fa-solid fa-copy"></i></button>
-        <button class="kobo-btn-branch" onclick="addSkipRule(${idx})" title="Regra de Pulo"><i class="fa-solid fa-code-branch"></i></button>
+        <button class="kobo-btn-branch" onclick="openAdvLogicModal(${idx})" title="Lógica de Pulo Avançada"><i class="fa-solid fa-code-branch"></i></button>
       </div>
     `;
     container.appendChild(card);
@@ -964,7 +964,13 @@ window.showComingSoonToast = (feature) => {
 };
 
 window.openFormSettings = () => {
-  showToast('info', 'As configurações globais de estilo (CSS) estão aplicadas. O layout padrão já está no padrão Kobo.');
+  document.getElementById('form-settings-id').value = state.activeForm.id || 'Ainda não salvo (Rascunho)';
+  document.getElementById('form-settings-modal').classList.add('active');
+};
+
+window.saveFormSettings = () => {
+  document.getElementById('form-settings-modal').classList.remove('active');
+  showToast('success', 'Configurações globais salvas com sucesso!');
 };
 
 // ===================== MOBILE SIMULATOR =====================

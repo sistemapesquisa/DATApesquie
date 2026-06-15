@@ -245,6 +245,39 @@
           </div>
         </div>
 
+        <!-- Form Settings Modal -->
+        <div class="modal-overlay" id="form-settings-modal">
+          <div class="modal-box" style="max-width: 500px;">
+            <div class="modal-title"><i class="fa-solid fa-gear" style="color:var(--primary);"></i> Configurações do Formulário</div>
+            <p class="modal-message" style="margin-bottom:1.5rem;">Ajuste o layout e as configurações globais deste questionário.</p>
+            
+            <div class="form-group">
+              <label class="form-label">Estilo Visual (Layout)</label>
+              <select class="form-select" id="form-settings-theme">
+                <option value="kobo" selected>Padrão KoboToolbox (Elegante/Clean)</option>
+                <option value="grid">Grid / Tabela (Compacto)</option>
+                <option value="pages">Múltiplas Páginas (Wizard)</option>
+              </select>
+            </div>
+            
+            <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1.5rem;">
+              <input type="checkbox" id="form-settings-metadata" style="width:18px;height:18px;" checked />
+              <label for="form-settings-metadata" class="form-label" style="margin-bottom:0; cursor:pointer;">Coletar Metadados Anonimamente (Browser, Hora)</label>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">ID Único do Formulário</label>
+              <input type="text" class="form-input" id="form-settings-id" readonly style="background:#f1f5f9; color:#64748b;" />
+              <div class="form-hint">O ID não pode ser alterado após a criação.</div>
+            </div>
+
+            <div class="modal-actions" style="margin-top:2rem; justify-content: flex-end; gap:0.5rem;">
+              <button class="btn" onclick="document.getElementById('form-settings-modal').classList.remove('active')">Cancelar</button>
+              <button class="btn btn-primary" onclick="saveFormSettings()">Salvar Configurações</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Question Type Selection Modal -->
         <div class="modal-overlay" id="question-type-modal">
           <div class="modal-box" style="max-width: 500px;">
