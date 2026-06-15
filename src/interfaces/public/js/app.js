@@ -1074,17 +1074,15 @@ function renderMobileScreen() {
   const screen = document.getElementById('phone-screen-body');
   const header = document.getElementById('phone-header-bar');
   if (!screen || !header) return;
-  const netBadge = state.simIsOnline ? '<span class="network-badge-online">Online</span>' : '<span class="network-badge-offline">Offline</span>';
-  header.innerHTML = `<span style="font-weight:700;font-size:0.78rem;"><i class="fa-solid fa-chart-pie" style="color:var(--primary);"></i> DATApesquise</span>${netBadge}`;
+  header.innerHTML = `<span style="font-weight:700;font-size:0.78rem;"><i class="fa-solid fa-chart-pie" style="color:var(--primary);"></i> DATApesquise</span><span class="network-badge-online">Preview</span>`;
   screen.innerHTML = '';
 
   if (!state.simActiveForm) {
     // Form selection view
-    const templates = JSON.parse(localStorage.getItem('datapesquise_sim_templates') || '[]');
     let opts = '<option value="">-- Selecione o formulário --</option>';
-    templates.forEach(t => { opts += `<option value="${t.id}">${t.title} (V${t.version})</option>`; });
-    const warn = templates.length === 0 ? '<div style="margin-top:1rem;padding:0.7rem;background:var(--warning-light);border-radius:8px;font-size:0.75rem;color:var(--warning);text-align:center;"><i class="fa-solid fa-circle-exclamation"></i> Nenhum formulário baixado. Clique em "Baixar Formulários" primeiro.</div>' : '';
-    screen.innerHTML = `<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0.5rem;"><div style="text-align:center;margin-bottom:1.5rem;"><i class="fa-solid fa-clipboard-question" style="font-size:2.5rem;color:var(--primary);margin-bottom:0.5rem;display:block;"></i><h4 style="font-size:1rem;">Iniciar Pesquisa</h4><p style="font-size:0.78rem;color:var(--text-secondary);margin-top:0.3rem;">Selecione um formulário para começar.</p></div><select class="form-select" id="sim-select-form" style="margin-bottom:0.75rem;">${opts}</select><button class="btn btn-primary" style="width:100%;" onclick="simStartInterview()"><i class="fa-solid fa-play"></i> Começar</button>${warn}</div>`;
+    state.forms.forEach(t => { opts += `<option value="${t.id}">${t.title} (V${t.version})</option>`; });
+    const warn = state.forms.length === 0 ? '<div style="margin-top:1rem;padding:0.7rem;background:var(--warning-light);border-radius:8px;font-size:0.75rem;color:var(--warning);text-align:center;"><i class="fa-solid fa-circle-exclamation"></i> Nenhum formulário disponível.</div>' : '';
+    screen.innerHTML = `<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0.5rem;"><div style="text-align:center;margin-bottom:1.5rem;"><i class="fa-solid fa-clipboard-question" style="font-size:2.5rem;color:var(--primary);margin-bottom:0.5rem;display:block;"></i><h4 style="font-size:1rem;">Iniciar Preview</h4><p style="font-size:0.78rem;color:var(--text-secondary);margin-top:0.3rem;">Selecione um formulário para testar.</p></div><select class="form-select" id="sim-select-form" style="margin-bottom:0.75rem;">${opts}</select><button class="btn btn-primary" style="width:100%;" onclick="simStartInterview()"><i class="fa-solid fa-play"></i> Testar Formulário</button>${warn}</div>`;
     setTimeout(() => { const s = document.getElementById('sim-select-form'); if (s) { s.value = state.simSelectedFormId; s.addEventListener('change', e => state.simSelectedFormId = e.target.value); } }, 10);
   } else {
     const qList = state.simActiveForm.questions;
@@ -1107,7 +1105,7 @@ function renderMobileScreen() {
         inputHtml += '</div>';
       } else if (q.type === 'geopoint') {
         const val = state.simAnswers[q.id] || '';
-        inputHtml = `<div style="margin-top:0.6rem;padding:1rem;background:#f3f4f6;border-radius:8px;text-align:center;"><i class="fa-solid fa-location-dot" style="font-size:2rem;color:var(--primary);margin-bottom:0.5rem;display:block;"></i><input type="hidden" id="sim-ans-${q.id}" value="${val?val:'-3.1190,-60.0217'}"><button class="btn btn-sm btn-primary" onclick="document.getElementById('sim-ans-${q.id}').value='-3.1190,-60.0217';this.innerHTML='<i class=\\'fa-solid fa-check\\'></i> Localização Capturada';this.classList.add('btn-success');"><i class="fa-solid fa-satellite-dish"></i> Obter Coordenadas GPS</button>${val?'<div style="font-size:0.75rem;margin-top:0.5rem;color:var(--success);">GPS salvo!</div>':''}</div>`;
+        inputHtml = `<div style="margin-top:0.6rem;padding:1rem;background:#f3f4f6;border-radius:8px;text-align:center;"><i class="fa-solid fa-location-dot" style="font-size:2rem;color:var(--primary);margin-bottom:0.5rem;display:block;"></i><input type="hidden" id="sim-ans-${q.id}" value="${val?val:'-3.1190,-60.0217'}"><button class="btn btn-sm btn-primary" onclick="document.getElementById('sim-ans-${q.id}').value='-3.1190,-60.0217';this.innerHTML='<i class=\\'fa-solid fa-check\\'></i> Localização Simulada';this.classList.add('btn-success');"><i class="fa-solid fa-satellite-dish"></i> Obter Coordenadas GPS</button>${val?'<div style="font-size:0.75rem;margin-top:0.5rem;color:var(--success);">GPS salvo!</div>':''}</div>`;
       } else if (q.type === 'image' || q.type === 'video') {
         const val = state.simAnswers[q.id] || '';
         const icon = q.type === 'image' ? 'fa-camera' : 'fa-video';
@@ -1116,22 +1114,21 @@ function renderMobileScreen() {
         const isRec = state.simIsRecording;
         inputHtml = `<div class="sim-audio-widget"><p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.4rem;">${isRec?'Gravando... Fale no microfone.':'Pressione para iniciar.'}</p><div class="wave-container ${isRec?'recording':''}"><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span></div><button class="record-btn ${isRec?'recording':''}" onclick="simToggleRecord()"></button><div style="font-size:0.75rem;margin-top:0.3rem;">${state.simAudioFile?`<span style="color:var(--success);"><i class="fa-solid fa-file-audio"></i> ${state.simAudioFile}</span>`:'<span style="color:var(--text-muted);">Nenhum áudio gravado</span>'}</div><input type="hidden" id="sim-ans-${q.id}" value="${state.simAudioFile||''}"></div>`;
       }
-      screen.innerHTML = `<div style="flex:1;display:flex;flex-direction:column;padding:0.25rem;"><div style="font-size:0.7rem;color:var(--primary);font-weight:700;margin-bottom:0.15rem;">Questão ${ci+1} de ${qList.length}</div><div class="progress-bar" style="margin-bottom:0.75rem;"><div class="progress-fill blue" style="width:${((ci+1)/qList.length*100).toFixed(0)}%;"></div></div><h4 style="font-size:1rem;line-height:1.4;margin-bottom:0.25rem;">${q.text}</h4>${inputHtml}<div style="display:flex;gap:0.5rem;margin-top:auto;padding-top:1rem;"><button class="btn" style="flex:1;" onclick="simPrev()"><i class="fa-solid fa-arrow-left"></i> Voltar</button><button class="btn btn-primary" style="flex:2;" onclick="simNext()">${isLast?'<i class="fa-solid fa-circle-check"></i> Finalizar':'Avançar <i class="fa-solid fa-arrow-right"></i>'}</button></div><button class="btn btn-sm" style="margin-top:0.5rem;width:100%;border:none;color:var(--danger);font-size:0.75rem;" onclick="simAbort()"><i class="fa-solid fa-ban"></i> Cancelar Coleta</button></div>`;
+      screen.innerHTML = `<div style="flex:1;display:flex;flex-direction:column;padding:0.25rem;"><div style="font-size:0.7rem;color:var(--primary);font-weight:700;margin-bottom:0.15rem;">Questão ${ci+1} de ${qList.length}</div><div class="progress-bar" style="margin-bottom:0.75rem;"><div class="progress-fill blue" style="width:${((ci+1)/qList.length*100).toFixed(0)}%;"></div></div><h4 style="font-size:1rem;line-height:1.4;margin-bottom:0.25rem;">${q.text}</h4>${inputHtml}<div style="display:flex;gap:0.5rem;margin-top:auto;padding-top:1rem;"><button class="btn" style="flex:1;" onclick="simPrev()"><i class="fa-solid fa-arrow-left"></i> Voltar</button><button class="btn btn-primary" style="flex:2;" onclick="simNext()">${isLast?'<i class="fa-solid fa-circle-check"></i> Finalizar':'Avançar <i class="fa-solid fa-arrow-right"></i>'}</button></div><button class="btn btn-sm" style="margin-top:0.5rem;width:100%;border:none;color:var(--danger);font-size:0.75rem;" onclick="simAbort()"><i class="fa-solid fa-ban"></i> Cancelar Preview</button></div>`;
     } else {
       // Confirmation view
-      screen.innerHTML = `<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0.5rem;text-align:center;"><i class="fa-solid fa-circle-check" style="font-size:3rem;color:var(--success);margin-bottom:0.75rem;"></i><h3 style="margin-bottom:0.3rem;">Coleta Concluída!</h3><p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:1rem;">Todos os dados foram preenchidos.</p><div style="background:var(--bg-page);padding:0.6rem;border-radius:8px;margin-bottom:1rem;font-size:0.75rem;text-align:left;max-height:110px;overflow-y:auto;">${Object.entries(state.simAnswers).map(([k,v])=>`<div><strong>${k}:</strong> ${v}</div>`).join('')}${state.simAudioFile?`<div><strong>Áudio:</strong> ${state.simAudioFile}</div>`:''}</div><button class="btn btn-success" style="width:100%;margin-bottom:0.5rem;" onclick="simSubmit()"><i class="fa-solid fa-cloud-arrow-up"></i> Enviar Respostas</button><button class="btn" style="width:100%;" onclick="simReset()">Voltar ao Início</button></div>`;
+      screen.innerHTML = `<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0.5rem;text-align:center;"><i class="fa-solid fa-circle-check" style="font-size:3rem;color:var(--success);margin-bottom:0.75rem;"></i><h3 style="margin-bottom:0.3rem;">Teste Concluído!</h3><p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:1rem;">O formulário funciona corretamente.</p><div style="background:var(--bg-page);padding:0.6rem;border-radius:8px;margin-bottom:1rem;font-size:0.75rem;text-align:left;max-height:110px;overflow-y:auto;">${Object.entries(state.simAnswers).map(([k,v])=>`<div><strong>${k}:</strong> ${v}</div>`).join('')}${state.simAudioFile?`<div><strong>Áudio:</strong> ${state.simAudioFile}</div>`:''}</div><button class="btn btn-success" style="width:100%;margin-bottom:0.5rem;" onclick="simSubmit()"><i class="fa-solid fa-check-double"></i> Concluir Preview</button><button class="btn" style="width:100%;" onclick="simReset()">Testar Novamente</button></div>`;
     }
   }
 }
 
 window.simStartInterview = function() {
   const select = document.getElementById('sim-select-form');
-  if (!select || !select.value) { showToast('warning', 'Selecione um formulário para começar.'); return; }
-  const templates = JSON.parse(localStorage.getItem('datapesquise_sim_templates') || '[]');
-  const form = templates.find(t => t.id === select.value);
+  if (!select || !select.value) { showToast('warning', 'Selecione um formulário para testar.'); return; }
+  const form = state.forms.find(f => f.id === select.value);
   if (form) { state.simActiveForm = form; state.simAnswers = {}; state.simCurrentQuestionIdx = 0; state.simAudioFile = null; state.simIsRecording = false; renderMobileScreen(); }
 };
-window.simAbort = function() { showConfirm('Cancelar Coleta', 'Todas as respostas preenchidas serão perdidas. Continuar?', () => simReset(), { type:'danger', confirmText:'Sim, cancelar' }); };
+window.simAbort = function() { showConfirm('Cancelar Preview', 'Tem certeza que deseja sair do simulador?', () => simReset(), { type:'danger', confirmText:'Sim, sair' }); };
 function simReset() { state.simActiveForm = null; state.simAnswers = {}; state.simCurrentQuestionIdx = 0; state.simAudioFile = null; state.simIsRecording = false; renderMobileScreen(); }
 function evaluateSimLogic(logicArray) {
   if (!logicArray || logicArray.length === 0) return true;
@@ -1195,26 +1192,8 @@ window.simToggleRecord = function() {
   else { state.simIsRecording = true; renderMobileScreen(); setTimeout(() => { if (state.simIsRecording) { state.simIsRecording = false; state.simAudioFile = `https://actions.google.com/sounds/v1/water/rain_on_roof.ogg`; renderMobileScreen(); } }, 3000); }
 };
 window.simSubmit = async function() {
-  const researcherEl = document.getElementById('sim-active-researcher');
-  const researcherId = researcherEl ? researcherEl.value : state.activeUserId;
-  const latEl = document.getElementById('sim-lat');
-  const lngEl = document.getElementById('sim-lng');
-  const lat = latEl ? parseFloat(latEl.value) : -3.1190;
-  const lng = lngEl ? parseFloat(lngEl.value) : -60.0217;
-  const deviceId = "Simulador Web";
-  const payload = { formId:state.simActiveForm.id, formVersion:state.simActiveForm.version, data:state.simAnswers, latitude:lat, longitude:lng, audioFileName:state.simAudioFile, researcherId, deviceId };
-  if (state.simIsOnline) {
-    try {
-      const result = await apiFetch('/api/interviews', { method:'POST', body:JSON.stringify(payload) });
-      if (result.success) { showToast('success', 'Entrevista enviada com sucesso!'); await loadServerData(); renderDashboard(); simReset(); }
-    } catch (err) { showToast('error', 'Erro ao enviar: ' + err.message); }
-  } else {
-    state.simOfflineQueue.push(payload);
-    localStorage.setItem('datapesquise_offline_queue', JSON.stringify(state.simOfflineQueue));
-    document.getElementById('sim-offline-queue-count').textContent = state.simOfflineQueue.length;
-    showToast('warning', 'Você está offline. A pesquisa foi salva no celular.');
-    simReset();
-  }
+  showToast('info', 'Isto é apenas um preview. Nenhuma pesquisa foi enviada ao banco de dados.');
+  simReset();
 };
 
 // ===================== EQUIPMENT =====================

@@ -31,9 +31,9 @@
         </div>
       </div>
       <nav class="sidebar-nav">
-        <a class="nav-item active" data-target="view-dashboard" id="nav-dashboard"><i class="fa-solid fa-layer-group"></i><span>Projetos</span></a>
+        <a class="nav-item" data-target="view-dashboard" id="nav-dashboard"><i class="fa-solid fa-layer-group"></i><span>Projetos</span></a>
         <a class="nav-item" data-target="view-form-builder" id="nav-form-builder"><i class="fa-solid fa-clipboard-list"></i><span>Formulários</span></a>
-        <a class="nav-item" data-target="view-mobile-sim" id="nav-mobile-sim"><i class="fa-solid fa-mobile-screen"></i><span>Coletar Dados</span></a>
+        <a class="nav-item" data-target="view-mobile-sim" id="nav-mobile-sim"><i class="fa-solid fa-mobile-screen"></i><span>Preview (Simulador)</span></a>
         <div class="nav-divider"></div>
         <a class="nav-item" data-target="view-team" id="nav-team"><i class="fa-solid fa-users"></i><span>Gerenciar Equipe</span></a>
         <a class="nav-item" data-target="view-roles" id="nav-roles"><i class="fa-solid fa-user-shield"></i><span>Cargos e Permissões</span></a>
@@ -572,29 +572,21 @@
 
       <!-- ===== VIEW: MOBILE SIMULATOR ===== -->
       <section id="view-mobile-sim" class="view-panel">
-        <div class="page-header"><h1 class="page-title"><i class="fa-solid fa-mobile-screen"></i> Coletar Dados</h1><p class="page-subtitle">Simule como o pesquisador preenche o questionário no celular.</p></div>
-        <div class="sim-layout">
-          <div>
-            <div class="card">
-              <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-gear"></i> Configurações</h3></div>
-              <div class="form-group"><label class="form-label">Pesquisador Ativo</label><select class="form-select" id="sim-active-researcher"><option value="researcher_1">Ana Pesquisadora</option><option value="researcher_2">Bruno Pesquisador</option><option value="researcher_3">Carla Pesquisadora</option><option value="researcher_4">Daniel Pesquisador</option></select></div>
-              <div class="form-group">
-                <label class="form-label">Conexão com Internet</label>
-                <div class="toggle-row"><span id="net-status-text" class="text-muted">Conectado (Online)</span><input type="checkbox" id="sim-toggle-network" checked /></div>
-              </div>
-              <button class="btn btn-primary" style="width:100%;margin-bottom:0.75rem;" id="sim-btn-download-templates"><i class="fa-solid fa-cloud-arrow-down"></i> Baixar Formulários</button>
-              <div class="offline-queue-box"><i class="fa-solid fa-inbox"></i><div><strong id="sim-offline-queue-count">0</strong> pesquisas salvas no celular</div></div>
-              <button class="btn" style="width:100%;margin-top:0.5rem;" id="sim-btn-sync-queue"><i class="fa-solid fa-rotate"></i> Enviar Pesquisas Salvas</button>
-              <div class="form-group" style="margin-top:1rem;">
-                <label class="form-label">Coordenadas (simulação)</label>
-                <div class="coords-row">
-                  <input type="number" class="form-input" id="sim-lat" value="-9.3833" step="0.0001" placeholder="Latitude" />
-                  <input type="number" class="form-input" id="sim-lng" value="-40.5000" step="0.0001" placeholder="Longitude" />
-                </div>
+        <div class="page-header">
+          <h1 class="page-title"><i class="fa-solid fa-mobile-screen"></i> Preview (Simulador)</h1>
+          <p class="page-subtitle">Teste e valide como o questionário se comportará no aplicativo móvel dos pesquisadores.</p>
+        </div>
+        
+        <div style="display: flex; justify-content: center; align-items: flex-start; padding-top: 2rem;">
+          <div class="phone-frame">
+            <div class="phone-wrapper">
+              <div class="phone-notch"></div>
+              <div class="phone-screen">
+                <div class="phone-screen-header" id="phone-header-bar"></div>
+                <div class="phone-screen-body" id="phone-screen-body"></div>
               </div>
             </div>
           </div>
-          <div class="phone-frame"><div class="phone-wrapper"><div class="phone-notch"></div><div class="phone-screen"><div class="phone-screen-header" id="phone-header-bar"></div><div class="phone-screen-body" id="phone-screen-body"></div></div></div></div>
         </div>
       </section>
 
