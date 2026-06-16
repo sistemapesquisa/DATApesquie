@@ -297,7 +297,7 @@ function renderDashboard() {
   if (!grid) return;
   grid.innerHTML = '';
 
-  const publishedForms = state.forms; // Show all forms in the dashboard for Kobo style
+  const publishedForms = state.forms; // Show all forms in the dashboard for Sistema style
   
   if (publishedForms.length === 0) {
     grid.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color: #64748b;">Nenhum projeto encontrado. Clique em NOVO para começar.</td></tr>';
@@ -314,11 +314,11 @@ function renderDashboard() {
     
     let statusBadge = '';
     if (isArchived) {
-      statusBadge = '<span class="kobo-status-badge" style="background:#475569;color:#f8fafc;"><i class="fa-solid fa-box-archive"></i> arquivado</span>';
+      statusBadge = '<span class="sys-status-badge" style="background:#475569;color:#f8fafc;"><i class="fa-solid fa-box-archive"></i> arquivado</span>';
     } else if (isPub) {
-      statusBadge = '<span class="kobo-status-badge"><i class="fa-solid fa-satellite-dish"></i> disponibilizado</span>';
+      statusBadge = '<span class="sys-status-badge"><i class="fa-solid fa-satellite-dish"></i> disponibilizado</span>';
     } else {
-      statusBadge = '<span class="kobo-status-badge" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-pen"></i> rascunho</span>';
+      statusBadge = '<span class="sys-status-badge" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-pen"></i> rascunho</span>';
     }
     
     // Fallbacks for missing dates since the DB schema didn't track these closely initially
@@ -328,13 +328,13 @@ function renderDashboard() {
     grid.innerHTML += `
       <tr>
         <td><input type="checkbox" class="proj-checkbox" value="${form.id}"></td>
-        <td><span class="kobo-project-name" onclick="openProject('${form.id}')">${form.title}</span></td>
+        <td><span class="sys-project-name" onclick="openProject('${form.id}')">${form.title}</span></td>
         <td>${statusBadge}</td>
-        <td><div class="kobo-owner-badge"><div class="kobo-owner-circle">${initial}</div> ${name.split(' ')[0].toLowerCase()}</div></td>
+        <td><div class="sys-owner-badge"><div class="sys-owner-circle">${initial}</div> ${name.split(' ')[0].toLowerCase()}</div></td>
         <td>${modDateStr}</td>
         <td>${modDateStr}</td>
         <td>${pubDateStr}</td>
-        <td><span class="kobo-count-pill">${ints.length}</span></td>
+        <td><span class="sys-count-pill">${ints.length}</span></td>
       </tr>
     `;
   });
@@ -387,15 +387,15 @@ window.openProject = function(formId) {
   loadProjectAccess();
 
   // Reset to default tab (RESUMO)
-  koboSwitchTab('proj-tab-resumo');
+  sysSwitchTab('proj-tab-resumo');
 
   renderReportsTable();
   renderCharts();
   renderAudioReviewList();
 };
 
-window.koboSwitchTab = function(tabId) {
-  document.querySelectorAll('.kobo-proj-tab').forEach(t => {
+window.sysSwitchTab = function(tabId) {
+  document.querySelectorAll('.sys-proj-tab').forEach(t => {
     t.classList.remove('active');
     if (t.dataset.tab === tabId) t.classList.add('active');
   });
@@ -415,7 +415,7 @@ window.koboSwitchTab = function(tabId) {
   }
 };
 
-window.koboEditForm = function() {
+window.sysEditForm = function() {
   if (!state.activeProjectFormId) return;
   const form = state.forms.find(f => f.id === state.activeProjectFormId);
   if (form) {
@@ -424,7 +424,7 @@ window.koboEditForm = function() {
   }
 };
 
-window.koboPreviewForm = function() {
+window.sysPreviewForm = function() {
   if (!state.activeProjectFormId) return;
   const form = state.forms.find(f => f.id === state.activeProjectFormId);
   if (form) {
@@ -800,7 +800,7 @@ window.addNewQuestion = function(type) {
   document.getElementById('question-type-modal').classList.remove('active');
   
   // Scroll to bottom
-  const container = document.querySelector('.kobo-workspace-body');
+  const container = document.querySelector('.sys-workspace-body');
   if (container) container.scrollTop = container.scrollHeight;
 };
 
@@ -840,7 +840,7 @@ function renderBuilderQuestions() {
   }
   state.activeForm.questions.forEach((q, idx) => {
     const card = document.createElement('div');
-    card.className = 'kobo-question-row';
+    card.className = 'sys-question-row';
     card.draggable = true;
     card.dataset.index = idx;
     
@@ -880,26 +880,26 @@ function renderBuilderQuestions() {
         const val = typeof opt === 'object' ? opt.label : opt;
         const nameVal = typeof opt === 'object' ? opt.name : val.toLowerCase().replace(/[^a-z0-9]/g,'_');
         optionsHtml += `
-          <div class="kobo-choice-row">
-            <button class="kobo-choice-trash" onclick="removeOption(${idx},${oi})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-            <input type="text" class="kobo-choice-input" value="${val}" onchange="updateOption(${idx},${oi},this.value)" placeholder="Texto da Opção" />
-            <input type="text" class="kobo-choice-pill" value="${nameVal}" onchange="updateOptionName(${idx},${oi},this.value)" style="border:none; outline:none; font-family:var(--font-mono); cursor:text; width:150px;" title="Editar Nome Interno (ID)" />
+          <div class="sys-choice-row">
+            <button class="sys-choice-trash" onclick="removeOption(${idx},${oi})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+            <input type="text" class="sys-choice-input" value="${val}" onchange="updateOption(${idx},${oi},this.value)" placeholder="Texto da Opção" />
+            <input type="text" class="sys-choice-pill" value="${nameVal}" onchange="updateOptionName(${idx},${oi},this.value)" style="border:none; outline:none; font-family:var(--font-mono); cursor:text; width:150px;" title="Editar Nome Interno (ID)" />
           </div>
         `;
       });
-      optionsHtml += `<div class="kobo-add-choice" onclick="addOption(${idx})">+ click to add another response...</div></div>`;
+      optionsHtml += `<div class="sys-add-choice" onclick="addOption(${idx})">+ click to add another response...</div></div>`;
     }
 
     card.innerHTML = `
-      <div class="kobo-question-left">
-        <i class="kobo-question-icon fa-solid fa-circle-dot"></i>
-        <div class="kobo-collapsed-title">${idx+1}. ${q.text || 'Nova Pergunta'}</div>
+      <div class="sys-question-left">
+        <i class="sys-question-icon fa-solid fa-circle-dot"></i>
+        <div class="sys-collapsed-title">${idx+1}. ${q.text || 'Nova Pergunta'}</div>
       </div>
-      <div class="kobo-question-center">
+      <div class="sys-question-center">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; flex:1;">
             <div style="background: var(--primary-light); color: var(--primary); font-weight: bold; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-size: 0.9rem; flex-shrink: 0;">${idx+1}</div>
-            <input type="text" class="kobo-question-text" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="Escreva a pergunta aqui..." style="flex:1;" />
+            <input type="text" class="sys-question-text" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="Escreva a pergunta aqui..." style="flex:1;" />
           </div>
           <select style="border:none; color:#64748b; font-size:0.8rem; outline:none; background:transparent; cursor:pointer; margin-left: 10px;" onchange="updateQType(${idx},this.value)">
             <option value="text" ${q.type==='text'?'selected':''}>Texto Livre</option>
@@ -916,17 +916,17 @@ function renderBuilderQuestions() {
             <option value="note" ${q.type==='note'?'selected':''}>Nota / Aviso</option>
           </select>
         </div>
-        <input type="text" class="kobo-question-hint" value="${q.hint || ''}" onchange="updateQHint(${idx},this.value)" placeholder="Dica de preenchimento (opcional)..." style="margin-left: 40px; width: calc(100% - 40px);" />
+        <input type="text" class="sys-question-hint" value="${q.hint || ''}" onchange="updateQHint(${idx},this.value)" placeholder="Dica de preenchimento (opcional)..." style="margin-left: 40px; width: calc(100% - 40px);" />
         <div style="margin-left: 40px;">
           ${optionsHtml}
         </div>
       </div>
-      <div class="kobo-question-right">
-        <button class="kobo-btn-required ${q.required ? 'active' : ''}" onclick="toggleQRequired(${idx})" title="Tornar Obrigatória" style="color: ${q.required ? 'var(--danger)' : '#cbd5e1'};"><i class="fa-solid fa-asterisk"></i></button>
-        <button class="kobo-btn-gear" onclick="openQuestionSettingsModal(${idx})" title="Configurações"><i class="fa-solid fa-gear"></i></button>
-        <button class="kobo-btn-trash" onclick="confirmDeleteQuestion(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-        <button class="kobo-btn-copy" onclick="duplicateQuestion(${idx})" title="Duplicar"><i class="fa-solid fa-copy"></i></button>
-        <button class="kobo-btn-branch" onclick="openAdvLogicModal(${idx})" title="Lógica de Pulo Avançada"><i class="fa-solid fa-code-branch"></i></button>
+      <div class="sys-question-right">
+        <button class="sys-btn-required ${q.required ? 'active' : ''}" onclick="toggleQRequired(${idx})" title="Tornar Obrigatória" style="color: ${q.required ? 'var(--danger)' : '#cbd5e1'};"><i class="fa-solid fa-asterisk"></i></button>
+        <button class="sys-btn-gear" onclick="openQuestionSettingsModal(${idx})" title="Configurações"><i class="fa-solid fa-gear"></i></button>
+        <button class="sys-btn-trash" onclick="confirmDeleteQuestion(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+        <button class="sys-btn-copy" onclick="duplicateQuestion(${idx})" title="Duplicar"><i class="fa-solid fa-copy"></i></button>
+        <button class="sys-btn-branch" onclick="openAdvLogicModal(${idx})" title="Lógica de Pulo Avançada"><i class="fa-solid fa-code-branch"></i></button>
       </div>
     `;
     container.appendChild(card);
@@ -1043,7 +1043,7 @@ async function saveActiveForm() {
   setButtonLoading(btn, false);
 }
 
-// ===================== KOBO BUTTON HANDLERS =====================
+// ===================== sys BUTTON HANDLERS =====================
 window.closeFormBuilder = () => {
   if (state.activeProjectFormId) {
     switchTab('view-project-details');
@@ -1066,7 +1066,7 @@ window.previewActiveForm = () => {
 
 window.toggleCollapseQuestions = () => {
   const container = document.getElementById('builder-questions-list');
-  const isCollapsed = container.classList.toggle('kobo-collapsed-view');
+  const isCollapsed = container.classList.toggle('sys-collapsed-view');
   showToast('info', isCollapsed ? 'Perguntas recolhidas (Visão em lista).' : 'Perguntas expandidas.');
 };
 
