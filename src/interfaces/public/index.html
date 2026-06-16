@@ -5,12 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DATApesquise | Research & Fraud Detection</title>
   <meta name="description" content="Plataforma inteligente de gestão de pesquisas de campo">
-  <link rel="manifest" href="manifest.json">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <link rel="manifest" href="manifest.json?v=2">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=2.0.1">
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -68,7 +71,7 @@
     <main class="main-content" id="main-content">
 
       <!-- ===== VIEW: LOGIN ===== -->
-      <section id="view-login" class="view-panel" style="background: var(--bg-page); margin-left: -260px;">
+      <section id="view-login" class="view-panel" style="background: var(--bg-page);">
         <div style="height: 100vh; display: flex; align-items: center; justify-content: center;">
           <div class="card" style="width: 100%; max-width: 400px; padding: 2rem;">
             <div style="text-align: center; margin-bottom: 2rem;">
@@ -82,9 +85,16 @@
               <label class="form-label">Usuário</label>
               <input type="text" id="login-username" class="form-input" placeholder="Digite seu usuário" />
             </div>
-            <div class="form-group" style="margin-bottom: 2rem;">
+            <div class="form-group">
               <label class="form-label">Senha</label>
               <input type="password" id="login-password" class="form-input" placeholder="••••••••" />
+            </div>
+            <div class="form-group" style="margin-bottom: 2rem;">
+              <label class="form-label">Simular Login Como:</label>
+              <select id="login-role" class="form-select">
+                <option value="DEV">Suporte Técnico (DEV) - Acesso Total</option>
+                <option value="Admin">Administrador (Cliente) - Pode gerir acessos</option>
+              </select>
             </div>
             <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.8rem;" id="btn-login" onclick="fazerLogin()">ENTRAR</button>
           </div>
@@ -122,24 +132,8 @@
             </div>
           </div>
 
-          <div class="sys-table-wrapper">
-            <table class="sys-projects-table">
-              <thead>
-                <tr>
-                  <th style="width: 40px;"><input type="checkbox"></th>
-                  <th>Nome do projeto</th>
-                  <th>Status</th>
-                  <th>Proprietário</th>
-                  <th>Última edição</th>
-                  <th>Data de modificação</th>
-                  <th>Data de disponibilização</th>
-                  <th>Envios</th>
-                </tr>
-              </thead>
-              <tbody id="projects-grid">
-                <!-- Projects rows injected here via JS -->
-              </tbody>
-            </table>
+          <div class="sys-projects-grid" id="projects-grid" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <!-- Project List Items injected via JS -->
           </div>
         </div>
 
@@ -165,7 +159,7 @@
           <div class="card forms-sidebar">
             <div class="card-header"><h3 class="card-title">Meus Formulários</h3>
               <div style="display:flex; gap:0.5rem; align-items:center;">
-                <label for="import-xlsform-input" class="btn btn-sm" style="cursor:pointer; margin:0;"><i class="fa-solid fa-file-excel"></i> Importar XLSForm</label>
+                <label for="import-xlsform-input" class="btn btn-sm" style="cursor:pointer; margin:0;" title="Importar XLSForm: Envie uma planilha de pesquisa para criar um novo projeto automaticamente."><i class="fa-solid fa-file-excel"></i> Importar XLSForm</label>
                 <input type="file" id="import-xlsform-input" accept=".xls,.xlsx" style="display:none;" />
                 <button class="btn btn-primary btn-sm" id="btn-new-form"><i class="fa-solid fa-plus"></i> Novo</button>
               </div>
@@ -179,17 +173,22 @@
                 <span class="sys-title-label">projeto</span>
                 <input type="text" class="sys-title-input" id="form-edit-title" placeholder="Nome do Projeto..." />
               </div>
-              <div class="sys-actions">
-                <select id="form-edit-status" style="border:1px solid #ccc; border-radius:4px; padding:4px; margin-right:8px; font-size:12px; height:32px;"><option value="draft">Rascunho</option><option value="published">Publicado</option></select>
-                <button class="sys-btn-save" id="btn-save-form">SALVAR</button>
-                <button class="sys-btn-close" onclick="closeFormBuilder()"><i class="fa-solid fa-xmark"></i></button>
+              <div class="sys-actions" style="display:flex; align-items:center; gap:8px;">
+                <button class="sys-btn-save" onclick="document.getElementById('import-xls-input').click()" style="background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1;" title="Importar XLSForm: Carrega uma planilha de pesquisa externa, apagando o formulário atual e substituindo pelas perguntas do arquivo."><i class="fa-solid fa-file-import"></i> Importar XLS</button>
+                <input type="file" id="import-xls-input" accept=".xls,.xlsx" style="display:none;" onchange="importXLSForm(event)" />
+                <button class="sys-btn-save" onclick="exportXLSForm()" style="background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1;" title="Baixar XLSForm: Exporta o formulário atual para um arquivo Excel contendo as abas 'survey' e 'choices', ideal para edições em massa ou backup."><i class="fa-solid fa-file-export"></i> Baixar XLS</button>
+                <select id="form-edit-status" style="border:1px solid #ccc; border-radius:4px; padding:4px; font-size:12px; height:32px;" title="Status de Publicação: Defina como 'Rascunho' para testes e 'Publicado' quando quiser enviar para coleta de campo."><option value="draft">Rascunho</option><option value="published">Publicado</option></select>
+                <button class="sys-btn-save" id="btn-save-form" title="Salvar Projeto: Armazena o questionário no banco de dados. Salve sempre antes de sair da página!">SALVAR</button>
+                <button class="sys-btn-close" onclick="closeFormBuilder()" title="Fechar Construtor: Retorna para o menu principal de projetos"><i class="fa-solid fa-xmark"></i></button>
               </div>
             </div>
             <div class="sys-sub-bar">
               <div class="sys-sub-left">
-                <button onclick="previewActiveForm()" title="Visualizar (Simulador)"><i class="fa-solid fa-eye"></i></button>
-                <button onclick="toggleCollapseQuestions()" title="Expandir/Recolher"><i class="fa-solid fa-list-ul"></i></button>
-                <button onclick="duplicateActiveForm()" title="Duplicar Formulário"><i class="fa-solid fa-copy"></i></button>
+                <button onclick="previewActiveForm()" title="Visualizar (Simulador): Teste a lógica de pulos, restrições numéricas e obrigatoriedade como se estivesse usando o aplicativo móvel."><i class="fa-solid fa-eye"></i></button>
+                <button onclick="toggleCollapseQuestions()" title="Expandir/Recolher: Alterna entre a visualização completa ou resumida das perguntas para facilitar a navegação em formulários longos."><i class="fa-solid fa-list-ul"></i></button>
+                <button onclick="duplicateActiveForm()" title="Duplicar Formulário: Cria uma cópia inteira deste projeto de pesquisa."><i class="fa-solid fa-copy"></i></button>
+                <button onclick="openFormSettings()" title="Configurações Globais: Ative coleta de GPS/Áudio oculta no fundo ou troque o visual do simulador."><i class="fa-solid fa-gear"></i></button>
+                <button onclick="openXmlViewer()" title="Ver Código Fonte (XML): Visualiza o código OpenRosa/XForm bruto gerado nos bastidores por este construtor visual."><i class="fa-solid fa-code"></i></button>
               </div>
               <div class="sys-sub-right">
                 <button onclick="document.getElementById('question-library-modal').classList.add('active')"><i class="fa-solid fa-book"></i> Adicionar da Biblioteca</button>
@@ -200,7 +199,7 @@
             <div class="sys-workspace-body" style="padding: 2rem; overflow-y:auto; flex:1; background:#ffffff;">
               <div id="builder-questions-list" class="sys-questions-container"></div>
               <div style="text-align:center; margin-top:1rem;">
-                <button class="sys-btn-add-q" id="btn-add-question" title="Add Question"><i class="fa-solid fa-plus"></i></button>
+                <button class="sys-btn-add-q" id="btn-add-question" title="Adicionar Pergunta: Abre a paleta de opções para adicionar um novo campo ao formulário."><i class="fa-solid fa-plus"></i></button>
               </div>
             </div>
           </div>
@@ -267,6 +266,54 @@
               <label class="form-label">Mensagem de Erro Personalizada</label>
               <input type="text" class="form-input" id="q-settings-constraint-msg" placeholder="Ex: O valor precisa ser maior que 18." />
             </div>
+
+            <div id="q-settings-select-limits" style="display:none; padding:1rem; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:1rem;">
+              <label class="form-label" style="color:var(--primary);"><i class="fa-solid fa-list-check"></i> Limites de Múltipla Escolha</label>
+              <div style="display:flex; gap:1rem; margin-top:0.5rem;">
+                <div style="flex:1;">
+                  <label style="font-size:0.75rem; color:var(--text-secondary);">Mínimo de opções</label>
+                  <input type="number" class="form-input" id="q-settings-min-sel" placeholder="Ex: 1" min="1" />
+                </div>
+                <div style="flex:1;">
+                  <label style="font-size:0.75rem; color:var(--text-secondary);">Máximo de opções</label>
+                  <input type="number" class="form-input" id="q-settings-max-sel" placeholder="Ex: 3" min="1" />
+                </div>
+              </div>
+            </div>
+
+            <div id="q-settings-choice-filter" style="display:none; padding:1rem; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:1rem;">
+              <label class="form-label" style="color:var(--primary);"><i class="fa-solid fa-filter"></i> Filtro de Escolha (Choice Filter / Cascata)</label>
+              <div style="margin-top:0.5rem;">
+                <label style="font-size:0.75rem; color:var(--text-secondary);">Expressão ODK (Ex: estado=${estado_selecionado})</label>
+                <input type="text" class="form-input" id="q-settings-cf-formula" placeholder="Insira o filtro..." />
+              </div>
+            </div>
+
+            <div id="q-settings-calc-params" style="display:none; padding:1rem; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:1rem;">
+              <label class="form-label" style="color:var(--primary);"><i class="fa-solid fa-calculator"></i> Fórmula de Cálculo</label>
+              <div style="margin-top:0.5rem;">
+                <label style="font-size:0.75rem; color:var(--text-secondary);">Expressão ODK (Ex: ${q_1} + ${q_2})</label>
+                <input type="text" class="form-input" id="q-settings-calc-formula" placeholder="Insira a fórmula..." />
+              </div>
+            </div>
+
+            <div id="q-settings-range-params" style="display:none; padding:1rem; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:1rem;">
+              <label class="form-label" style="color:var(--primary);"><i class="fa-solid fa-sliders"></i> Configurações de Intervalo</label>
+              <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                <div style="flex:1;">
+                  <label style="font-size:0.75rem; color:var(--text-secondary);">Início</label>
+                  <input type="number" class="form-input" id="q-settings-range-start" value="1" />
+                </div>
+                <div style="flex:1;">
+                  <label style="font-size:0.75rem; color:var(--text-secondary);">Fim</label>
+                  <input type="number" class="form-input" id="q-settings-range-end" value="10" />
+                </div>
+                <div style="flex:1;">
+                  <label style="font-size:0.75rem; color:var(--text-secondary);">Salto (Step)</label>
+                  <input type="number" class="form-input" id="q-settings-range-step" value="1" />
+                </div>
+              </div>
+            </div>
             
             <div class="modal-actions" style="margin-top:1.5rem; justify-content: space-between;">
               <button class="btn" onclick="closeQuestionSettingsModal()">Cancelar</button>
@@ -290,9 +337,19 @@
               </select>
             </div>
             
-            <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1.5rem;">
+            <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
               <input type="checkbox" id="form-settings-metadata" style="width:18px;height:18px;" checked />
-              <label for="form-settings-metadata" class="form-label" style="margin-bottom:0; cursor:pointer;">Coletar Metadados Anonimamente (Browser, Hora)</label>
+              <label for="form-settings-metadata" class="form-label" style="margin-bottom:0; cursor:pointer;">Coletar Metadados Básicos (Dispositivo, Hora)</label>
+            </div>
+            
+            <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem; background:#fff1f2; padding:10px; border-radius:8px; border:1px solid #ffe4e6;">
+              <input type="checkbox" id="form-settings-audit-audio" style="width:18px;height:18px;" />
+              <label for="form-settings-audit-audio" class="form-label" style="margin-bottom:0; cursor:pointer; color:#be123c;">Gravar Áudio Oculto (Fundo)</label>
+            </div>
+
+            <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1.5rem; background:#eff6ff; padding:10px; border-radius:8px; border:1px solid #dbeafe;">
+              <input type="checkbox" id="form-settings-audit-location" style="width:18px;height:18px;" />
+              <label for="form-settings-audit-location" class="form-label" style="margin-bottom:0; cursor:pointer; color:#1d4ed8;">Rastreamento de GPS Oculto (Fundo)</label>
             </div>
             
             <div class="form-group">
@@ -310,20 +367,43 @@
 
         <!-- Question Type Selection Modal -->
         <div class="modal-overlay" id="question-type-modal">
-          <div class="modal-box" style="max-width: 500px;">
+          <div class="modal-box" style="max-width: 700px;">
             <div class="modal-title"><i class="fa-solid fa-layer-group" style="color:var(--primary);"></i> Selecionar Tipo de Pergunta</div>
             <p class="modal-message" style="margin-bottom:1rem;">Escolha o tipo de dado que você deseja coletar.</p>
             
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1.5rem;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1.5rem; max-height: 400px; overflow-y:auto; padding-right:10px;">
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('select_one')"><i class="fa-regular fa-circle-dot fa-2x"></i> Sel. Única</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('select_multiple')"><i class="fa-solid fa-list-check fa-2x"></i> Sel. Múltipla</button>
               <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('text')"><i class="fa-solid fa-font fa-2x"></i> Texto Livre</button>
               <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('number')"><i class="fa-solid fa-hashtag fa-2x"></i> Número</button>
-              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('select_one')"><i class="fa-regular fa-circle-dot fa-2x"></i> Sel. Única</button>
-              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('select_multiple')"><i class="fa-regular fa-square-check fa-2x"></i> Múltipla Esc.</button>
-              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('geopoint')"><i class="fa-solid fa-location-dot fa-2x"></i> GPS</button>
-              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('image')"><i class="fa-solid fa-camera fa-2x"></i> Imagem</button>
+              
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('decimal')"><i class="fa-solid fa-square-root-variable fa-2x"></i> Decimal</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('date')"><i class="fa-solid fa-calendar-days fa-2x"></i> Data</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('time')"><i class="fa-regular fa-clock fa-2x"></i> Horário</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('datetime')"><i class="fa-solid fa-calendar-plus fa-2x"></i> Data e Horário</button>
+              
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('geopoint')"><i class="fa-solid fa-location-dot fa-2x"></i> Ponto (GPS)</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('geotrace')"><i class="fa-solid fa-route fa-2x"></i> Linha</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('geoshape')"><i class="fa-solid fa-draw-polygon fa-2x"></i> Área</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('image')"><i class="fa-solid fa-camera fa-2x"></i> Foto</button>
+              
               <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('audio')"><i class="fa-solid fa-microphone fa-2x"></i> Áudio</button>
               <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('video')"><i class="fa-solid fa-video fa-2x"></i> Vídeo</button>
-              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('date')"><i class="fa-solid fa-calendar-days fa-2x"></i> Data</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('note')"><i class="fa-solid fa-circle-info fa-2x"></i> Nota</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('barcode')"><i class="fa-solid fa-barcode fa-2x"></i> Cód. Barras</button>
+              
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('acknowledge')"><i class="fa-solid fa-check-double fa-2x"></i> Reconhece</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('rank')"><i class="fa-solid fa-arrow-down-1-9 fa-2x"></i> Classificação</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('calculate')"><i class="fa-solid fa-calculator fa-2x"></i> Calcular</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('hidden')"><i class="fa-regular fa-eye-slash fa-2x"></i> Oculto</button>
+              
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('file')"><i class="fa-solid fa-file-arrow-up fa-2x"></i> Arquivo</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('range')"><i class="fa-solid fa-sliders fa-2x"></i> Intervalo</button>
+
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem; border-color:var(--primary); color:var(--primary);" onclick="addNewQuestion('begin_group')"><i class="fa-solid fa-folder-open fa-2x"></i> Abrir Grupo</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem; border-color:var(--primary); color:var(--primary);" onclick="addNewQuestion('end_group')"><i class="fa-solid fa-folder-closed fa-2x"></i> Fechar Grupo</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem; border-color:var(--primary); color:var(--primary);" onclick="addNewQuestion('begin_repeat')"><i class="fa-solid fa-repeat fa-2x"></i> Abrir Repetição</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem; border-color:var(--primary); color:var(--primary);" onclick="addNewQuestion('end_repeat')"><i class="fa-solid fa-ban fa-2x"></i> Fechar Repet.</button>
             </div>
             
             <div class="modal-actions" style="justify-content: flex-end;">
@@ -332,18 +412,40 @@
           </div>
         </div>
 
+        <!-- Piping Modal -->
+        <div class="modal-overlay" id="piping-modal">
+          <div class="modal-box" style="max-width: 400px;">
+            <div class="modal-title"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--primary);"></i> Inserir Variável (Piping)</div>
+            <p class="modal-message" style="margin-bottom:1rem;">Escolha uma pergunta anterior para inserir sua resposta no texto atual.</p>
+            <input type="hidden" id="piping-target-idx" />
+            
+            <div class="form-group">
+              <label class="form-label">Pergunta Anterior</label>
+              <select class="form-select" id="piping-source-q"></select>
+            </div>
+            
+            <div class="modal-actions" style="margin-top:1.5rem; justify-content: flex-end; gap:0.5rem;">
+              <button class="btn" onclick="document.getElementById('piping-modal').classList.remove('active')">Cancelar</button>
+              <button class="btn btn-primary" onclick="applyPiping()">Inserir</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Advanced Logic Modal -->
         <div class="modal-overlay" id="advanced-logic-modal">
           <div class="modal-box" style="max-width: 600px;">
-            <div class="modal-title"><i class="fa-solid fa-code-branch" style="color:var(--primary);"></i> Lógica de Pulo Avançada</div>
-            <p class="modal-message" style="margin-bottom:1rem;">Defina a lógica que determinará se esta pergunta será exibida.</p>
+            <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
+              <div><i class="fa-solid fa-code-branch" style="color:var(--primary);"></i> Lógica de Pulo Avançada</div>
+              <button class="btn-icon" onclick="closeAdvLogicModal()" style="background:transparent; border:none; cursor:pointer; font-size:1.2rem; color:var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="modal-message" id="adv-logic-modal-subtitle" style="margin-bottom:1rem; font-weight:600; color:var(--primary);"></p>
             <input type="hidden" id="adv-logic-q-idx" />
             
             <div class="form-group">
               <label class="form-label">Adicionar Condição</label>
               <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom: 0.5rem;">
                 <select class="form-select" id="adv-logic-join" style="width: 80px; flex-shrink: 0;" title="Como esta regra se une às outras?">
-                  <option value="and">E</option>
+                  <option value="and">SE / E</option>
                   <option value="or">OU</option>
                 </select>
                 <select class="form-select" id="adv-logic-target-q" style="flex:2;" onchange="window.updateAdvLogicOperatorsAndValues()"></select>
@@ -388,102 +490,75 @@
             <div class="sys-owner-circle" style="background: #84cc16; border: 2px solid #fff;">C</div>
           </div>
           
-          <!-- Sistema Project Tabs -->
-        <div style="background: #ffffff; border-bottom: 1px solid #dbe2e8; display: flex; justify-content: center; padding-top: 0.5rem; flex-shrink: 0;">
-          <div class="sys-proj-tabs">
-            <div class="sys-proj-tab active" data-tab="proj-tab-resumo" onclick="sysSwitchTab('proj-tab-resumo')">RESUMO</div>
-            <div class="sys-proj-tab" data-tab="proj-tab-form" onclick="sysEditForm()">FORMULÁRIO</div>
-            <div class="sys-proj-tab" data-tab="proj-tab-dados" onclick="sysSwitchTab('proj-tab-dados')">DADOS</div>
-            <div class="sys-proj-tab" data-tab="proj-tab-mapa" onclick="sysSwitchTab('proj-tab-mapa')">MAPA</div>
-            <div class="sys-proj-tab" data-tab="proj-tab-config" onclick="sysSwitchTab('proj-tab-config')">CONFIGURAÇÕES</div>
-          </div>
-        </div>
-
-        <div style="flex: 1; overflow-y: auto; padding: 2rem;">
-          <div style="max-width: 1100px; margin: 0 auto;">
+        <div style="flex: 1; display: flex; overflow: hidden;">
+          <!-- Sidebar Navigation for Project -->
+          <div style="width: 240px; background: #ffffff; border-right: 1px solid #dbe2e8; display: flex; flex-direction: column; padding: 1.5rem 1rem; gap: 0.5rem; flex-shrink: 0;">
+            <button class="sys-list-btn sys-proj-tab active" data-tab="proj-tab-resumo" onclick="sysSwitchTab('proj-tab-resumo')" style="justify-content: flex-start; gap: 1rem;"><i class="fa-solid fa-chart-line"></i> Resumo</button>
+            <button class="sys-list-btn sys-proj-tab" data-tab="proj-tab-form" onclick="sysEditForm()" style="justify-content: flex-start; gap: 1rem;"><i class="fa-solid fa-clipboard-list"></i> Formulário</button>
+            <button class="sys-list-btn sys-proj-tab" data-tab="proj-tab-dados" onclick="sysSwitchTab('proj-tab-dados')" style="justify-content: flex-start; gap: 1rem;"><i class="fa-solid fa-table"></i> Tabela de Dados</button>
+            <button class="sys-list-btn sys-proj-tab" data-tab="proj-tab-mapa" onclick="sysSwitchTab('proj-tab-mapa')" style="justify-content: flex-start; gap: 1rem;"><i class="fa-solid fa-map-location-dot"></i> Mapa de Coleta</button>
+            <button class="sys-list-btn sys-proj-tab" data-tab="proj-tab-config" onclick="sysSwitchTab('proj-tab-config')" style="justify-content: flex-start; gap: 1rem;"><i class="fa-solid fa-gear"></i> Configurações</button>
             
-            <!-- RESUMO TAB -->
-            <div class="tab-content active" id="proj-tab-resumo">
-              <div style="display: flex; gap: 2rem;">
-                <!-- Left: Info -->
-                <div style="flex: 2;">
-                  <h3 style="font-size: 1rem; color: #333; margin-bottom: 1rem;">Informações do projeto</h3>
-                  <div style="background: #fff; border: 1px solid #dbe2e8; border-radius: 4px; padding: 1.5rem;">
-                    <div style="margin-bottom: 1.5rem;">
-                      <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.3rem;">Descrição</div>
-                      <div style="font-size: 0.95rem; color: #333;">-</div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 1.5rem;">
-                      <div>
-                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.3rem;">Status</div>
-                        <div id="pd-status-badge" class="sys-status-badge"><i class="fa-solid fa-satellite-dish"></i> disponibilizado</div>
-                      </div>
-                      <div>
-                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.3rem;">Perguntas</div>
-                        <div id="pd-questions-count" style="font-size: 1rem; color: #333;">0</div>
-                      </div>
-                      <div>
-                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.3rem;">Proprietário</div>
-                        <div class="sys-owner-badge"><div class="sys-owner-circle" id="pd-owner-initial">U</div> <span id="pd-owner-name">Usuário</span></div>
-                      </div>
-                      <div>
-                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.3rem;">Última edição</div>
-                        <div class="sys-owner-badge"><div class="sys-owner-circle" id="pd-editor-initial">U</div> <span id="pd-editor-name">Usuário</span></div>
-                      </div>
-                    </div>
+            <div style="flex: 1;"></div>
+            <button class="btn btn-outline" onclick="sysPreviewForm()" style="width: 100%; border-color: var(--primary); color: var(--primary);"><i class="fa-solid fa-mobile-screen"></i> Preencher</button>
+          </div>
 
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 1.5rem;">
-                      <div>
-                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.3rem;">Última modificação</div>
-                        <div id="pd-last-mod" style="font-size: 0.9rem; color: #333;">Última Sexta-feira</div>
-                      </div>
-                      <div>
-                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.3rem;">Última disponibilização</div>
-                        <div id="pd-last-pub" style="font-size: 0.9rem; color: #333;">Última Sexta-feira</div>
-                      </div>
-                      <div>
-                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.3rem;">Última resposta</div>
-                        <div id="pd-last-resp" style="font-size: 0.9rem; color: #333;">-</div>
-                      </div>
+          <div style="flex: 1; overflow-y: auto; padding: 2rem; background: #f8fafc;">
+            <div style="max-width: 1000px; margin: 0 auto;">
+              
+              <!-- RESUMO TAB -->
+              <div class="tab-content active" id="proj-tab-resumo">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                  
+                  <div class="card" style="display: flex; align-items: center; gap: 1.5rem; border-left: 4px solid var(--primary);">
+                    <div style="background: var(--primary-light); color: var(--primary); width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                      <i class="fa-solid fa-database"></i>
                     </div>
-
-                    <div style="display: flex; gap: 4rem;">
-                      <div>
-                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.3rem;">Setor</div>
-                        <div style="font-size: 0.9rem; color: #333;">Setor privado</div>
-                      </div>
-                      <div>
-                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.3rem;">País</div>
-                        <div style="font-size: 0.9rem; color: #333;">Brazil</div>
-                      </div>
+                    <div>
+                      <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total de Envios</div>
+                      <div id="pd-total-submissions" style="font-size: 2rem; font-weight: 700; color: var(--text-primary); line-height: 1;">0</div>
                     </div>
                   </div>
-                  
-                  <h3 style="font-size: 1rem; color: #333; margin-top: 2rem; margin-bottom: 1rem;">Envios</h3>
-                  <div style="background: #fff; border: 1px solid #dbe2e8; border-radius: 4px; padding: 1.5rem;">
-                    <div style="font-size: 2rem; font-weight: 700; color: #0284c7;" id="pd-total-submissions">0</div>
-                    <div style="font-size: 0.8rem; color: #64748b;">Total de envios do formulário</div>
+
+                  <div class="card" style="display: flex; align-items: center; gap: 1.5rem; border-left: 4px solid #10b981;">
+                    <div style="background: #d1fae5; color: #10b981; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                      <i class="fa-solid fa-satellite-dish"></i>
+                    </div>
+                    <div>
+                      <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Status do Projeto</div>
+                      <div id="pd-status-badge" style="margin-top: 0.25rem;"><span class="sys-status-badge">Disponibilizado</span></div>
+                    </div>
+                  </div>
+
+                  <div class="card" style="display: flex; align-items: center; gap: 1.5rem; border-left: 4px solid #f59e0b;">
+                    <div style="background: #fef3c7; color: #f59e0b; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                      <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                    <div>
+                      <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Última Modificação</div>
+                      <div id="pd-last-mod" style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin-top: 0.25rem;">Hoje</div>
+                    </div>
                   </div>
                 </div>
 
-                <!-- Right: Links -->
-                <div style="flex: 1;">
-                  <h3 style="font-size: 1rem; color: #333; margin-bottom: 1rem;">Quick Links</h3>
-                  <div style="background: #fff; border: 1px solid #dbe2e8; border-radius: 4px; display: flex; flex-direction: column;">
-                    <button class="sys-list-btn" onclick="sysPreviewForm()"><i class="fa-solid fa-mobile-screen sys-list-icon"></i> Collect data <i class="fa-solid fa-chevron-right sys-list-arrow"></i></button>
-                    <button class="sys-list-btn" onclick="sysSwitchTab('proj-tab-config')"><i class="fa-solid fa-user-plus sys-list-icon"></i> Compartilhar projeto <i class="fa-solid fa-chevron-right sys-list-arrow"></i></button>
-                    <button class="sys-list-btn" onclick="sysEditForm()"><i class="fa-solid fa-pen sys-list-icon"></i> Editar formulário <i class="fa-solid fa-chevron-right sys-list-arrow"></i></button>
-                  </div>
-
-                  <h3 style="font-size: 1rem; color: #333; margin-top: 2rem; margin-bottom: 1rem;">Dados</h3>
-                  <div style="background: #fff; border: 1px solid #dbe2e8; border-radius: 4px; display: flex; flex-direction: column;">
-                    <button class="sys-list-btn" onclick="sysSwitchTab('proj-tab-dados')"><i class="fa-solid fa-table sys-list-icon"></i> Tabela e Relatórios <i class="fa-solid fa-chevron-right sys-list-arrow"></i></button>
-                    <button class="sys-list-btn" onclick="sysSwitchTab('proj-tab-mapa')"><i class="fa-solid fa-map sys-list-icon"></i> Mapa / Galeria <i class="fa-solid fa-chevron-right sys-list-arrow"></i></button>
+                <div class="card">
+                  <h3 class="card-title" style="margin-bottom: 1rem;"><i class="fa-solid fa-circle-info"></i> Detalhes do Formulário</h3>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div>
+                      <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 0.25rem 0;">Equipe Responsável</p>
+                      <div class="sys-owner-badge" style="margin: 0; display: inline-flex;"><div class="sys-owner-circle" id="pd-owner-initial">U</div> <span id="pd-owner-name">Usuário</span></div>
+                    </div>
+                    <div>
+                      <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 0.25rem 0;">Quantidade de Perguntas</p>
+                      <div id="pd-questions-count" style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">0 perguntas cadastradas</div>
+                    </div>
+                    <div>
+                      <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 0.25rem 0;">Data de Criação</p>
+                      <div id="pd-last-pub" style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">-</div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
             <!-- DADOS TAB -->
             <div class="tab-content" id="proj-tab-dados" style="display:none;">
@@ -512,9 +587,14 @@
 
             <!-- MAPA TAB -->
             <div class="tab-content" id="proj-tab-mapa" style="display:none;">
-              <div class="card" style="margin-bottom:2rem;">
-                <h3 class="card-title" style="margin-bottom:1rem;"><i class="fa-solid fa-map"></i> Mapa de Coleta</h3>
-                <div id="map" class="map-container" style="height:600px; border:none; border-radius:var(--radius-lg);"></div>
+              <div class="card" style="margin-bottom:2rem; position: relative;">
+                <h3 class="card-title" style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+                  <span><i class="fa-solid fa-map"></i> Mapa de Coleta</span>
+                  <button id="btn-map-3d" onclick="toggleMap3D()" class="btn btn-primary btn-sm" style="background:var(--primary); color:white; border-radius:20px; box-shadow:0 4px 6px rgba(0,0,0,0.2);"><i class="fa-solid fa-satellite"></i> Visão Satélite</button>
+                </h3>
+                <div id="map-wrapper" style="background: #e5e7eb; border-radius:var(--radius-lg); overflow: hidden;">
+                  <div id="map" class="map-container" style="height:600px; border:none; border-radius:var(--radius-lg);"></div>
+                </div>
               </div>
 
               <div class="card">
@@ -709,6 +789,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=2.0.1"></script>
 </body>
 </html>

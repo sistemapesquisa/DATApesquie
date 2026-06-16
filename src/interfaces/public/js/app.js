@@ -31,12 +31,10 @@ const MOCK_USER_IDS = {
   Coordinator: 'coord_user', Supervisor: 'super_user', Researcher: 'researcher_1'
 };
 const MOCK_USER_NAMES = {
-  DEV: 'Gustavo Dev', Admin: 'Clara Admin', Analyst: 'Felipe Analista',
-  Coordinator: 'Helena Coordenadora', Supervisor: 'Marcos Supervisor', Researcher: 'Ana Pesquisadora'
+  DEV: 'Gustavo Dev', Admin: 'Clara Admin', Researcher: 'Ana Pesquisadora'
 };
 const ROLE_LABELS = {
-  DEV: 'Suporte Técnico', Admin: 'Administrador', Analyst: 'Analista',
-  Coordinator: 'Coordenador', Supervisor: 'Supervisor', Researcher: 'Pesquisador'
+  DEV: 'Suporte Técnico', Admin: 'Administrador', Researcher: 'Pesquisador'
 };
 const RESEARCHER_COLORS = {
   researcher_1: '#ef4444', researcher_2: '#7c3aed',
@@ -119,6 +117,7 @@ window.fazerLogin = async () => {
     state.activeUserName = data.user.name;
 
     document.querySelector('.sidebar').style.display = 'flex';
+    document.querySelector('.main-content').style.marginLeft = '70px';
     
     await loadServerData();
     updateUserUI();
@@ -150,6 +149,7 @@ window.logout = () => {
   state.activeUserId = null;
   state.activeUserName = null;
   document.querySelector('.sidebar').style.display = 'none';
+  document.querySelector('.main-content').style.marginLeft = '0';
   document.getElementById('login-username').value = '';
   document.getElementById('login-password').value = '';
   switchTab('view-login');
@@ -245,17 +245,17 @@ function switchTab(targetId) {
 
 // ===================== RBAC =====================
 const NAV_PERMISSIONS = {
-  'nav-team': ['DEV','Admin','Coordinator'],
+  'nav-team': ['DEV','Admin'],
   'nav-roles': ['DEV','Admin'],
-  'nav-form-builder': ['DEV','Admin','Analyst'],
+  'nav-form-builder': ['DEV','Admin'],
   'nav-logs': ['DEV'],
-  'nav-ai': ['DEV','Admin','Analyst','Supervisor','Coordinator'],
-  'nav-reports': ['DEV','Admin','Analyst','Supervisor','Coordinator'],
+  'nav-ai': ['DEV','Admin'],
+  'nav-reports': ['DEV','Admin'],
 };
 const SECTION_PERMISSIONS = {
-  'financial-dashboard-section': ['DEV','Admin','Analyst'],
-  'supervisor-validation-panel': ['DEV','Admin','Analyst','Supervisor'],
-  'odk-guide-section': ['DEV','Admin','Coordinator','Analyst'],
+  'financial-dashboard-section': ['DEV','Admin'],
+  'supervisor-validation-panel': ['DEV','Admin'],
+  'audio-review-panel': ['DEV','Admin'],
 };
 
 function applyRoleRestrictions() {
@@ -297,10 +297,10 @@ function renderDashboard() {
   if (!grid) return;
   grid.innerHTML = '';
 
-  const publishedForms = state.forms; // Show all forms in the dashboard for Sistema style
+  const publishedForms = state.forms;
   
   if (publishedForms.length === 0) {
-    grid.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color: #64748b;">Nenhum projeto encontrado. Clique em NOVO para começar.</td></tr>';
+    grid.innerHTML = '<div style="grid-column: 1 / -1; text-align:center; padding: 4rem; color: #64748b; background: white; border-radius: var(--radius-lg); border: 2px dashed var(--border);"><h3>Nenhum projeto encontrado</h3><p>Clique em <b>NOVO</b> no menu lateral para começar.</p></div>';
     return;
   }
 
@@ -314,28 +314,44 @@ function renderDashboard() {
     
     let statusBadge = '';
     if (isArchived) {
-      statusBadge = '<span class="sys-status-badge" style="background:#475569;color:#f8fafc;"><i class="fa-solid fa-box-archive"></i> arquivado</span>';
+      statusBadge = '<span class="sys-status-badge" style="background:#475569;color:#f8fafc; font-size:0.7rem;"><i class="fa-solid fa-box-archive"></i> Arquivado</span>';
     } else if (isPub) {
-      statusBadge = '<span class="sys-status-badge"><i class="fa-solid fa-satellite-dish"></i> disponibilizado</span>';
+      statusBadge = '<span class="sys-status-badge" style="font-size:0.7rem;"><i class="fa-solid fa-satellite-dish"></i> Ativo (Coleta)</span>';
     } else {
-      statusBadge = '<span class="sys-status-badge" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-pen"></i> rascunho</span>';
+      statusBadge = '<span class="sys-status-badge" style="background:#f1f5f9;color:#64748b; font-size:0.7rem;"><i class="fa-solid fa-pen"></i> Rascunho</span>';
     }
     
-    // Fallbacks for missing dates since the DB schema didn't track these closely initially
     const modDateStr = form.updated_at ? new Date(form.updated_at).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
-    const pubDateStr = isPub ? modDateStr : '-';
 
     grid.innerHTML += `
-      <tr>
-        <td><input type="checkbox" class="proj-checkbox" value="${form.id}"></td>
-        <td><span class="sys-project-name" onclick="openProject('${form.id}')">${form.title}</span></td>
-        <td>${statusBadge}</td>
-        <td><div class="sys-owner-badge"><div class="sys-owner-circle">${initial}</div> ${name.split(' ')[0].toLowerCase()}</div></td>
-        <td>${modDateStr}</td>
-        <td>${modDateStr}</td>
-        <td>${pubDateStr}</td>
-        <td><span class="sys-count-pill">${ints.length}</span></td>
-      </tr>
+      <div class="project-list-item" style="background: white; border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; transition: transform 0.1s, box-shadow 0.1s; cursor: pointer;" onmouseover="this.style.boxShadow='var(--shadow-sm)'; this.style.borderColor='#cbd5e1'" onmouseout="this.style.boxShadow='none'; this.style.borderColor='var(--border)'" onclick="openProject('${form.id}')">
+        
+        <div style="display: flex; align-items: center; gap: 1rem; flex: 2; min-width: 0;">
+          <input type="checkbox" class="proj-checkbox" value="${form.id}" onclick="event.stopPropagation()" style="width: 16px; height: 16px; cursor: pointer;">
+          
+          <div style="display: flex; flex-direction: column; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${form.title}</h3>
+              ${statusBadge}
+            </div>
+            <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: var(--text-secondary);"><i class="fa-regular fa-clock"></i> Modificado: ${modDateStr}</p>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 2rem; flex: 1; justify-content: flex-end;">
+          <div class="sys-owner-badge" style="margin: 0;" title="Autor: ${name}">
+            <div class="sys-owner-circle" style="width:24px;height:24px;font-size:0.7rem;">${initial}</div> 
+            <span style="font-size:0.85rem;">${name.split(' ')[0]}</span>
+          </div>
+          
+          <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <div style="font-weight: 700; color: var(--primary); font-size: 1.1rem;">${ints.length}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Envios</div>
+          </div>
+          
+          <button class="btn btn-sm" style="background:#f8fafc; border:1px solid #e2e8f0; color:#334155;"><i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>
     `;
   });
 }
@@ -355,33 +371,38 @@ window.openProject = function(formId) {
   // Populate Resumo Info
   let statusBadgeHtml = '';
   if (isArchived) {
-    statusBadgeHtml = '<i class="fa-solid fa-box-archive"></i> arquivado';
-    document.getElementById('pd-status-badge').style.background = '#475569';
-    document.getElementById('pd-status-badge').style.color = '#f8fafc';
+    statusBadgeHtml = '<span class="sys-status-badge" style="background:#475569;color:#f8fafc;"><i class="fa-solid fa-box-archive"></i> Arquivado</span>';
   } else if (isPub) {
-    statusBadgeHtml = '<i class="fa-solid fa-satellite-dish"></i> disponibilizado';
-    document.getElementById('pd-status-badge').style.background = '#e0f2fe';
-    document.getElementById('pd-status-badge').style.color = '#0369a1';
+    statusBadgeHtml = '<span class="sys-status-badge">Disponibilizado</span>';
   } else {
-    statusBadgeHtml = '<i class="fa-solid fa-pen"></i> rascunho';
-    document.getElementById('pd-status-badge').style.background = '#f1f5f9';
-    document.getElementById('pd-status-badge').style.color = '#64748b';
+    statusBadgeHtml = '<span class="sys-status-badge" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-pen"></i> Rascunho</span>';
   }
-  document.getElementById('pd-status-badge').innerHTML = statusBadgeHtml;
   
-  document.getElementById('pd-questions-count').textContent = form.questions.length;
+  const elStatusBadge = document.getElementById('pd-status-badge');
+  if(elStatusBadge) elStatusBadge.innerHTML = statusBadgeHtml;
+  
+  const elQCount = document.getElementById('pd-questions-count');
+  if(elQCount) elQCount.textContent = `${form.questions.length} perguntas cadastradas`;
   
   const name = state.activeUserName || MOCK_USER_NAMES[state.activeRole] || state.activeRole || 'Usuário';
   const initial = name.charAt(0).toUpperCase();
   const shortName = name.split(' ')[0];
 
-  document.getElementById('pd-owner-initial').textContent = initial;
-  document.getElementById('pd-owner-name').textContent = shortName;
-  document.getElementById('pd-editor-initial').textContent = initial;
-  document.getElementById('pd-editor-name').textContent = shortName;
-  
-  document.getElementById('pd-total-submissions').textContent = ints.length;
-  document.getElementById('pd-last-resp').textContent = ints.length > 0 ? new Date(ints[ints.length-1].created_at).toLocaleDateString('pt-BR') : '-';
+  const elOwnerInit = document.getElementById('pd-owner-initial');
+  if(elOwnerInit) elOwnerInit.textContent = initial;
+  const elOwnerName = document.getElementById('pd-owner-name');
+  if(elOwnerName) elOwnerName.textContent = shortName;
+
+  const elTotalSubs = document.getElementById('pd-total-submissions');
+  if(elTotalSubs) elTotalSubs.textContent = ints.length;
+
+  const modDateStr = form.updated_at ? new Date(form.updated_at).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+  const elLastMod = document.getElementById('pd-last-mod');
+  if(elLastMod) elLastMod.textContent = modDateStr;
+
+  const pubDateStr = isPub ? modDateStr : '-';
+  const elLastPub = document.getElementById('pd-last-pub');
+  if(elLastPub) elLastPub.textContent = pubDateStr;
 
   switchTab('view-project-details');
   loadProjectAccess();
@@ -424,6 +445,38 @@ window.sysEditForm = function() {
   }
 };
 
+window.exportCurrentFormXLS = async function() {
+  if (state.activeForm.questions.length === 0) return showToast('warning', 'O formulário está vazio.');
+  showToast('info', 'Gerando XLSForm...');
+  try {
+    const payload = { questions: state.activeForm.questions, title: state.activeForm.title || 'formulario' };
+    const token = localStorage.getItem('auth_token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (state.activeRole) headers['x-user-role'] = state.activeRole;
+    
+    const res = await fetch('/api/forms/export-xlsform', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Erro ao exportar XLSForm');
+    
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${payload.title}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    showToast('success', 'Exportação concluída!');
+  } catch (err) {
+    showToast('error', err.message);
+  }
+};
+
 window.sysPreviewForm = function() {
   if (!state.activeProjectFormId) return;
   const form = state.forms.find(f => f.id === state.activeProjectFormId);
@@ -444,14 +497,42 @@ window.sysPreviewForm = function() {
 };
 
 // ===================== MAP =====================
+function getStringColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+  return '#' + '00000'.substring(0, 6 - c.length) + c;
+}
+
+window.toggleMap3D = function() {
+  const mapDiv = document.getElementById('map');
+  const btn = document.getElementById('btn-map-3d');
+  state.isMap3D = !state.isMap3D;
+  
+  if (state.isMap3D) {
+    btn.innerHTML = '<i class="fa-solid fa-map"></i> Voltar para Mapa 2D';
+    btn.style.background = '#0f172a';
+    if(state.tileLayer) state.map.removeLayer(state.tileLayer);
+    state.tileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: 'Esri Satellite' }).addTo(state.map);
+  } else {
+    btn.innerHTML = '<i class="fa-solid fa-satellite"></i> Visão Satélite';
+    btn.style.background = 'var(--primary)';
+    if(state.tileLayer) state.map.removeLayer(state.tileLayer);
+    state.tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(state.map);
+  }
+};
+
 function initMap() {
   if (state.map) return;
   state.map = L.map('map').setView([-3.1190, -60.0217], 7);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 18 }).addTo(state.map);
+  state.tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 18 }).addTo(state.map);
   
   state.markerCluster = L.markerClusterGroup({
     chunkedLoading: true,
-    maxClusterRadius: 50
+    maxClusterRadius: 50,
+    spiderfyOnMaxZoom: true // Expands when zoomed in on same coords
   });
   state.map.addLayer(state.markerCluster);
   
@@ -471,15 +552,24 @@ function renderMapMarkers() {
 
   const markers = [];
   filtered.forEach(item => {
-    const color = RESEARCHER_COLORS[item.researcher_id] || '#6366f1';
     const researcher = state.users.find(u => u.id === item.researcher_id);
     const researcherName = researcher ? researcher.name : item.researcher_id;
+    const color = getStringColor(researcherName); // dynamic color by researcher
     const form = state.forms.find(f => f.id === item.form_id);
     const formTitle = form ? form.title : item.form_id;
     
-    const icon = L.divIcon({ className:'custom-marker', html:`<div style="width:14px;height:14px;background:${color};border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`, iconSize:[14,14], iconAnchor:[7,7] });
+    // Beautiful dynamic teardrop marker
+    const iconHtml = `<div style="width:24px;height:24px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 4px 8px rgba(0,0,0,0.4);"><div style="width:8px;height:8px;background:#fff;border-radius:50%;margin:5px auto;transform:rotate(45deg);"></div></div>`;
+    const icon = L.divIcon({ className:'custom-marker', html: iconHtml, iconSize:[24,24], iconAnchor:[12,24] });
+    
     const popup = `<div style="font-family:Inter,sans-serif;min-width:200px;"><strong style="font-size:0.9rem;">${formTitle}</strong><br><span style="font-size:0.78rem;color:#64748b;">Pesquisador: ${researcherName}</span><br><span style="font-size:0.78rem;color:#64748b;">Data: ${new Date(item.created_at).toLocaleDateString('pt-BR')}</span><br><span style="font-size:0.78rem;color:#64748b;">Dispositivo: ${item.device_id || 'unknown'}</span><br><div style="margin-top:8px;"><button class="btn btn-sm btn-primary" onclick="openInterviewDetails('${item.id}')" style="width:100%;font-size:0.75rem;">Ver Dados</button></div></div>`;
-    const marker = L.marker([item.latitude, item.longitude], { icon }).bindPopup(popup);
+    
+    const tooltipText = `<div style="font-weight:bold; color:${color};"><i class="fa-solid fa-user"></i> ${researcherName}</div><div style="font-size:10px; color:#666;">${new Date(item.created_at).toLocaleTimeString('pt-BR')}</div>`;
+
+    const marker = L.marker([item.latitude, item.longitude], { icon })
+      .bindTooltip(tooltipText, { direction: 'top', offset: [0, -20] })
+      .bindPopup(popup);
+      
     markers.push(marker);
   });
   
@@ -787,13 +877,39 @@ function initFormBuilder() {
       }
     });
   }
+
+  const importBuilder = document.getElementById('import-builder-xls');
+  if (importBuilder) {
+    importBuilder.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('file', file);
+      showToast('info', 'Importando perguntas...');
+      try {
+        const token = localStorage.getItem('auth_token');
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        if (state.activeRole) headers['x-user-role'] = state.activeRole;
+        const res = await fetch('/api/forms/parse-xlsform', { method: 'POST', headers, body: formData });
+        const data = await res.json();
+        if (data.error) showToast('error', data.error);
+        else {
+          state.activeForm.questions = data.questions;
+          renderBuilderQuestions();
+          showToast('success', 'Perguntas substituídas com sucesso!');
+        }
+      } catch (err) { showToast('error', 'Erro: ' + err.message); }
+      e.target.value = '';
+    });
+  }
 }
 
 window.addNewQuestion = function(type) {
   const qId = 'Q' + (state.activeForm.questions.length + 1);
   const q = { id:qId, text:'', type: type, options:[], required: false };
-  if (type === 'select_one' || type === 'select_multiple') {
-    q.options = ['Opção 1', 'Opção 2'];
+  if (type === 'select_one' || type === 'select_multiple' || type === 'rank') {
+    q.options = [{ name: 'opt_1', label: 'Opção 1' }, { name: 'opt_2', label: 'Opção 2' }];
   }
   state.activeForm.questions.push(q);
   renderBuilderQuestions();
@@ -838,11 +954,25 @@ function renderBuilderQuestions() {
     container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-list-ol"></i><h4>Nenhuma pergunta adicionada</h4><p>Clique em "Adicionar Pergunta" acima para começar a criar o questionário.</p></div>';
     return;
   }
+  let depth = 0;
   state.activeForm.questions.forEach((q, idx) => {
+    if (q.type === 'end_group' || q.type === 'end_repeat') {
+      depth = Math.max(0, depth - 1);
+    }
+    const currentDepth = depth;
+    if (q.type === 'begin_group' || q.type === 'begin_repeat') {
+      depth++;
+    }
+
     const card = document.createElement('div');
     card.className = 'sys-question-row';
     card.draggable = true;
     card.dataset.index = idx;
+    card.style.marginLeft = (currentDepth * 40) + 'px';
+    if (q.type.startsWith('begin_') || q.type.startsWith('end_')) {
+      card.style.borderLeft = '4px solid var(--primary)';
+      card.style.backgroundColor = '#f8fafc';
+    }
     
     // Drag & Drop Listeners
     card.addEventListener('dragstart', (e) => {
@@ -887,7 +1017,7 @@ function renderBuilderQuestions() {
           </div>
         `;
       });
-      optionsHtml += `<div class="sys-add-choice" onclick="addOption(${idx})">+ click to add another response...</div></div>`;
+      optionsHtml += `<div class="sys-add-choice" onclick="addOption(${idx})" title="Clique aqui para adicionar mais uma linha de opção à lista">+ Adicionar nova opção de resposta...</div></div>`;
     }
 
     card.innerHTML = `
@@ -899,34 +1029,53 @@ function renderBuilderQuestions() {
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; flex:1;">
             <div style="background: var(--primary-light); color: var(--primary); font-weight: bold; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-size: 0.9rem; flex-shrink: 0;">${idx+1}</div>
-            <input type="text" class="sys-question-text" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="Escreva a pergunta aqui..." style="flex:1;" />
+            ${(q.type === 'end_group' || q.type === 'end_repeat') ? 
+              `<div style="flex:1; font-weight:bold; color:var(--text-muted);">${q.type === 'end_group' ? 'Fim do Grupo' : 'Fim da Repetição'}</div>` : 
+              `<input type="text" class="sys-question-text" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="${q.type === 'begin_group' || q.type === 'begin_repeat' ? 'Nome do Grupo/Repetição...' : 'Escreva a pergunta aqui...'}" style="flex:1;" title="Digite o texto que será lido pelo pesquisador" />
+               <button class="sys-btn-piping" onclick="openPipingModal(${idx})" title="Inserir Variável (Piping): Puxar a resposta de uma pergunta anterior para dentro do texto." style="background:transparent; border:none; color:var(--primary); cursor:pointer; padding:5px;"><i class="fa-solid fa-wand-magic-sparkles"></i></button>`
+            }
           </div>
           <select style="border:none; color:#64748b; font-size:0.8rem; outline:none; background:transparent; cursor:pointer; margin-left: 10px;" onchange="updateQType(${idx},this.value)">
             <option value="text" ${q.type==='text'?'selected':''}>Texto Livre</option>
-            <option value="number" ${q.type==='number'||q.type==='decimal'?'selected':''}>Número (Decimal)</option>
+            <option value="number" ${q.type==='number'?'selected':''}>Número</option>
+            <option value="decimal" ${q.type==='decimal'?'selected':''}>Decimal</option>
             <option value="integer" ${q.type==='integer'?'selected':''}>Número (Inteiro)</option>
             <option value="single_choice" ${q.type==='single_choice'||q.type==='select_one'?'selected':''}>Seleção Única</option>
             <option value="multiple_choice" ${q.type==='multiple_choice'||q.type==='select_multiple'?'selected':''}>Múltipla Escolha</option>
-            <option value="geopoint" ${q.type==='geopoint'?'selected':''}>GPS</option>
+            <option value="geopoint" ${q.type==='geopoint'?'selected':''}>Ponto (GPS)</option>
+            <option value="geotrace" ${q.type==='geotrace'?'selected':''}>Linha</option>
+            <option value="geoshape" ${q.type==='geoshape'?'selected':''}>Área</option>
             <option value="image" ${q.type==='image'?'selected':''}>Foto / Imagem</option>
             <option value="video" ${q.type==='video'?'selected':''}>Vídeo</option>
             <option value="audio_record" ${q.type==='audio_record'||q.type==='audio'?'selected':''}>Áudio</option>
             <option value="date" ${q.type==='date'?'selected':''}>Data</option>
             <option value="time" ${q.type==='time'?'selected':''}>Hora</option>
+            <option value="datetime" ${q.type==='datetime'?'selected':''}>Data e Horário</option>
             <option value="note" ${q.type==='note'?'selected':''}>Nota / Aviso</option>
+            <option value="barcode" ${q.type==='barcode'?'selected':''}>Cód. Barras</option>
+            <option value="acknowledge" ${q.type==='acknowledge'?'selected':''}>Reconhece</option>
+            <option value="rank" ${q.type==='rank'?'selected':''}>Classificação</option>
+            <option value="calculate" ${q.type==='calculate'?'selected':''}>Calcular</option>
+            <option value="hidden" ${q.type==='hidden'?'selected':''}>Oculto</option>
+            <option value="file" ${q.type==='file'?'selected':''}>Arquivo</option>
+            <option value="range" ${q.type==='range'?'selected':''}>Intervalo</option>
+            <option value="begin_group" ${q.type==='begin_group'?'selected':''}>Abrir Grupo</option>
+            <option value="end_group" ${q.type==='end_group'?'selected':''}>Fechar Grupo</option>
+            <option value="begin_repeat" ${q.type==='begin_repeat'?'selected':''}>Abrir Repetição</option>
+            <option value="end_repeat" ${q.type==='end_repeat'?'selected':''}>Fechar Repetição</option>
           </select>
         </div>
-        <input type="text" class="sys-question-hint" value="${q.hint || ''}" onchange="updateQHint(${idx},this.value)" placeholder="Dica de preenchimento (opcional)..." style="margin-left: 40px; width: calc(100% - 40px);" />
+        ${(q.type === 'end_group' || q.type === 'end_repeat') ? '' : `<input type="text" class="sys-question-hint" value="${q.hint || ''}" onchange="updateQHint(${idx},this.value)" placeholder="Dica de preenchimento (opcional)..." style="margin-left: 40px; width: calc(100% - 40px);" />`}
         <div style="margin-left: 40px;">
           ${optionsHtml}
         </div>
       </div>
       <div class="sys-question-right">
-        <button class="sys-btn-required ${q.required ? 'active' : ''}" onclick="toggleQRequired(${idx})" title="Tornar Obrigatória" style="color: ${q.required ? 'var(--danger)' : '#cbd5e1'};"><i class="fa-solid fa-asterisk"></i></button>
-        <button class="sys-btn-gear" onclick="openQuestionSettingsModal(${idx})" title="Configurações"><i class="fa-solid fa-gear"></i></button>
-        <button class="sys-btn-trash" onclick="confirmDeleteQuestion(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
-        <button class="sys-btn-copy" onclick="duplicateQuestion(${idx})" title="Duplicar"><i class="fa-solid fa-copy"></i></button>
-        <button class="sys-btn-branch" onclick="openAdvLogicModal(${idx})" title="Lógica de Pulo Avançada"><i class="fa-solid fa-code-branch"></i></button>
+        <button class="sys-btn-required ${q.required ? 'active' : ''}" onclick="toggleQRequired(${idx})" title="Obrigatória: O usuário do aplicativo não poderá avançar sem responder esta pergunta" style="color: ${q.required ? 'var(--danger)' : '#cbd5e1'};"><i class="fa-solid fa-asterisk"></i></button>
+        <button class="sys-btn-gear" onclick="openQuestionSettingsModal(${idx})" title="Configurações Avançadas: Definir limites, validações, dicas extras e filtros em cascata"><i class="fa-solid fa-gear"></i></button>
+        <button class="sys-btn-trash" onclick="confirmDeleteQuestion(${idx})" title="Excluir Pergunta: Remove permanentemente do questionário"><i class="fa-solid fa-trash"></i></button>
+        <button class="sys-btn-copy" onclick="duplicateQuestion(${idx})" title="Duplicar Pergunta: Cria uma cópia exata logo abaixo desta"><i class="fa-solid fa-copy"></i></button>
+        <button class="sys-btn-branch" onclick="openAdvLogicModal(${idx})" title="Lógica de Pulo (Skip Logic): Define regras para esconder ou mostrar esta pergunta baseado em respostas anteriores"><i class="fa-solid fa-code-branch"></i></button>
       </div>
     `;
     container.appendChild(card);
@@ -951,9 +1100,18 @@ window.updateOption = (idx, oi, val) => {
   else opt.label = val; 
 };
 window.updateOptionName = (idx, oi, val) => { 
-  let opt = state.activeForm.questions[idx].options[oi];
+  const q = state.activeForm.questions[idx];
+  let opt = q.options[oi];
   let safeVal = val.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-  if(typeof opt === 'string') state.activeForm.questions[idx].options[oi] = { name: safeVal, label: opt };
+  
+  const isDuplicate = q.options.some((o, i) => i !== oi && (typeof o === 'string' ? o : o.name) === safeVal);
+  if (isDuplicate) {
+    showToast('error', 'Este ID de opção já existe nesta pergunta.');
+    renderBuilderQuestions();
+    return;
+  }
+
+  if(typeof opt === 'string') q.options[oi] = { name: safeVal, label: opt };
   else opt.name = safeVal; 
 };
 window.updateQHint = (idx, val) => { state.activeForm.questions[idx].hint = val; };
@@ -979,6 +1137,51 @@ window.openQuestionSettingsModal = (idx) => {
   }
   
   document.getElementById('q-settings-constraint-msg').value = q.constraint_message || '';
+
+  const limitDiv = document.getElementById('q-settings-select-limits');
+  const cfDiv = document.getElementById('q-settings-choice-filter');
+  const rangeDiv = document.getElementById('q-settings-range-params');
+  const calcDiv = document.getElementById('q-settings-calc-params');
+  
+  if (limitDiv) {
+    if (q.type === 'select_multiple') {
+      limitDiv.style.display = 'block';
+      document.getElementById('q-settings-min-sel').value = q.min_selections || '';
+      document.getElementById('q-settings-max-sel').value = q.max_selections || '';
+    } else {
+      limitDiv.style.display = 'none';
+    }
+  }
+
+  if (cfDiv) {
+    if (q.type === 'select_one' || q.type === 'select_multiple') {
+      cfDiv.style.display = 'block';
+      document.getElementById('q-settings-cf-formula').value = q.choice_filter || '';
+    } else {
+      cfDiv.style.display = 'none';
+    }
+  }
+  
+  if (rangeDiv) {
+    if (q.type === 'range') {
+      rangeDiv.style.display = 'block';
+      document.getElementById('q-settings-range-start').value = q.parameters?.start || 1;
+      document.getElementById('q-settings-range-end').value = q.parameters?.end || 10;
+      document.getElementById('q-settings-range-step').value = q.parameters?.step || 1;
+    } else {
+      rangeDiv.style.display = 'none';
+    }
+  }
+
+  if (calcDiv) {
+    if (q.type === 'calculate') {
+      calcDiv.style.display = 'block';
+      document.getElementById('q-settings-calc-formula').value = q.parameters?.calculation || '';
+    } else {
+      calcDiv.style.display = 'none';
+    }
+  }
+
   document.getElementById('question-settings-modal').classList.add('active');
 };
 
@@ -998,6 +1201,39 @@ window.saveQuestionSettings = () => {
   const constraintMsgVal = document.getElementById('q-settings-constraint-msg').value.trim();
   if (constraintMsgVal) q.constraint_message = constraintMsgVal; else delete q.constraint_message;
   
+  if (q.type === 'select_multiple') {
+    const minSel = parseInt(document.getElementById('q-settings-min-sel').value, 10);
+    const maxSel = parseInt(document.getElementById('q-settings-max-sel').value, 10);
+    if (!isNaN(minSel)) q.min_selections = minSel; else delete q.min_selections;
+    if (!isNaN(maxSel)) q.max_selections = maxSel; else delete q.max_selections;
+    
+    // Auto-generate constraint for select_multiple limits
+    let conds = [];
+    if (!isNaN(minSel)) conds.push(`count-selected(.) >= ${minSel}`);
+    if (!isNaN(maxSel)) conds.push(`count-selected(.) <= ${maxSel}`);
+    if (conds.length > 0) {
+      q.constraint = conds.join(' and ');
+      if (!q.constraint_message) q.constraint_message = 'A quantidade de opções selecionadas é inválida.';
+    }
+  }
+
+  if (q.type === 'select_one' || q.type === 'select_multiple') {
+    const cfVal = document.getElementById('q-settings-cf-formula').value.trim();
+    if (cfVal) q.choice_filter = cfVal; else delete q.choice_filter;
+  }
+
+  if (q.type === 'range') {
+    if (!q.parameters) q.parameters = {};
+    q.parameters.start = parseInt(document.getElementById('q-settings-range-start').value, 10) || 1;
+    q.parameters.end = parseInt(document.getElementById('q-settings-range-end').value, 10) || 10;
+    q.parameters.step = parseFloat(document.getElementById('q-settings-range-step').value) || 1;
+  }
+
+  if (q.type === 'calculate') {
+    if (!q.parameters) q.parameters = {};
+    q.parameters.calculation = document.getElementById('q-settings-calc-formula').value.trim();
+  }
+
   closeQuestionSettingsModal();
   renderBuilderQuestions();
 };
@@ -1025,6 +1261,11 @@ async function saveActiveForm() {
   const btn = document.getElementById('btn-save-form');
   setButtonLoading(btn, true);
   try {
+    state.activeForm.questions.forEach(q => {
+      if (q.constraint && (!q.constraint_message || q.constraint_message.trim() === '')) {
+        q.constraint_message = 'Valor inválido de acordo com as regras.';
+      }
+    });
     const payload = { id:state.activeForm.id||undefined, title, status, questions:state.activeForm.questions };
     const result = await apiFetch('/api/forms', { method:'POST', body:JSON.stringify(payload) });
     if (result.success) {
@@ -1091,10 +1332,23 @@ window.showComingSoonToast = (feature) => {
 
 window.openFormSettings = () => {
   document.getElementById('form-settings-id').value = state.activeForm.id || 'Ainda não salvo (Rascunho)';
+  
+  if (state.activeForm.settings) {
+    document.getElementById('form-settings-audit-audio').checked = !!state.activeForm.settings.audit_audio;
+    document.getElementById('form-settings-audit-location').checked = !!state.activeForm.settings.audit_location;
+  } else {
+    document.getElementById('form-settings-audit-audio').checked = false;
+    document.getElementById('form-settings-audit-location').checked = false;
+  }
+  
   document.getElementById('form-settings-modal').classList.add('active');
 };
 
 window.saveFormSettings = () => {
+  if (!state.activeForm.settings) state.activeForm.settings = {};
+  state.activeForm.settings.audit_audio = document.getElementById('form-settings-audit-audio').checked;
+  state.activeForm.settings.audit_location = document.getElementById('form-settings-audit-location').checked;
+  
   document.getElementById('form-settings-modal').classList.remove('active');
   showToast('success', 'Configurações globais salvas com sucesso!');
 };
@@ -1626,6 +1880,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof window.initWebSocket === 'function') window.initWebSocket();
   } else {
     document.querySelector('.sidebar').style.display = 'none';
+    document.querySelector('.main-content').style.marginLeft = '0';
     switchTab('view-login');
   }
 
@@ -1702,10 +1957,49 @@ window.addLibraryQuestion = function(type) {
   showToast('success', 'Pergunta adicionada da biblioteca!');
 };
 
+// ===================== PIPING MODAL =====================
+window.openPipingModal = function(idx) {
+  document.getElementById('piping-target-idx').value = idx;
+  const select = document.getElementById('piping-source-q');
+  select.innerHTML = '';
+  
+  let hasValidQuestions = false;
+  for (let i = 0; i < idx; i++) {
+    const prevQ = state.activeForm.questions[i];
+    if (prevQ.text && !prevQ.type.startsWith('begin_') && !prevQ.type.startsWith('end_') && prevQ.type !== 'note') {
+      select.innerHTML += `<option value="${prevQ.id}">${i+1}. ${prevQ.text}</option>`;
+      hasValidQuestions = true;
+    }
+  }
+  
+  if (!hasValidQuestions) {
+    showToast('warning', 'Não há perguntas válidas anteriores para inserir.');
+    return;
+  }
+  
+  document.getElementById('piping-modal').classList.add('active');
+};
+
+window.applyPiping = function() {
+  const targetIdx = parseInt(document.getElementById('piping-target-idx').value, 10);
+  const sourceId = document.getElementById('piping-source-q').value;
+  
+  if (!sourceId) return;
+  
+  const q = state.activeForm.questions[targetIdx];
+  q.text = (q.text || '') + ' ${' + sourceId + '}';
+  
+  document.getElementById('piping-modal').classList.remove('active');
+  renderBuilderQuestions();
+  showToast('success', 'Variável inserida com sucesso!');
+};
+
 // ===================== ADVANCED LOGIC MODAL =====================
 window.openAdvLogicModal = function(idx) {
   document.getElementById('adv-logic-q-idx').value = idx;
   const q = state.activeForm.questions[idx];
+  const subtitleEl = document.getElementById('adv-logic-modal-subtitle');
+  if (subtitleEl) subtitleEl.textContent = `Configurando lógica para: ${idx+1}. ${q.text || 'Pergunta Sem Título'}`;
   
   const select = document.getElementById('adv-logic-target-q');
   select.innerHTML = '';

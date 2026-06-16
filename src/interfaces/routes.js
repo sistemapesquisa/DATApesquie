@@ -400,6 +400,92 @@ router.post('/forms/upload-xlsform', upload.single('file'), async (req, res) => 
   }
 });
 
+router.get('/forms/:id/export-xlsform', (req, res) => {
+  if (!checkPermission(req.user.role, PERMISSIONS.BUILD_FORMS)) {
+    return res.status(403).json({ error: 'Acesso negado.' });
+  }
+
+  db.get('SELECT * FROM forms WHERE id = ?', [req.params.id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Formulário não encontrado' });
+
+    try {
+      const questions = JSON.parse(row.schema);
+      const surveyData = [];
+      const choicesData = [];
+
+      questions.forEach(q => {
+        let typeStr = q.type;
+        if (q.type === 'select_one' || q.type === 'single_choice') {
+          typeStr = `select_one list_${q.id}`;
+          (q.options || []).forEach(opt => {
+            choicesData.push({
+              list_name: `list_${q.id}`,
+              name: typeof opt === 'object' ? opt.name : opt,
+              label: typeof opt === 'object' ? opt.label : opt
+            });
+          });
+        } else if (q.type === 'select_multiple' || q.type === 'multiple_choice') {
+          typeStr = `select_multiple list_${q.id}`;
+          (q.options || []).forEach(opt => {
+            choicesData.push({
+              list_name: `list_${q.id}`,
+              name: typeof opt === 'object' ? opt.name : opt,
+              label: typeof opt === 'object' ? opt.label : opt
+            });
+          });
+        } else if (q.type === 'rank') {
+          typeStr = `rank list_${q.id}`;
+          (q.options || []).forEach(opt => {
+            choicesData.push({
+              list_name: `list_${q.id}`,
+              name: typeof opt === 'object' ? opt.name : opt,
+              label: typeof opt === 'object' ? opt.label : opt
+            });
+          });
+        }
+
+        const surveyRow = {
+          type: typeStr,
+          name: q.id,
+          label: q.text,
+          required: q.required ? 'yes' : 'no'
+        };
+
+        if (q.relevant) surveyRow.relevant = q.relevant;
+        if (q.constraint) surveyRow.constraint = q.constraint;
+        if (q.constraint_message) surveyRow.constraint_message = q.constraint_message;
+        if (q.choice_filter) surveyRow.choice_filter = q.choice_filter;
+        if (q.parameters && q.parameters.calculation) surveyRow.calculation = q.parameters.calculation;
+        if (q.hint) surveyRow.hint = q.hint;
+        
+        surveyData.push(surveyRow);
+      });
+
+      // Include settings as audit
+      const settings = row.settings ? JSON.parse(row.settings) : {};
+      if (settings.audit_audio) surveyData.push({ type: 'audit', name: '', label: '', parameters: 'audio' });
+      if (settings.audit_location) surveyData.push({ type: 'audit', name: '', label: '', parameters: 'location' });
+
+      const wb = xlsx.utils.book_new();
+      const wsSurvey = xlsx.utils.json_to_sheet(surveyData);
+      xlsx.utils.book_append_sheet(wb, wsSurvey, 'survey');
+      
+      if (choicesData.length > 0) {
+        const wsChoices = xlsx.utils.json_to_sheet(choicesData);
+        xlsx.utils.book_append_sheet(wb, wsChoices, 'choices');
+      }
+
+      const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Disposition', `attachment; filename="${row.title || 'form'}.xlsx"`);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.send(buffer);
+    } catch (e) {
+      res.status(500).json({ error: 'Erro ao gerar XLSForm: ' + e.message });
+    }
+  });
+});
+
 router.patch('/forms/:id/archive', (req, res) => {
   const formId = req.params.id;
   if (!checkPermission(req.user.role, PERMISSIONS.BUILD_FORMS)) {

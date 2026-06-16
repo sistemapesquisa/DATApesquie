@@ -43,25 +43,65 @@ function convertToXForm(form) {
 
   // 2. Build Instance XML nodes
   let instanceNodesHtml = '';
+  let stack = [];
   questions.forEach(q => {
-    instanceNodesHtml += `      <${q.id}/>\n`;
+    let indent = '      ' + '  '.repeat(stack.length);
+    if (q.type === 'begin_group' || q.type === 'begin_repeat') {
+      instanceNodesHtml += `${indent}<${q.id}>\n`;
+      stack.push(q.id);
+    } else if (q.type === 'end_group' || q.type === 'end_repeat') {
+      let popped = stack.pop();
+      if (popped) {
+        indent = '      ' + '  '.repeat(stack.length);
+        instanceNodesHtml += `${indent}</${popped}>\n`;
+      }
+    } else {
+      instanceNodesHtml += `${indent}<${q.id}/>\n`;
+    }
   });
+  while (stack.length > 0) {
+    let popped = stack.pop();
+    let indent = '      ' + '  '.repeat(stack.length);
+    instanceNodesHtml += `${indent}</${popped}>\n`;
+  }
   
   // Inject internal audit nodes
-  instanceNodesHtml += `      <audit_audio/>\n`;
-  instanceNodesHtml += `      <audit_location/>\n`;
+  if (form.settings && form.settings.audit_audio) {
+    instanceNodesHtml += `      <audit_audio/>\n`;
+  }
+  if (form.settings && form.settings.audit_location) {
+    instanceNodesHtml += `      <audit_location/>\n`;
+  }
 
   // 3. Build Binds XML
   let bindsHtml = '';
+  let bindStack = [];
   questions.forEach(q => {
+    let currentPath = '/data' + (bindStack.length > 0 ? '/' + bindStack.join('/') : '') + '/' + q.id;
+    
+    if (q.type === 'begin_group' || q.type === 'begin_repeat') {
+      bindStack.push(q.id);
+      // We still output a bind for groups if they have relevance
+    } else if (q.type === 'end_group' || q.type === 'end_repeat') {
+      bindStack.pop();
+      return;
+    }
+
     let typeAttr = 'string';
     if (q.type === 'number' || q.type === 'decimal') typeAttr = 'decimal';
     else if (q.type === 'integer') typeAttr = 'int';
     else if (q.type === 'single_choice' || q.type === 'select_one') typeAttr = 'select1';
     else if (q.type === 'multiple_choice' || q.type === 'select_multiple') typeAttr = 'select';
     else if (q.type === 'audio_record' || q.type === 'audio') typeAttr = 'binary';
-    else if (q.type === 'image' || q.type === 'video') typeAttr = 'binary';
+    else if (q.type === 'image' || q.type === 'video' || q.type === 'file') typeAttr = 'binary';
     else if (q.type === 'geopoint') typeAttr = 'geopoint';
+    else if (q.type === 'geotrace') typeAttr = 'geotrace';
+    else if (q.type === 'geoshape') typeAttr = 'geoshape';
+    else if (q.type === 'date') typeAttr = 'date';
+    else if (q.type === 'time') typeAttr = 'time';
+    else if (q.type === 'datetime') typeAttr = 'dateTime';
+    else if (q.type === 'barcode') typeAttr = 'barcode';
+    else if (q.type === 'range') typeAttr = 'int';
 
     // Backwards compat with skipRules
     const relevanceList = relevanceMap[q.id] || [];
@@ -74,36 +114,92 @@ function convertToXForm(form) {
     const requiredAttr = q.required ? ` required="true()"` : '';
     const constraintAttr = q.constraint ? ` constraint="${q.constraint.replace(/"/g, '&quot;')}"` : '';
     const constraintMsgAttr = q.constraint_message ? ` jr:constraintMsg="${q.constraint_message.replace(/"/g, '&quot;')}"` : '';
+    const readonlyAttr = (q.type === 'note' || q.type === 'hidden') ? ` readonly="true()"` : '';
+    const calcAttr = (q.type === 'calculate' && q.parameters && q.parameters.calculation) ? ` calculate="${q.parameters.calculation.replace(/"/g, '&quot;')}"` : '';
 
-    bindsHtml += `    <bind nodeset="/data/${q.id}" type="${typeAttr}"${requiredAttr}${relevanceAttr}${constraintAttr}${constraintMsgAttr}/>\n`;
+    if (q.type === 'begin_group' || q.type === 'begin_repeat') {
+      if (relevanceAttr) bindsHtml += `    <bind nodeset="${currentPath}"${relevanceAttr}/>\n`;
+    } else {
+      bindsHtml += `    <bind nodeset="${currentPath}" type="${typeAttr}"${requiredAttr}${relevanceAttr}${constraintAttr}${constraintMsgAttr}${readonlyAttr}${calcAttr}/>\n`;
+    }
   });
   
   // Bind for internal audit and mandatory geolocation
-  bindsHtml += `    <bind nodeset="/data/audit_audio" type="binary" />\n`;
-  bindsHtml += `    <bind nodeset="/data/audit_location" type="geopoint" />\n`;
+  if (form.settings && form.settings.audit_audio) {
+    bindsHtml += `    <bind nodeset="/data/audit_audio" type="binary" />\n`;
+  }
+  if (form.settings && form.settings.audit_location) {
+    bindsHtml += `    <bind nodeset="/data/audit_location" type="geopoint" />\n`;
+  }
 
   // 4. Build Body elements
   let bodyHtml = '';
+  let bodyStack = [];
   questions.forEach(q => {
-    if (q.type === 'text' || q.type === 'number' || q.type === 'decimal' || q.type === 'integer' || q.type === 'geopoint') {
-      bodyHtml += `    <input ref="/data/${q.id}">\n      <label>${q.text}</label>\n    </input>\n`;
+    let currentPath = '/data' + (bodyStack.length > 0 ? '/' + bodyStack.join('/') : '') + '/' + q.id;
+    let indent = '    ' + '  '.repeat(bodyStack.length);
+
+    if (q.type === 'begin_group') {
+      bodyHtml += `${indent}<group ref="${currentPath}">\n${indent}  <label>${q.text || 'Grupo'}</label>\n`;
+      bodyStack.push(q.id);
+    } else if (q.type === 'begin_repeat') {
+      bodyHtml += `${indent}<group ref="${currentPath}">\n${indent}  <label>${q.text || 'Repetição'}</label>\n${indent}  <repeat nodeset="${currentPath}">\n`;
+      bodyStack.push(q.id);
+    } else if (q.type === 'end_group') {
+      let popped = bodyStack.pop();
+      indent = '    ' + '  '.repeat(bodyStack.length);
+      bodyHtml += `${indent}</group>\n`;
+    } else if (q.type === 'end_repeat') {
+      let popped = bodyStack.pop();
+      indent = '    ' + '  '.repeat(bodyStack.length);
+      bodyHtml += `${indent}  </repeat>\n${indent}</group>\n`;
+    } else if (q.type === 'text' || q.type === 'number' || q.type === 'decimal' || q.type === 'integer' || q.type === 'geopoint' || q.type === 'date' || q.type === 'time' || q.type === 'note') {
+      bodyHtml += `${indent}<input ref="${currentPath}">\n${indent}  <label>${q.text}</label>\n${indent}</input>\n`;
     } else if (q.type === 'single_choice' || q.type === 'select_one' || q.type === 'multiple_choice' || q.type === 'select_multiple') {
       const tag = (q.type === 'single_choice' || q.type === 'select_one') ? 'select1' : 'select';
-      bodyHtml += `    <${tag} ref="/data/${q.id}">\n      <label>${q.text}</label>\n`;
+      bodyHtml += `${indent}<${tag} ref="${currentPath}">\n${indent}  <label>${q.text}</label>\n`;
       (q.options || []).forEach(opt => {
         const val = typeof opt === 'object' ? opt.name : opt;
         const lbl = typeof opt === 'object' ? opt.label : opt;
-        bodyHtml += `      <item>\n        <label>${lbl}</label>\n        <value>${val}</value>\n      </item>\n`;
+        bodyHtml += `${indent}  <item>\n${indent}    <label>${lbl}</label>\n${indent}    <value>${val}</value>\n${indent}  </item>\n`;
       });
-      bodyHtml += `    </${tag}>\n`;
+      bodyHtml += `${indent}</${tag}>\n`;
     } else if (q.type === 'audio_record' || q.type === 'audio') {
-      bodyHtml += `    <upload ref="/data/${q.id}" mediatype="audio/*">\n      <label>${q.text}</label>\n    </upload>\n`;
+      bodyHtml += `${indent}<upload ref="${currentPath}" mediatype="audio/*">\n${indent}  <label>${q.text}</label>\n${indent}</upload>\n`;
     } else if (q.type === 'image') {
-      bodyHtml += `    <upload ref="/data/${q.id}" mediatype="image/*">\n      <label>${q.text}</label>\n    </upload>\n`;
+      bodyHtml += `${indent}<upload ref="${currentPath}" mediatype="image/*">\n${indent}  <label>${q.text}</label>\n${indent}</upload>\n`;
     } else if (q.type === 'video') {
-      bodyHtml += `    <upload ref="/data/${q.id}" mediatype="video/*">\n      <label>${q.text}</label>\n    </upload>\n`;
+      bodyHtml += `${indent}<upload ref="${currentPath}" mediatype="video/*">\n${indent}  <label>${q.text}</label>\n${indent}</upload>\n`;
+    } else if (q.type === 'file') {
+      bodyHtml += `${indent}<upload ref="${currentPath}" mediatype="application/*">\n${indent}  <label>${q.text}</label>\n${indent}</upload>\n`;
+    } else if (q.type === 'datetime' || q.type === 'barcode') {
+      bodyHtml += `${indent}<input ref="${currentPath}">\n${indent}  <label>${q.text}</label>\n${indent}</input>\n`;
+    } else if (q.type === 'geotrace' || q.type === 'geoshape') {
+      bodyHtml += `${indent}<input ref="${currentPath}" appearance="maps">\n${indent}  <label>${q.text}</label>\n${indent}</input>\n`;
+    } else if (q.type === 'acknowledge') {
+      bodyHtml += `${indent}<trigger ref="${currentPath}">\n${indent}  <label>${q.text}</label>\n${indent}</trigger>\n`;
+    } else if (q.type === 'range') {
+      const start = (q.parameters && q.parameters.start) ? q.parameters.start : 1;
+      const end = (q.parameters && q.parameters.end) ? q.parameters.end : 10;
+      const step = (q.parameters && q.parameters.step) ? q.parameters.step : 1;
+      bodyHtml += `${indent}<range ref="${currentPath}" start="${start}" end="${end}" step="${step}">\n${indent}  <label>${q.text}</label>\n${indent}</range>\n`;
+    } else if (q.type === 'rank') {
+      bodyHtml += `${indent}<odk:rank ref="${currentPath}">\n${indent}  <label>${q.text}</label>\n`;
+      (q.options || []).forEach(opt => {
+        const val = typeof opt === 'object' ? opt.name : opt;
+        const lbl = typeof opt === 'object' ? opt.label : opt;
+        bodyHtml += `${indent}  <item>\n${indent}    <label>${lbl}</label>\n${indent}    <value>${val}</value>\n${indent}  </item>\n`;
+      });
+      bodyHtml += `${indent}</odk:rank>\n`;
     }
   });
+
+  while (bodyStack.length > 0) {
+    let popped = bodyStack.pop();
+    let indent = '    ' + '  '.repeat(bodyStack.length);
+    // Best effort closing if unbalanced
+    bodyHtml += `${indent}</group>\n`;
+  }
 
   // Add the geopoint question at the very end of the form
   bodyHtml += `    <input ref="/data/audit_location">\n      <label>Obter localização atual (opcional)</label>\n      <hint>Localização via GPS para encerramento da pesquisa (se não pegar sinal, pode avançar)</hint>\n    </input>\n`;
@@ -123,8 +219,7 @@ function convertToXForm(form) {
         <data id="${id}" version="${version}">
 ${instanceNodesHtml}        </data>
       </instance>
-${bindsHtml}      <odk:recordaudio event="odk-instance-load" ref="/data/audit_audio" />
-    </model>
+${bindsHtml}${form.settings && form.settings.audit_audio ? '      <odk:recordaudio event="odk-instance-load" ref="/data/audit_audio" />\n' : ''}    </model>
   </h:head>
   <h:body>
 ${bodyHtml}  </h:body>

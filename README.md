@@ -7,7 +7,13 @@
 [![ODK Collect Compatible](https://img.shields.io/badge/ODK%20Collect-Compatible-green.svg)](https://getodk.org)
 [![Clean Architecture](https://img.shields.io/badge/Architecture-Clean%20Monolith-purple.svg)](#arquitetura)
 
-Uma plataforma integrada de alta performance e resiliência projetada para a gestão de pesquisas de campo no interior, com suporte a **validação de lógica de pulo condicional**, **coleta geolocalizada no mapa**, **auditoria de gravação de áudio** e **sincronização nativa com o aplicativo ODK Collect (Android)**.
+Uma plataforma integrada de alta performance e resiliência projetada para a gestão de pesquisas de campo no interior, com suporte a **validação de lógica de pulo condicional**, **coleta geolocalizada em mapas 2D interativos de satélite**, **auditoria de gravação de áudio** e **sincronização nativa com o aplicativo ODK Collect (Android)**.
+
+### ✨ Novidades Recentes:
+- **Painel Dashboard em Lista Premium:** Navegação limpa de projetos sem usar tabelas engessadas.
+- **Menu Lateral Dinâmico:** Expande suavemente em `hover` otimizando 100% da sua tela de trabalho.
+- **Gerenciador de Perfis (RBAC):** Os clientes (Admins) possuem poder para criar *Cargos e Equipes* personalizadas.
+- **Estratégia Anti-Cache:** Arquitetura `Cache-Control` integrada que blinda o usuário de ver versões desatualizadas do painel web.
 
 ---
 
