@@ -80,7 +80,7 @@ function convertToXForm(form) {
   
   // Bind for internal audit and mandatory geolocation
   bindsHtml += `    <bind nodeset="/data/audit_audio" type="binary" />\n`;
-  bindsHtml += `    <bind nodeset="/data/audit_location" type="geopoint" required="true()" />\n`;
+  bindsHtml += `    <bind nodeset="/data/audit_location" type="geopoint" />\n`;
 
   // 4. Build Body elements
   let bodyHtml = '';
@@ -106,7 +106,7 @@ function convertToXForm(form) {
   });
 
   // Add the geopoint question at the very end of the form
-  bodyHtml += `    <input ref="/data/audit_location">\n      <label>Obter localização atual (obrigatório)</label>\n      <hint>Localização via GPS para encerramento da pesquisa</hint>\n    </input>\n`;
+  bodyHtml += `    <input ref="/data/audit_location">\n      <label>Obter localização atual (opcional)</label>\n      <hint>Localização via GPS para encerramento da pesquisa (se não pegar sinal, pode avançar)</hint>\n    </input>\n`;
 
   // 5. Glue together the complete OpenRosa/XForms XML template
   return `<?xml version="1.0" encoding="UTF-8"?>
