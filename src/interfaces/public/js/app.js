@@ -449,28 +449,25 @@ window.exportCurrentFormXLS = async function() {
   if (state.activeForm.questions.length === 0) return showToast('warning', 'O formulário está vazio.');
   showToast('info', 'Gerando XLSForm...');
   try {
-    const payload = { questions: state.activeForm.questions, title: state.activeForm.title || 'formulario' };
+    const url = `/api/forms/${state.activeForm.id}/export-xlsform`;
     const token = localStorage.getItem('auth_token');
-    const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (state.activeRole) headers['x-user-role'] = state.activeRole;
     
-    const res = await fetch('/api/forms/export-xlsform', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload)
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
     });
+    
     if (!res.ok) throw new Error('Erro ao exportar XLSForm');
     
     const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
+    const blobUrl = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `${payload.title}.xlsx`;
+    a.href = blobUrl;
+    a.download = `${state.activeForm.title || 'formulario'}_xlsform.xlsx`;
     document.body.appendChild(a);
     a.click();
+    window.URL.revokeObjectURL(blobUrl);
     a.remove();
-    window.URL.revokeObjectURL(url);
     showToast('success', 'Exportação concluída!');
   } catch (err) {
     showToast('error', err.message);
@@ -679,17 +676,53 @@ function formatDeviceId(deviceId) {
 }
 
 window.renderReportsTable = function() {
+  const thead = document.getElementById('reports-thead');
   const tbody = document.getElementById('reports-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
+  const searchInput = document.getElementById('reports-search');
+  if (!tbody || !thead) return;
+  
+  const form = state.activeForm || { questions: [] };
+  const questions = form.questions || [];
 
   let filtered = [...state.interviews].reverse(); // newest first
   if (state.activeProjectFormId) {
     filtered = filtered.filter(i => i.form_id === state.activeProjectFormId);
   }
 
+  // Search filter
+  const term = searchInput ? searchInput.value.toLowerCase() : '';
+  if (term) {
+    filtered = filtered.filter(int => {
+      const r = state.users.find(u => u.id === int.researcher_id) || {name: int.researcher_id};
+      if (int.id.toLowerCase().includes(term) || r.name.toLowerCase().includes(term)) return true;
+      if (int.data) {
+        return Object.values(int.data).some(v => String(v).toLowerCase().includes(term));
+      }
+      return false;
+    });
+  }
+
+  // Generate Headers
+  let headHtml = `<tr><th style="width:40px;"><input type="checkbox" id="check-all-interviews"></th><th>ID</th><th>Pesquisador</th><th>Data/Hora</th>`;
+  questions.forEach(q => {
+    headHtml += `<th>${q.text || q.id}</th>`;
+  });
+  headHtml += `<th>Ações</th></tr>`;
+  thead.innerHTML = headHtml;
+
+  // Check all listener
+  setTimeout(() => {
+    const cbAll = document.getElementById('check-all-interviews');
+    if (cbAll) {
+      cbAll.addEventListener('change', (e) => {
+        document.querySelectorAll('.cb-interview-select').forEach(cb => cb.checked = e.target.checked);
+      });
+    }
+  }, 50);
+
+  tbody.innerHTML = '';
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;">Nenhuma coleta encontrada neste projeto.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="${questions.length + 5}" style="text-align:center;padding:2rem;">Nenhuma coleta encontrada.</td></tr>`;
     return;
   }
 
@@ -697,17 +730,65 @@ window.renderReportsTable = function() {
     const researcher = state.users.find(u => u.id === int.researcher_id) || {name: int.researcher_id};
     const date = new Date(int.created_at).toLocaleString('pt-BR');
     
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
+    let trHtml = `
       <td><input type="checkbox" class="cb-interview-select" value="${int.id}"></td>
       <td>${int.id.substring(0,8)}</td>
       <td>${researcher.name}</td>
-      <td>${formatDeviceId(int.device_id)}</td>
       <td>${date}</td>
-      <td><button class="btn btn-sm btn-primary" onclick="openInterviewDetails('${int.id}')"><i class="fa-solid fa-eye"></i> Ver</button></td>
     `;
+
+    // Fill answers
+    questions.forEach(q => {
+      let val = (int.data && int.data[q.id]) ? int.data[q.id] : '-';
+      
+      // If it's the audio url attached directly, or answered via question
+      if ((q.type === 'audio' && val !== '-') || (val && typeof val === 'string' && val.endsWith('.webm'))) {
+        val = `<a href="#" style="color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:0.4rem; font-weight:600;" onclick="openAudioModal('${val}'); return false;"><i class="fa-solid fa-play"></i> Ouvir</a>`;
+      } else if (int.audio_url && q.type === 'audio') { // Fallback if general audio_url is present and matches an audio question
+        val = `<a href="#" style="color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:0.4rem; font-weight:600;" onclick="openAudioModal('${int.audio_url}'); return false;"><i class="fa-solid fa-play"></i> Ouvir</a>`;
+      }
+      
+      trHtml += `<td>${val}</td>`;
+    });
+
+    trHtml += `<td><button class="btn btn-sm btn-outline" style="border-color:var(--border); color:var(--text-secondary);" onclick="openInterviewDetails('${int.id}')"><i class="fa-solid fa-eye"></i> Detalhes</button></td>`;
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = trHtml;
     tbody.appendChild(tr);
   });
+};
+
+window.openAudioModal = function(url) {
+  const modal = document.getElementById('audio-modal');
+  const player = document.getElementById('audio-player-element');
+  if (modal && player) {
+    player.src = url;
+    
+    // Fix for 0:00 duration issue (missing metadata in WebM/AMR)
+    player.onloadedmetadata = function() {
+      if (player.duration === Infinity || isNaN(player.duration)) {
+        player.currentTime = 1e101;
+        player.ontimeupdate = function() {
+          player.ontimeupdate = null;
+          player.currentTime = 0;
+        };
+      }
+    };
+
+    modal.classList.add('active');
+    player.play().catch(e => console.log("Auto-play blocked", e));
+  }
+};
+
+window.closeAudioModal = function() {
+  const modal = document.getElementById('audio-modal');
+  const player = document.getElementById('audio-player-element');
+  if (modal && player) {
+    player.pause();
+    player.currentTime = 0;
+    modal.classList.remove('active');
+  }
 };
 
 window.openInterviewDetails = function(id) {
@@ -834,13 +915,14 @@ function renderAudioReviewList() {
 let draggedQuestionIndex = null;
 
 function initFormBuilder() {
-  document.getElementById('btn-new-form').addEventListener('click', () => {
+  if (!document.getElementById('btn-new-form')) return;
+  document.getElementById('btn-new-form') && document.getElementById('btn-new-form').addEventListener('click', () => {
     loadFormIntoBuilder({ id:'', title:'Novo Formulário', status:'draft', version:1, questions:[] });
   });
-  document.getElementById('btn-add-question').addEventListener('click', () => {
+  document.getElementById('btn-add-question') && document.getElementById('btn-add-question').addEventListener('click', () => {
     document.getElementById('question-type-modal').classList.add('active');
   });
-  document.getElementById('btn-save-form').addEventListener('click', saveActiveForm);
+  document.getElementById('btn-save-form') && document.getElementById('btn-save-form').addEventListener('click', saveActiveForm);
   
   const importInput = document.getElementById('import-xlsform-input');
   if (importInput) {
@@ -1266,7 +1348,7 @@ async function saveActiveForm() {
         q.constraint_message = 'Valor inválido de acordo com as regras.';
       }
     });
-    const payload = { id:state.activeForm.id||undefined, title, status, questions:state.activeForm.questions };
+    const payload = { id:state.activeForm.id||undefined, title, status, questions:state.activeForm.questions, settings:state.activeForm.settings||{} };
     const result = await apiFetch('/api/forms', { method:'POST', body:JSON.stringify(payload) });
     if (result.success) {
       showToast('success', `Formulário "${title}" salvo com sucesso!`);
@@ -1355,15 +1437,16 @@ window.saveFormSettings = () => {
 
 // ===================== MOBILE SIMULATOR =====================
 function initMobileSimulator() {
-  document.getElementById('sim-toggle-network').addEventListener('change', (e) => {
+  if (!document.getElementById('sim-toggle-network')) return;
+  document.getElementById('sim-toggle-network') && document.getElementById('sim-toggle-network').addEventListener('change', (e) => {
     state.simIsOnline = e.target.checked;
     const badge = document.getElementById('net-status-text');
     badge.textContent = state.simIsOnline ? 'Conectado (Online)' : 'Desconectado (Offline)';
     if (state.simIsOnline) syncOfflineQueue();
     renderMobileScreen();
   });
-  document.getElementById('sim-btn-download-templates').addEventListener('click', downloadTemplates);
-  document.getElementById('sim-btn-sync-queue').addEventListener('click', syncOfflineQueue);
+  document.getElementById('sim-btn-download-templates') && document.getElementById('sim-btn-download-templates').addEventListener('click', downloadTemplates);
+  document.getElementById('sim-btn-sync-queue') && document.getElementById('sim-btn-sync-queue').addEventListener('click', syncOfflineQueue);
   const cachedQueue = localStorage.getItem('datapesquise_offline_queue');
   if (cachedQueue) { state.simOfflineQueue = JSON.parse(cachedQueue); document.getElementById('sim-offline-queue-count').textContent = state.simOfflineQueue.length; }
   renderMobileScreen();
@@ -1580,7 +1663,8 @@ async function fetchLogs() {
 
 // ===================== DATA EXPORTER =====================
 function initDataExporter() {
-  document.getElementById('btn-export-data').addEventListener('click', () => {
+  if (!document.getElementById('btn-export-data')) return;
+  document.getElementById('btn-export-data') && document.getElementById('btn-export-data').addEventListener('click', () => {
     let toExport = state.interviews;
     if (state.activeProjectFormId) {
       toExport = toExport.filter(i => i.form_id === state.activeProjectFormId);
@@ -1753,33 +1837,79 @@ window.deleteUser = function(id) {
   });
 };
 
-window.openRouteModal = function() {
+window.openRouteModal = async function() {
   if (!state.activeProjectFormId) {
     showToast('error', 'Nenhum projeto selecionado.');
     return;
   }
   document.getElementById('route-modal').classList.add('active');
+  await renderAssignedResearchers();
 };
+
+window.renderAssignedResearchers = async function() {
+  const container = document.getElementById('assigned-researchers-list');
+  if(!container) return;
+  container.innerHTML = '<div style="text-align:center;color:#64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando acessos...</div>';
+  try {
+     const routes = await apiFetch('/api/routes');
+     const projectRoutes = routes.filter(r => r.form_id === state.activeProjectFormId);
+     if (projectRoutes.length === 0) {
+        container.innerHTML = '<div style="font-size:0.85rem;color:#64748b;text-align:center;">Nenhum pesquisador atribuído a este projeto ainda.</div>';
+     } else {
+        container.innerHTML = '<div style="font-size:0.85rem;margin-bottom:0.75rem;font-weight:600;color:var(--text-secondary);">Pesquisadores com Acesso:</div><div style="display:flex;flex-wrap:wrap;gap:0.5rem;">' + 
+           projectRoutes.map(r => `<span class="badge badge-info" style="font-size:0.75rem;padding:0.4rem 0.6rem;"><i class="fa-solid fa-user"></i> ${r.researcher_name || r.researcher_id} (${r.city || 'Sem local'}) <i class="fa-solid fa-xmark" style="cursor:pointer;margin-left:8px;font-size:0.9rem;" onclick="removeRoute('${r.id}')" title="Remover Acesso"></i></span>`).join('') +
+        '</div>';
+     }
+  } catch(e) {
+     container.innerHTML = '<div style="color:red;font-size:0.8rem;">Erro ao carregar atribuições.</div>';
+  }
+};
+
+window.removeRoute = function(routeId) {
+  showConfirm('Remover Acesso', 'Tem certeza que deseja remover o acesso deste pesquisador ao projeto?', async () => {
+    try {
+      await apiFetch(`/api/routes/${routeId}`, { method: 'DELETE' });
+      showToast('success', 'Acesso removido com sucesso.');
+      await renderAssignedResearchers();
+    } catch (err) {
+      showToast('error', 'Erro ao remover acesso: ' + err.message);
+    }
+  });
+};
+
 window.closeRouteModal = function() { document.getElementById('route-modal').classList.remove('active'); };
+
 window.saveRoute = async function() {
   const researcher_id = document.getElementById('route-form-researcher').value;
+  const city = document.getElementById('route-form-city').value;
   const form_id = state.activeProjectFormId;
+  
   if(!researcher_id || !form_id) { showToast('warning', 'Selecione o pesquisador.'); return; }
+  if(!city) { showToast('warning', 'Informe a cidade/localidade.'); return; }
+  
   try {
-    await apiFetch('/api/routes', { method: 'POST', body: JSON.stringify({ researcher_id, form_id }) });
+    const btn = event ? event.currentTarget : null;
+    if (btn) setButtonLoading(btn, true);
+    await apiFetch('/api/routes', { method: 'POST', body: JSON.stringify({ researcher_id, form_id, city }) });
     showToast('success', 'Acesso habilitado para o projeto!');
-    closeRouteModal();
-    loadProjectAccess();
-  } catch(err) { showToast('error', err.message); }
+    document.getElementById('route-form-city').value = '';
+    await renderAssignedResearchers();
+  } catch(err) {
+    showToast('error', 'Erro ao atribuir: ' + err.message);
+  } finally {
+    const btn = event ? event.currentTarget : null;
+    if (btn) setButtonLoading(btn, false);
+  }
 };
+
 window.deleteRoute = function(id) {
   showConfirm('Remover Acesso', 'O pesquisador não terá mais acesso a este projeto no aplicativo. Continuar?', async () => {
     try {
       await apiFetch(`/api/routes/${id}`, { method: 'DELETE' });
-      showToast('success', 'Acesso removido.');
+      showToast('success', 'Acesso removido com sucesso.');
       loadProjectAccess();
     } catch(err) { showToast('error', err.message); }
-  });
+  }, { type: 'danger' });
 };
 
 // ===================== ODK URL COPY =====================
@@ -1800,7 +1930,8 @@ async function loadRoles() {
       return;
     }
     roles.forEach(role => {
-      const perms = role.permissions.split(',').map(p => `<span class="badge badge-info" style="margin:2px;">${p}</span>`).join('');
+      const permsArray = Array.isArray(role.permissions) ? role.permissions : String(role.permissions || '').split(',');
+      const perms = permsArray.filter(p=>p).map(p => `<span class="badge badge-info" style="margin:2px;">${p}</span>`).join('');
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>${role.name}</strong></td>
@@ -1855,7 +1986,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Mobile sidebar toggle
-  document.getElementById('sidebar-toggle-mobile').addEventListener('click', () => {
+  document.getElementById('sidebar-toggle-mobile') && document.getElementById('sidebar-toggle-mobile').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('mobile-open');
   });
 
@@ -1887,7 +2018,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
   // Refresh logs button
-  document.getElementById('btn-refresh-logs').addEventListener('click', fetchLogs);
+  document.getElementById('btn-refresh-logs') && document.getElementById('btn-refresh-logs').addEventListener('click', fetchLogs);
 
   // Reports Events
   const btnExportReports = document.getElementById('btn-export-reports');

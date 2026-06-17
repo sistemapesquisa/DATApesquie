@@ -15,6 +15,14 @@ app.use(express.json());
 // Serve Static Front-End Assets
 app.use(express.static(path.join(__dirname, 'interfaces', 'public')));
 
+// ODK Collect Root Compatibility
+app.use((req, res, next) => {
+  if (req.path === '/formList' || req.path === '/submission' || req.path.startsWith('/odk/')) {
+    req.url = '/api' + req.url;
+  }
+  next();
+});
+
 // API Routes
 app.use('/api', routes);
 

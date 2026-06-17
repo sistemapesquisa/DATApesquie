@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-  <link rel="stylesheet" href="css/styles.css?v=2.0.1">
+  <link rel="stylesheet" href="css/styles.css?v=2?v=2.0.1">
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -562,9 +562,14 @@
 
             <!-- DADOS TAB -->
             <div class="tab-content" id="proj-tab-dados" style="display:none;">
-              <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                <button class="btn btn-primary" id="btn-export-data" onclick="exportProjectData()"><i class="fa-solid fa-file-csv"></i> Exportar Dados</button>
-                <button class="btn btn-danger" id="btn-clear-tests" onclick="clearTestInterviews()"><i class="fa-solid fa-trash"></i> Apagar Selecionados</button>
+              <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; justify-content: space-between;">
+                <div style="display: flex; gap: 1rem;">
+                  <button class="btn btn-primary" id="btn-export-data" onclick="exportProjectData()"><i class="fa-solid fa-file-csv"></i> Exportar Dados</button>
+                  <button class="btn btn-danger" id="btn-clear-tests" onclick="clearTestInterviews()"><i class="fa-solid fa-trash"></i> Apagar Selecionados</button>
+                </div>
+                <div style="flex: 1; max-width: 300px;">
+                  <input type="text" id="reports-search" class="form-input" placeholder="Pesquisar nos dados..." oninput="renderReportsTable()" />
+                </div>
               </div>
 
               <div class="card" style="margin-bottom:2rem;">
@@ -575,12 +580,25 @@
               </div>
 
               <div class="card" style="margin-bottom:2rem;">
-                <h3 class="card-title" style="margin-bottom:1rem;"><i class="fa-solid fa-table"></i> Tabela de Respostas</h3>
-                <div class="table-wrapper" style="max-height:400px;overflow-y:auto;">
-                  <table class="data-table" id="reports-table">
-                    <thead><tr><th style="width:40px;"><input type="checkbox" id="check-all-interviews"></th><th>ID</th><th>Pesquisador</th><th>Dispositivo</th><th>Data/Hora</th><th>Ações</th></tr></thead>
+                <h3 class="card-title" style="margin-bottom:1rem;"><i class="fa-solid fa-table"></i> Dados Brutos</h3>
+                <div class="table-wrapper" style="max-height:400px;overflow-y:auto; overflow-x:auto;">
+                  <table class="data-table" id="reports-table" style="white-space: nowrap;">
+                    <thead id="reports-thead">
+                      <!-- Dynamic headers -->
+                    </thead>
                     <tbody id="reports-tbody"></tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Audio Player Modal Minimalist -->
+            <div class="modal-overlay" id="audio-modal" style="z-index: 9999;">
+              <div class="modal-box" style="max-width: 350px;">
+                <div class="modal-title" style="font-size: 1rem;"><i class="fa-solid fa-headphones"></i> Reprodutor de Áudio</div>
+                <audio id="audio-player-element" controls style="width: 100%; margin: 1rem 0; outline: none;"></audio>
+                <div style="display: flex; justify-content: flex-end;">
+                  <button class="btn btn-outline btn-sm" onclick="closeAudioModal()">Fechar</button>
                 </div>
               </div>
             </div>
@@ -623,9 +641,19 @@
 
         <div class="modal-overlay" id="route-modal">
           <div class="modal-box">
-            <div class="modal-title">Atribuir Acesso ao Projeto</div>
-            <p class="modal-message" style="margin-bottom:1rem;">Selecione o pesquisador que poderá realizar as coletas deste projeto no aplicativo.</p>
-            <div class="form-group"><label class="form-label">Pesquisador</label><select class="form-select" id="route-form-researcher"></select></div>
+            <div class="modal-title">Gerenciar Acesso ao Projeto</div>
+            <p class="modal-message" style="margin-bottom:1rem;">Visualize e atribua pesquisadores que poderão realizar coletas para este projeto.</p>
+            
+            <div id="assigned-researchers-list" style="margin-bottom:1.5rem; background:#f8fafc; padding:1rem; border-radius:6px; border:1px solid #e2e8f0;"></div>
+            
+            <div style="border-top: 1px solid var(--border); margin-bottom: 1rem; padding-top: 1rem;">
+              <h4 style="margin:0 0 1rem 0; font-size:0.9rem;">Adicionar Pesquisador</h4>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group"><label class="form-label">Pesquisador</label><select class="form-select" id="route-form-researcher"></select></div>
+                <div class="form-group"><label class="form-label">Cidade/Localidade</label><input type="text" class="form-input" id="route-form-city" placeholder="Ex: Manaus/AM" /></div>
+              </div>
+            </div>
+            
             <div class="modal-actions" style="margin-top:1.5rem;">
               <button class="btn" onclick="closeRouteModal()">Cancelar</button>
               <button class="btn btn-primary" onclick="saveRoute()">Confirmar Atribuição</button>
@@ -789,6 +817,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="js/app.js?v=2.0.1"></script>
+  <script src="js/app.js?v=2?v=2.0.1"></script>
 </body>
 </html>

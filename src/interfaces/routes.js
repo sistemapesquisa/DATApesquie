@@ -312,7 +312,8 @@ router.get('/forms', (req, res) => {
     // Parse questions json
     const forms = rows.map(r => ({
       ...r,
-      questions: JSON.parse(r.questions_json)
+      questions: JSON.parse(r.questions_json),
+      settings: r.settings_json ? JSON.parse(r.settings_json) : {}
     }));
     res.json(forms);
   });
@@ -342,6 +343,7 @@ router.post('/forms/upload-xlsform', upload.single('file'), async (req, res) => 
     const workbook = xlsx.readFile(req.file.path);
     const surveySheet = workbook.Sheets['survey'];
     const choicesSheet = workbook.Sheets['choices'];
+    const settingsSheet = workbook.Sheets['settings'];
     
     if (!surveySheet) return res.status(400).json({ error: 'Aba "survey" não encontrada na planilha.' });
     
@@ -382,6 +384,19 @@ router.post('/forms/upload-xlsform', upload.single('file'), async (req, res) => 
       }
     });
 
+    let settings = {};
+    if (settingsSheet) {
+      const settingsData = xlsx.utils.sheet_to_json(settingsSheet);
+      if (settingsData.length > 0) {
+        if (settingsData[0].audit_location === 'yes' || settingsData[0].audit_location === 'true' || settingsData[0].audit_location === true) {
+          settings.audit_location = true;
+        }
+        if (settingsData[0].audit_audio === 'yes' || settingsData[0].audit_audio === 'true' || settingsData[0].audit_audio === true) {
+          settings.audit_audio = true;
+        }
+      }
+    }
+
     const formTitle = req.file.originalname.replace('.xlsx', '').replace('.xls', '');
     const formId = 'prj_' + crypto.randomBytes(4).toString('hex');
     
@@ -390,7 +405,8 @@ router.post('/forms/upload-xlsform', upload.single('file'), async (req, res) => 
       title: formTitle,
       status: 'draft',
       version: 1,
-      questions: questions
+      questions: questions,
+      settings: settings
     };
 
     const result = await saveForm(formData);
@@ -719,7 +735,8 @@ router.get('/odk/forms/:id', (req, res) => {
 
     const form = {
       ...row,
-      questions: JSON.parse(row.questions_json)
+      questions: JSON.parse(row.questions_json),
+      settings: row.settings_json ? JSON.parse(row.settings_json) : {}
     };
 
     res.set({

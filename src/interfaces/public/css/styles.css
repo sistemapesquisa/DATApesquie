@@ -256,14 +256,25 @@ body {
 
 /* ========== TABLES ========== */
 .table-wrapper { overflow-x: auto; }
-.data-table { width: 100%; border-collapse: collapse; }
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .data-table th {
-  padding: 0.65rem 0.85rem; text-align: left; font-size: 0.72rem;
-  text-transform: uppercase; letter-spacing: 0.4px;
-  color: var(--text-muted); border-bottom: 2px solid var(--border); font-weight: 600;
+  padding: 0.8rem 1rem; text-align: left; font-size: 0.75rem;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: #fff; background: var(--bg-sidebar); font-weight: 600;
+  border-right: 1px solid rgba(255,255,255,0.1);
+  position: sticky; top: 0; z-index: 5; white-space: nowrap;
 }
-.data-table td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border); font-size: 0.875rem; vertical-align: middle; }
-.data-table tbody tr:hover { background: #f8fafc; }
+.data-table th:first-child { border-top-left-radius: 6px; }
+.data-table th:last-child { border-top-right-radius: 6px; border-right: none; }
+.data-table td {
+  padding: 0.8rem 1rem; border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  font-size: 0.875rem; vertical-align: middle;
+  max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.data-table td:last-child { border-right: none; }
+.data-table tbody tr:nth-child(even) { background-color: #f8fafc; }
+.data-table tbody tr:hover { background-color: var(--primary-light); cursor: default; }
 
 /* ========== MAP ========== */
 .map-container { height: 480px; width: 100%; border-radius: var(--radius-md); border: 1px solid var(--border); overflow: hidden; z-index: 10; }

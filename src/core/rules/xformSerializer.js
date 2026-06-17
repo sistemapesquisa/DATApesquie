@@ -105,17 +105,26 @@ function convertToXForm(form) {
 
     // Backwards compat with skipRules
     const relevanceList = relevanceMap[q.id] || [];
-    if (q.relevant) relevanceList.push(q.relevant);
+    if (q.relevant) {
+      // Convert ${question_id} to /data/question_id for XPath
+      const parsedRelevance = q.relevant.replace(/\$\{([^}]+)\}/g, '/data/$1');
+      relevanceList.push(parsedRelevance);
+    }
     
     const relevanceAttr = relevanceList.length > 0
       ? ` relevant="${relevanceList.join(' and ')}"`
       : '';
       
     const requiredAttr = q.required ? ` required="true()"` : '';
-    const constraintAttr = q.constraint ? ` constraint="${q.constraint.replace(/"/g, '&quot;')}"` : '';
+    const constraintAttr = q.constraint ? ` constraint="${q.constraint.replace(/"/g, '&quot;').replace(/\$\{([^}]+)\}/g, '/data/$1')}"` : '';
     const constraintMsgAttr = q.constraint_message ? ` jr:constraintMsg="${q.constraint_message.replace(/"/g, '&quot;')}"` : '';
     const readonlyAttr = (q.type === 'note' || q.type === 'hidden') ? ` readonly="true()"` : '';
-    const calcAttr = (q.type === 'calculate' && q.parameters && q.parameters.calculation) ? ` calculate="${q.parameters.calculation.replace(/"/g, '&quot;')}"` : '';
+    
+    let calcAttr = '';
+    if (q.type === 'calculate' && q.parameters && q.parameters.calculation) {
+      const parsedCalc = q.parameters.calculation.replace(/"/g, '&quot;').replace(/\$\{([^}]+)\}/g, '/data/$1');
+      calcAttr = ` calculate="${parsedCalc}"`;
+    }
 
     if (q.type === 'begin_group' || q.type === 'begin_repeat') {
       if (relevanceAttr) bindsHtml += `    <bind nodeset="${currentPath}"${relevanceAttr}/>\n`;
@@ -201,8 +210,10 @@ function convertToXForm(form) {
     bodyHtml += `${indent}</group>\n`;
   }
 
-  // Add the geopoint question at the very end of the form
-  bodyHtml += `    <input ref="/data/audit_location">\n      <label>Obter localização atual (opcional)</label>\n      <hint>Localização via GPS para encerramento da pesquisa (se não pegar sinal, pode avançar)</hint>\n    </input>\n`;
+  // Add the geopoint question at the very end of the form if requested
+  if (form.settings && form.settings.audit_location) {
+    bodyHtml += `    <input ref="/data/audit_location">\n      <label>Obter localização atual (opcional)</label>\n      <hint>Localização via GPS para encerramento da pesquisa (se não pegar sinal, pode avançar)</hint>\n    </input>\n`;
+  }
 
   // 5. Glue together the complete OpenRosa/XForms XML template
   return `<?xml version="1.0" encoding="UTF-8"?>
