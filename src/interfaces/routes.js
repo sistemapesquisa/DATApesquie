@@ -479,7 +479,7 @@ router.get('/forms/:id/export-xlsform', (req, res) => {
       });
 
       // Include settings as audit
-      const settings = row.settings ? JSON.parse(row.settings) : {};
+      const settings = row.settings_json ? JSON.parse(row.settings_json) : {};
       if (settings.audit_audio) surveyData.push({ type: 'audit', name: '', label: '', parameters: 'audio' });
       if (settings.audit_location) surveyData.push({ type: 'audit', name: '', label: '', parameters: 'location' });
 
