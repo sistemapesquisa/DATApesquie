@@ -558,13 +558,19 @@
                     </div>
                   </div>
                 </div>
+
+                <div class="card" id="quota-progress-card" style="display:none; margin-top:1.5rem;">
+                  <h3 class="card-title" style="margin-bottom: 1rem;"><i class="fa-solid fa-chart-pie"></i> Progresso das Cotas</h3>
+                  <div id="quota-progress-container"></div>
+                </div>
               </div>
 
             <!-- DADOS TAB -->
             <div class="tab-content" id="proj-tab-dados" style="display:none;">
               <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; justify-content: space-between;">
                 <div style="display: flex; gap: 1rem;">
-                  <button class="btn btn-primary" id="btn-export-data" onclick="exportProjectData()"><i class="fa-solid fa-file-csv"></i> Exportar Dados</button>
+                  <button class="btn btn-primary" id="btn-export-data" onclick="exportProjectData()"><i class="fa-solid fa-file-csv"></i> Exportar CSV</button>
+                  <button class="btn btn-success" id="btn-export-xlsx" onclick="exportProjectDataXLSX()"><i class="fa-solid fa-file-excel"></i> Exportar XLSX</button>
                   <button class="btn btn-danger" id="btn-clear-tests" onclick="clearTestInterviews()"><i class="fa-solid fa-trash"></i> Apagar Selecionados</button>
                 </div>
                 <div style="flex: 1; max-width: 300px;">

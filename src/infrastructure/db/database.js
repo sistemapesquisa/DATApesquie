@@ -16,6 +16,10 @@ const db = new sqlite3.Database(dbPath, (err) => {
     jsonLogger.error('Failed to connect to SQLite database', { error: err.message });
   } else {
     jsonLogger.info('Connected to SQLite database at ' + dbPath);
+    
+    // Otimização para concorrência
+    db.run("PRAGMA journal_mode=WAL");
+    db.run("PRAGMA synchronous=NORMAL");
   }
 });
 

@@ -922,7 +922,103 @@ router.get('/export/:formId', (req, res) => {
     });
   });
 });
-// --- AI QUALITY ANALYTICS ---
+
+router.get('/export/:formId/xlsx', (req, res) => {
+  const formId = req.params.formId;
+  const isAdminOrAnalyst = checkPermission(req.user.role, PERMISSIONS.VIEW_REPORTS);
+  if (!isAdminOrAnalyst) return res.status(403).json({ error: 'Acesso negado: apenas Administradores e Analistas podem exportar dados.' });
+
+  db.get('SELECT * FROM forms WHERE id = ?', [formId], (err, formRow) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!formRow) return res.status(404).json({ error: 'Formulário não encontrado' });
+
+    let questions = [];
+    try {
+      questions = JSON.parse(formRow.questions_json) || [];
+    } catch {}
+
+    db.all('SELECT * FROM interviews WHERE form_id = ? ORDER BY created_at DESC', [formId], (err, interviews) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      const data = [];
+      
+      interviews.forEach(int => {
+        const rowData = {
+          'ID_Entrevista': int.id,
+          'Data_Hora': int.created_at,
+          'Pesquisador': int.researcher_id,
+          'Dispositivo': int.device_id || 'N/A',
+          'Latitude': int.latitude || '',
+          'Longitude': int.longitude || ''
+        };
+        
+        let ans = {};
+        try { ans = JSON.parse(int.data_json) || {}; } catch {}
+
+        questions.forEach(q => {
+          rowData[q.text] = ans[q.id] || '';
+        });
+        
+        data.push(rowData);
+      });
+
+      try {
+        const worksheet = xlsx.utils.json_to_sheet(data);
+        const workbook = xlsx.utils.book_new();
+        xlsx.utils.book_append_sheet(workbook, worksheet, "Respostas");
+        
+        const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+        
+        res.set({
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="export_${formId}.xlsx"`
+        });
+        res.send(buffer);
+      } catch(excelErr) {
+        res.status(500).json({ error: 'Erro ao gerar arquivo XLSX' });
+      }
+    });
+  });
+});
+
+// --- QUOTA SAMPLING PROGRESS ---
+router.get('/forms/:id/quotas/progress', (req, res) => {
+  const formId = req.params.id;
+  const isAuthorized = checkPermission(req.user.role, PERMISSIONS.VIEW_PROJECTS);
+  if (!isAuthorized) return res.status(403).json({ error: 'Acesso negado.' });
+
+  db.get('SELECT settings_json FROM forms WHERE id = ?', [formId], (err, formRow) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!formRow) return res.status(404).json({ error: 'Formulário não encontrado' });
+
+    let settings = {};
+    try { settings = JSON.parse(formRow.settings_json) || {}; } catch {}
+
+    const quotas = settings.quotas || [];
+    if (quotas.length === 0) {
+      return res.json({ quotas: [] });
+    }
+
+    db.all('SELECT data_json FROM interviews WHERE form_id = ?', [formId], (err, interviews) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      const progress = quotas.map(q => {
+        let count = 0;
+        interviews.forEach(int => {
+          try {
+            const data = JSON.parse(int.data_json);
+            if (data[q.question_id] === q.target_value) {
+              count++;
+            }
+          } catch {}
+        });
+        return { ...q, count };
+      });
+
+      res.json({ quotas: progress });
+    });
+  });
+});
 router.get('/analytics/quality/:formId', (req, res) => {
   const formId = req.params.formId;
   const isAuthorized = checkPermission(req.user.role, PERMISSIONS.VIEW_REPORTS);

@@ -410,10 +410,57 @@ window.openProject = function(formId) {
   // Reset to default tab (RESUMO)
   sysSwitchTab('proj-tab-resumo');
 
+  renderQuotasProgress(formId);
   renderReportsTable();
   renderCharts();
   renderAudioReviewList();
 };
+
+async function renderQuotasProgress(formId) {
+  const container = document.getElementById('quota-progress-container');
+  const card = document.getElementById('quota-progress-card');
+  if (!container || !card) return;
+
+  try {
+    const headers = { 'x-user-id': state.activeUserId, 'x-user-role': state.activeRole };
+    const token = localStorage.getItem('auth_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/forms/${formId}/quotas/progress`, { headers });
+    if (!res.ok) throw new Error('Erro ao carregar cotas');
+    
+    const data = await res.json();
+    if (!data.quotas || data.quotas.length === 0) {
+      card.style.display = 'none';
+      return;
+    }
+
+    card.style.display = 'block';
+    let html = '';
+    
+    data.quotas.forEach(q => {
+      const pct = Math.min(100, Math.round((q.count / q.limit) * 100));
+      const color = pct >= 100 ? '#10b981' : (pct >= 50 ? '#f59e0b' : '#3b82f6');
+      
+      html += `
+        <div style="margin-bottom:1rem;">
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
+            <strong>${q.question_id}: ${q.target_value}</strong>
+            <span>${q.count} / ${q.limit} (${pct}%)</span>
+          </div>
+          <div style="width:100%; height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden;">
+            <div style="height:100%; width:${pct}%; background:${color}; border-radius:4px;"></div>
+          </div>
+        </div>
+      `;
+    });
+    
+    container.innerHTML = html;
+  } catch (e) {
+    console.error(e);
+    card.style.display = 'none';
+  }
+}
 
 window.sysSwitchTab = function(tabId) {
   document.querySelectorAll('.sys-proj-tab').forEach(t => {
@@ -869,6 +916,43 @@ window.exportProjectData = async function() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `DATApesquise_${form ? form.title.replace(/\s+/g, '_') : formId}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+    showToast('success', 'Download concluído!');
+  } catch (err) {
+    showToast('error', err.message);
+  }
+};
+
+window.exportProjectDataXLSX = async function() {
+  if (!state.activeProjectFormId) return;
+  const formId = state.activeProjectFormId;
+  const form = state.forms.find(f => f.id === formId);
+  
+  showToast('info', 'Gerando arquivo XLSX no servidor...');
+  
+  try {
+    const headers = {
+      'x-user-id': state.activeUserId,
+      'x-user-role': state.activeRole
+    };
+    const token = localStorage.getItem('auth_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`/api/export/${formId}/xlsx`, { headers });
+    
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Erro na exportação');
+    }
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `DATApesquise_${form ? form.title.replace(/\\s+/g, '_') : formId}_${new Date().toISOString().split('T')[0]}.xlsx`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -1418,9 +1502,11 @@ window.openFormSettings = () => {
   if (state.activeForm.settings) {
     document.getElementById('form-settings-audit-audio').checked = !!state.activeForm.settings.audit_audio;
     document.getElementById('form-settings-audit-location').checked = !!state.activeForm.settings.audit_location;
+    document.getElementById('form-settings-quotas').value = state.activeForm.settings.quotas ? JSON.stringify(state.activeForm.settings.quotas, null, 2) : '';
   } else {
     document.getElementById('form-settings-audit-audio').checked = false;
     document.getElementById('form-settings-audit-location').checked = false;
+    document.getElementById('form-settings-quotas').value = '';
   }
   
   document.getElementById('form-settings-modal').classList.add('active');
@@ -1430,6 +1516,18 @@ window.saveFormSettings = () => {
   if (!state.activeForm.settings) state.activeForm.settings = {};
   state.activeForm.settings.audit_audio = document.getElementById('form-settings-audit-audio').checked;
   state.activeForm.settings.audit_location = document.getElementById('form-settings-audit-location').checked;
+  
+  try {
+    const qVal = document.getElementById('form-settings-quotas').value.trim();
+    if (qVal) {
+      state.activeForm.settings.quotas = JSON.parse(qVal);
+    } else {
+      delete state.activeForm.settings.quotas;
+    }
+  } catch(e) {
+    showToast('error', 'Formato JSON inválido para Cotas. Verifique a sintaxe.');
+    return;
+  }
   
   document.getElementById('form-settings-modal').classList.remove('active');
   showToast('success', 'Configurações globais salvas com sucesso!');
