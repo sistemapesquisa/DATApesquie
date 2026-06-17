@@ -935,7 +935,10 @@ window.exportXLSForm = async function() {
     const token = localStorage.getItem("auth_token");
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const response = await fetch(`/api/forms/${formId}/export-xlsform`, { headers });
-    if (!response.ok) throw new Error("Erro na exportação");
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || "Erro na exportação");
+    }
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");

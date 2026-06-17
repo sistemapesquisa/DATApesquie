@@ -417,7 +417,7 @@ router.post('/forms/upload-xlsform', upload.single('file'), async (req, res) => 
 });
 
 router.get('/forms/:id/export-xlsform', (req, res) => {
-  if (!checkPermission(req.user.role, PERMISSIONS.BUILD_FORMS)) {
+  if (!checkPermission(req.user.role, PERMISSIONS.VIEW_FORMS)) {
     return res.status(403).json({ error: 'Acesso negado.' });
   }
 
