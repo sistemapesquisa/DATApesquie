@@ -926,6 +926,30 @@ window.exportProjectData = async function() {
   }
 };
 
+window.exportXLSForm = async function() {
+  const formId = state.activeForm.id;
+  if (!formId) return showToast("error", "Salve o formulário antes de baixar o XLSForm.");
+  showToast("info", "Gerando arquivo XLSForm...");
+  try {
+    const headers = { "x-user-id": state.activeUserId, "x-user-role": state.activeRole };
+    const token = localStorage.getItem("auth_token");
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const response = await fetch(`/api/forms/${formId}/export-xlsform`, { headers });
+    if (!response.ok) throw new Error("Erro na exportação");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.style.display = "none";
+    a.href = url;
+    a.download = `form_${formId}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    showToast("error", err.message);
+  }
+};
+
 window.exportProjectDataXLSX = async function() {
   if (!state.activeProjectFormId) return;
   const formId = state.activeProjectFormId;

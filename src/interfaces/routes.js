@@ -426,7 +426,7 @@ router.get('/forms/:id/export-xlsform', (req, res) => {
     if (!row) return res.status(404).json({ error: 'Formulário não encontrado' });
 
     try {
-      const questions = JSON.parse(row.schema);
+      const questions = JSON.parse(row.questions_json);
       const surveyData = [];
       const choicesData = [];
 

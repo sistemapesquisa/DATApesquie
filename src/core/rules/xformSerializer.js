@@ -67,10 +67,10 @@ function convertToXForm(form) {
   
   // Inject internal audit nodes
   if (form.settings && form.settings.audit_audio) {
-    instanceNodesHtml += `      <audit_audio/>\n`;
+    instanceNodesHtml += `      <sys_audio_tracker/>\n`;
   }
   if (form.settings && form.settings.audit_location) {
-    instanceNodesHtml += `      <audit_location/>\n`;
+    instanceNodesHtml += `      <sys_gps_tracker/>\n`;
   }
 
   // 3. Build Binds XML
@@ -135,10 +135,10 @@ function convertToXForm(form) {
   
   // Bind for internal audit and mandatory geolocation
   if (form.settings && form.settings.audit_audio) {
-    bindsHtml += `    <bind nodeset="/data/audit_audio" type="binary" />\n`;
+    bindsHtml += `    <bind nodeset="/data/sys_audio_tracker" type="binary" />\n`;
   }
   if (form.settings && form.settings.audit_location) {
-    bindsHtml += `    <bind nodeset="/data/audit_location" type="geopoint" />\n`;
+    bindsHtml += `    <bind nodeset="/data/sys_gps_tracker" type="geopoint" />\n`;
   }
 
   // 4. Build Body elements
@@ -212,7 +212,10 @@ function convertToXForm(form) {
 
   // Add the geopoint question at the very end of the form if requested
   if (form.settings && form.settings.audit_location) {
-    bodyHtml += `    <input ref="/data/audit_location">\n      <label>Obter localização atual (opcional)</label>\n      <hint>Localização via GPS para encerramento da pesquisa (se não pegar sinal, pode avançar)</hint>\n    </input>\n`;
+    bodyHtml += `    <input ref="/data/sys_gps_tracker">\n      <label>Obter localização atual (opcional)</label>\n      <hint>Localização via GPS para encerramento da pesquisa (se não pegar sinal, pode avançar)</hint>\n    </input>\n`;
+  }
+  if (form.settings && form.settings.audit_audio) {
+    bodyHtml += `    <upload ref="/data/sys_audio_tracker" mediatype="audio/*">\n      <label>Gravar áudio do ambiente</label>\n    </upload>\n`;
   }
 
   // 5. Glue together the complete OpenRosa/XForms XML template
