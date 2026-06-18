@@ -1381,7 +1381,6 @@ window.updateQText = function(idx, val) {
 };
 
 // Question handlers
- };
 window.updateQType = (idx, val) => { state.activeForm.questions[idx].type = val; if(!state.activeForm.questions[idx].options) state.activeForm.questions[idx].options=[]; renderBuilderQuestions(); };
 window.addOption = (idx) => { 
   if(!state.activeForm.questions[idx].options) state.activeForm.questions[idx].options=[];
