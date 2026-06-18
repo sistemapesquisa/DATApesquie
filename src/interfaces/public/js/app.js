@@ -1140,66 +1140,44 @@ function loadFormIntoBuilder(form) {
   renderFormBuilderList();
 }
 
+
+// REBUILT FOR NESTED SORTABLE AND GROUPS
 function renderBuilderQuestions() {
   const container = document.getElementById('builder-questions-list');
   container.innerHTML = '';
-  if (state.activeForm.questions.length === 0) {
+  
+  if (!state.activeForm.questions || state.activeForm.questions.length === 0) {
     container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-list-ol"></i><h4>Nenhuma pergunta adicionada</h4><p>Clique em "Adicionar Pergunta" acima para começar a criar o questionário.</p></div>';
     return;
   }
-  let depth = 0;
+
+  const tree = [];
+  const stack = [tree];
+  
   state.activeForm.questions.forEach((q, idx) => {
-    if (q.type === 'end_group' || q.type === 'end_repeat') {
-      depth = Math.max(0, depth - 1);
-    }
-    const currentDepth = depth;
+    q._origIdx = idx;
     if (q.type === 'begin_group' || q.type === 'begin_repeat') {
-      depth++;
-    }
-
-    const card = document.createElement('div');
-    card.className = 'sys-question-row';
-    card.draggable = true;
-    card.dataset.index = idx;
-    card.style.marginLeft = (currentDepth * 40) + 'px';
-    if (q.type.startsWith('begin_') || q.type.startsWith('end_')) {
-      card.style.borderLeft = '4px solid var(--primary)';
-      card.style.backgroundColor = '#f8fafc';
-    }
-    
-    // Drag & Drop Listeners
-    card.addEventListener('dragstart', (e) => {
-      draggedQuestionIndex = idx;
-      setTimeout(() => card.style.opacity = '0.5', 0);
-    });
-    card.addEventListener('dragend', (e) => {
-      card.style.opacity = '1';
-      draggedQuestionIndex = null;
-    });
-    card.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      card.style.borderTop = '2px solid var(--primary)';
-    });
-    card.addEventListener('dragleave', (e) => {
-      card.style.borderTop = '';
-    });
-    card.addEventListener('drop', (e) => {
-      e.preventDefault();
-      card.style.borderTop = '';
-      if (draggedQuestionIndex !== null && draggedQuestionIndex !== idx) {
-        // Move item in array
-        const draggedItem = state.activeForm.questions.splice(draggedQuestionIndex, 1)[0];
-        state.activeForm.questions.splice(idx, 0, draggedItem);
-        renderBuilderQuestions();
+      const groupNode = { type: 'group', question: q, children: [] };
+      stack[stack.length - 1].push(groupNode);
+      stack.push(groupNode.children);
+    } else if (q.type === 'end_group' || q.type === 'end_repeat') {
+      if (stack.length > 1) {
+        stack.pop();
+      } else {
+        stack[0].push({ type: 'item', question: q });
       }
-    });
+    } else {
+      stack[stack.length - 1].push({ type: 'item', question: q });
+    }
+  });
 
+  function createCardHtml(q, isGroupHeader = false) {
+    const idx = q._origIdx;
     const isChoice = q.type === 'single_choice' || q.type === 'select_one' || q.type === 'multiple_choice' || q.type === 'select_multiple';
-    // Options HTML
     let optionsHtml = '';
     if (isChoice) {
       optionsHtml = '<div style="margin-top:0.5rem;">';
-      q.options.forEach((opt, oi) => {
+      (q.options || []).forEach((opt, oi) => {
         const val = typeof opt === 'object' ? opt.label : opt;
         const nameVal = typeof opt === 'object' ? opt.name : val.toLowerCase().replace(/[^a-z0-9]/g,'_');
         optionsHtml += `
@@ -1210,25 +1188,10 @@ function renderBuilderQuestions() {
           </div>
         `;
       });
-      optionsHtml += `<div class="sys-add-choice" onclick="addOption(${idx})" title="Clique aqui para adicionar mais uma linha de opção à lista">+ Adicionar nova opção de resposta...</div></div>`;
+      optionsHtml += `<div class="sys-add-choice" onclick="addOption(${idx})" title="Adicionar Opção">+ Adicionar nova opção...</div></div>`;
     }
 
-    card.innerHTML = `
-      <div class="sys-question-left">
-        <i class="sys-question-icon fa-solid fa-circle-dot"></i>
-        <div class="sys-collapsed-title">${idx+1}. ${q.text || 'Nova Pergunta'}</div>
-      </div>
-      <div class="sys-question-center">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div style="display:flex; align-items:center; flex:1;">
-            <div style="background: var(--primary-light); color: var(--primary); font-weight: bold; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-size: 0.9rem; flex-shrink: 0;">${idx+1}</div>
-            ${(q.type === 'end_group' || q.type === 'end_repeat') ? 
-              `<div style="flex:1; font-weight:bold; color:var(--text-muted);">${q.type === 'end_group' ? 'Fim do Grupo' : 'Fim da Repetição'}</div>` : 
-              `<input type="text" class="sys-question-text" value="${q.text}" onchange="updateQText(${idx},this.value)" placeholder="${q.type === 'begin_group' || q.type === 'begin_repeat' ? 'Nome do Grupo/Repetição...' : 'Escreva a pergunta aqui...'}" style="flex:1;" title="Digite o texto que será lido pelo pesquisador" />
-               <button class="sys-btn-piping" onclick="openPipingModal(${idx})" title="Inserir Variável (Piping): Puxar a resposta de uma pergunta anterior para dentro do texto." style="background:transparent; border:none; color:var(--primary); cursor:pointer; padding:5px;"><i class="fa-solid fa-wand-magic-sparkles"></i></button>`
-            }
-          </div>
-          <select style="border:none; color:#64748b; font-size:0.8rem; outline:none; background:transparent; cursor:pointer; margin-left: 10px;" onchange="updateQType(${idx},this.value)">
+    const typeOptions = `
             <option value="text" ${q.type==='text'?'selected':''}>Texto Livre</option>
             <option value="number" ${q.type==='number'?'selected':''}>Número</option>
             <option value="decimal" ${q.type==='decimal'?'selected':''}>Decimal</option>
@@ -1252,31 +1215,173 @@ function renderBuilderQuestions() {
             <option value="hidden" ${q.type==='hidden'?'selected':''}>Oculto</option>
             <option value="file" ${q.type==='file'?'selected':''}>Arquivo</option>
             <option value="range" ${q.type==='range'?'selected':''}>Intervalo</option>
-            <option value="begin_group" ${q.type==='begin_group'?'selected':''}>Abrir Grupo</option>
-            <option value="end_group" ${q.type==='end_group'?'selected':''}>Fechar Grupo</option>
-            <option value="begin_repeat" ${q.type==='begin_repeat'?'selected':''}>Abrir Repetição</option>
-            <option value="end_repeat" ${q.type==='end_repeat'?'selected':''}>Fechar Repetição</option>
-          </select>
-        </div>
-        ${(q.type === 'end_group' || q.type === 'end_repeat') ? '' : `<input type="text" class="sys-question-hint" value="${q.hint || ''}" onchange="updateQHint(${idx},this.value)" placeholder="Dica de preenchimento (opcional)..." style="margin-left: 40px; width: calc(100% - 40px);" />`}
-        <div style="margin-left: 40px;">
-          ${optionsHtml}
-        </div>
+    `;
+
+    return `
+      <div class="sys-question-left">
+        <i class="sys-question-icon fa-solid fa-bars drag-handle" style="cursor:grab; font-size: 1.2rem;"></i>
       </div>
-      <div class="sys-question-right">
-        <button class="sys-btn-required ${q.required ? 'active' : ''}" onclick="toggleQRequired(${idx})" title="Obrigatória: O usuário do aplicativo não poderá avançar sem responder esta pergunta" style="color: ${q.required ? 'var(--danger)' : '#cbd5e1'};"><i class="fa-solid fa-asterisk"></i></button>
-        <button class="sys-btn-gear" onclick="openQuestionSettingsModal(${idx})" title="Configurações Avançadas: Definir limites, validações, dicas extras e filtros em cascata"><i class="fa-solid fa-gear"></i></button>
-        <button class="sys-btn-trash" onclick="confirmDeleteQuestion(${idx})" title="Excluir Pergunta: Remove permanentemente do questionário"><i class="fa-solid fa-trash"></i></button>
-        <button class="sys-btn-copy" onclick="duplicateQuestion(${idx})" title="Duplicar Pergunta: Cria uma cópia exata logo abaixo desta"><i class="fa-solid fa-copy"></i></button>
-        <button class="sys-btn-branch" onclick="openAdvLogicModal(${idx})" title="Lógica de Pulo (Skip Logic): Define regras para esconder ou mostrar esta pergunta baseado em respostas anteriores"><i class="fa-solid fa-code-branch"></i></button>
+      <div class="sys-question-center">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; flex:1;">
+            <div style="background: var(--primary-light); color: var(--primary); font-weight: bold; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-size: 0.9rem; flex-shrink: 0;">${idx+1}</div>
+            <input type="text" class="sys-question-text" value="${q.text || ''}" onchange="updateQText(${idx},this.value)" placeholder="${isGroupHeader ? 'Nome do Grupo/Repetição...' : 'Escreva a pergunta aqui...'}" style="flex:1; font-weight:${isGroupHeader?'bold':'normal'};" />
+            ${isGroupHeader ? '' : `<button class="sys-btn-piping" onclick="openPipingModal(${idx})" title="Inserir Variável (Piping)" style="background:transparent; border:none; color:var(--primary); cursor:pointer; padding:5px;"><i class="fa-solid fa-wand-magic-sparkles"></i></button>`}
+          </div>
+          ${isGroupHeader ? 
+            `<span style="font-size:0.8rem; color:#64748b; margin-left:10px;">${q.type === 'begin_group' ? 'Grupo' : 'Repetição'}</span>` : 
+            `<select style="border:none; color:#64748b; font-size:0.8rem; outline:none; background:transparent; cursor:pointer; margin-left: 10px;" onchange="updateQType(${idx},this.value)">${typeOptions}</select>`
+          }
+        </div>
+        <div style="margin-left: 40px; display:flex; align-items:center; margin-top:5px;">
+           <span style="font-size:0.75rem; color:#94a3b8; margin-right:5px;">ID:</span>
+           <input type="text" value="${q.id || ''}" onchange="updateQName(${idx},this.value)" placeholder="auto_gerado" style="font-family:var(--font-mono); font-size:0.75rem; border:1px solid transparent; background:transparent; color:#64748b; width:150px; outline:none;" onfocus="this.style.border='1px solid #cbd5e1'; this.style.background='#fff';" onblur="this.style.border='1px solid transparent'; this.style.background='transparent';" title="Identificador único (name)" />
+        </div>
+        ${isGroupHeader ? '' : `<input type="text" class="sys-question-hint" value="${q.hint || ''}" onchange="updateQHint(${idx},this.value)" placeholder="Dica de preenchimento (opcional)..." style="margin-left: 40px; width: calc(100% - 40px);" />`}
+        <div style="margin-left: 40px;">${optionsHtml}</div>
+      </div>
+      <div class="sys-question-right" style="flex-direction:row; align-items:flex-start;">
+        <button class="sys-btn-required ${q.required ? 'active' : ''}" onclick="toggleQRequired(${idx})" title="Obrigatória" style="color: ${q.required ? 'var(--danger)' : '#cbd5e1'};"><i class="fa-solid fa-asterisk"></i></button>
+        ${isGroupHeader ? '' : `<button class="sys-btn-gear" onclick="openQuestionSettingsModal(${idx})" title="Configurações Avançadas"><i class="fa-solid fa-gear"></i></button>`}
+        <button class="sys-btn-trash" onclick="confirmDeleteQuestion(${idx})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+        <button class="sys-btn-copy" onclick="duplicateQuestion(${idx})" title="Duplicar"><i class="fa-solid fa-copy"></i></button>
+        ${isGroupHeader ? '' : `<button class="sys-btn-branch" onclick="openAdvLogicModal(${idx})" title="Lógica de Pulo"><i class="fa-solid fa-code-branch"></i></button>`}
       </div>
     `;
-    container.appendChild(card);
+  }
+
+  function renderTree(nodes, parentEl) {
+    nodes.forEach(node => {
+      if (node.type === 'group') {
+        const groupEl = document.createElement('div');
+        groupEl.className = 'group-container';
+        groupEl.style.border = '2px solid var(--primary-light)';
+        groupEl.style.borderRadius = '8px';
+        groupEl.style.marginBottom = '1rem';
+        groupEl.style.backgroundColor = '#f8fafc';
+        groupEl.dataset.isGroup = 'true';
+        groupEl.dataset.origIdx = node.question._origIdx;
+        groupEl.dataset.groupType = node.question.type;
+
+        const headerEl = document.createElement('div');
+        headerEl.className = 'sys-question-row';
+        headerEl.style.border = 'none';
+        headerEl.style.marginBottom = '0';
+        headerEl.style.padding = '10px 15px';
+        headerEl.innerHTML = createCardHtml(node.question, true);
+        
+        const bodyEl = document.createElement('div');
+        bodyEl.className = 'group-body sortable-list';
+        bodyEl.style.padding = '10px';
+        bodyEl.style.minHeight = '50px';
+
+        renderTree(node.children, bodyEl);
+
+        const insertBtn = document.createElement('div');
+        insertBtn.innerHTML = `<button class="btn btn-sm" onclick="setInsertIndex(${node.question._origIdx + node.children.length + 1})" style="margin:5px auto; display:block; background:#e2e8f0; color:#475569; border-radius:50%; width:24px; height:24px; padding:0;"><i class="fa-solid fa-plus"></i></button>`;
+
+        groupEl.appendChild(headerEl);
+        groupEl.appendChild(bodyEl);
+        groupEl.appendChild(insertBtn);
+        parentEl.appendChild(groupEl);
+
+      } else {
+        const card = document.createElement('div');
+        card.className = 'sys-question-row item-row';
+        card.dataset.origIdx = node.question._origIdx;
+        card.innerHTML = createCardHtml(node.question, false);
+        parentEl.appendChild(card);
+
+        const insertBtn = document.createElement('div');
+        insertBtn.innerHTML = `<button class="btn btn-sm insert-btn" onclick="setInsertIndex(${node.question._origIdx + 1})" style="margin:-10px auto 10px auto; display:block; background:#e2e8f0; color:#475569; border-radius:50%; width:24px; height:24px; padding:0; z-index:10; position:relative;"><i class="fa-solid fa-plus"></i></button>`;
+        parentEl.appendChild(insertBtn);
+      }
+    });
+  }
+
+  container.classList.add('sortable-list');
+  renderTree(tree, container);
+
+  const sortables = document.querySelectorAll('.sortable-list');
+  sortables.forEach(el => {
+    new Sortable(el, {
+      group: 'shared',
+      animation: 150,
+      handle: '.drag-handle',
+      fallbackOnBody: true,
+      swapThreshold: 0.65,
+      onEnd: function (evt) {
+        rebuildArrayFromDOM();
+      }
+    });
   });
 }
 
+function rebuildArrayFromDOM() {
+  const container = document.getElementById('builder-questions-list');
+  const newArray = [];
+  
+  function walk(el) {
+    Array.from(el.children).forEach(child => {
+      if (child.classList.contains('item-row')) {
+        const idx = parseInt(child.dataset.origIdx);
+        if(!isNaN(idx)) newArray.push(state.activeForm.questions[idx]);
+      } else if (child.classList.contains('group-container')) {
+        const groupIdx = parseInt(child.dataset.origIdx);
+        if(!isNaN(groupIdx)) {
+          const groupQ = state.activeForm.questions[groupIdx];
+          newArray.push(groupQ);
+          
+          const body = child.querySelector('.group-body');
+          if (body) walk(body);
+          
+          newArray.push({
+            id: 'end_' + crypto.randomUUID().substring(0,8),
+            type: groupQ.type === 'begin_repeat' ? 'end_repeat' : 'end_group'
+          });
+        }
+      }
+    });
+  }
+  
+  walk(container);
+  
+  state.activeForm.questions = newArray;
+  renderBuilderQuestions();
+}
+
+window.setInsertIndex = function(idx) {
+  window.insertQuestionIndex = idx;
+  const btnAdd = document.getElementById('btn-add-question');
+  if(btnAdd) btnAdd.click();
+};
+
+window.updateQName = function(idx, val) {
+  const safeVal = val.toLowerCase().replace(/[^a-z0-9_]/g, '_').substring(0,50);
+  const isDuplicate = state.activeForm.questions.some((q, i) => i !== idx && q.id === safeVal);
+  if (isDuplicate) {
+    showToast('error', 'Este ID (name) já está sendo usado por outra pergunta.');
+    renderBuilderQuestions();
+    return;
+  }
+  state.activeForm.questions[idx].id = safeVal || ('q_' + crypto.randomUUID().substring(0,8));
+  renderBuilderQuestions();
+};
+
+window.updateQText = function(idx, val) { 
+  state.activeForm.questions[idx].text = val; 
+  const q = state.activeForm.questions[idx];
+  if(q.id && (q.id.startsWith('q_') || q.id.length > 20)) {
+    const autoName = val.toLowerCase().replace(/[áàãâä]/g,'a').replace(/[éèêë]/g,'e').replace(/[íìîï]/g,'i').replace(/[óòõôö]/g,'o').replace(/[úùûü]/g,'u').replace(/ç/g,'c').replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '').substring(0,30);
+    if(autoName && !state.activeForm.questions.some((oq, i) => i !== idx && oq.id === autoName)) {
+      q.id = autoName;
+    }
+  }
+  renderBuilderQuestions();
+};
+
 // Question handlers
-window.updateQText = (idx, val) => { state.activeForm.questions[idx].text = val; };
+ };
 window.updateQType = (idx, val) => { state.activeForm.questions[idx].type = val; if(!state.activeForm.questions[idx].options) state.activeForm.questions[idx].options=[]; renderBuilderQuestions(); };
 window.addOption = (idx) => { 
   if(!state.activeForm.questions[idx].options) state.activeForm.questions[idx].options=[];

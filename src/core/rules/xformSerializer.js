@@ -231,8 +231,13 @@ function convertToXForm(form) {
     <model>
       <instance>
         <data id="${id}" version="${version}">
+          <meta>
+            <instanceID/>
+${form.settings && form.settings.instance_name ? '            <instanceName/>\n' : ''}          </meta>
 ${instanceNodesHtml}        </data>
       </instance>
+      <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" calculate="concat('uuid:', uuid())"/>
+${form.settings && form.settings.instance_name ? '      <bind nodeset="/data/meta/instanceName" type="string" calculate="' + form.settings.instance_name.replace(/"/g, '&quot;') + '"/>\n' : ''}
 ${bindsHtml}${form.settings && form.settings.audit_audio ? '      <odk:recordaudio event="odk-instance-load" ref="/data/audit_audio" />\n' : ''}    </model>
   </h:head>
   <h:body>
@@ -240,6 +245,61 @@ ${bodyHtml}  </h:body>
 </h:html>`;
 }
 
+function validateXForm(form) {
+  const errors = [];
+  const { questions } = form;
+  if (!questions || questions.length === 0) {
+    return { valid: false, errors: ['O formulário não pode estar vazio.'] };
+  }
+
+  const stack = [];
+  const ids = new Set();
+
+  questions.forEach((q, idx) => {
+    // Check duplicate IDs
+    if (ids.has(q.id)) {
+      errors.push(`Pergunta ${idx + 1}: O Identificador '${q.id}' está duplicado.`);
+    } else if (q.id) {
+      ids.add(q.id);
+    }
+    
+    // Check groups
+    if (q.type === 'begin_group' || q.type === 'begin_repeat') {
+      stack.push(q);
+    } else if (q.type === 'end_group' || q.type === 'end_repeat') {
+      if (stack.length === 0) {
+        errors.push(`Pergunta ${idx + 1}: Fechamento sem uma Seção/Grupo aberto.`);
+      } else {
+        const popped = stack.pop();
+        if (
+          (q.type === 'end_group' && popped.type !== 'begin_group') ||
+          (q.type === 'end_repeat' && popped.type !== 'begin_repeat')
+        ) {
+          errors.push(`Pergunta ${idx + 1}: Tipo de fechamento (${q.type}) não corresponde à abertura (${popped.type}).`);
+        }
+      }
+    }
+
+    // Check skip logic target
+    if (q.skipRules && Array.isArray(q.skipRules)) {
+      q.skipRules.forEach(rule => {
+        if (rule.targetQuestionId && !questions.some(item => item.id === rule.targetQuestionId)) {
+          errors.push(`Pergunta ${idx + 1}: Lógica de pulo aponta para pergunta inexistente.`);
+        }
+      });
+    }
+  });
+
+  if (stack.length > 0) {
+    stack.forEach(g => {
+      errors.push(`Seção/Grupo '${g.text || g.id}' não foi fechada.`);
+    });
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
 module.exports = {
-  convertToXForm
+  convertToXForm,
+  validateXForm
 };

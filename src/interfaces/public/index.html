@@ -24,6 +24,7 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </head>
 <body>
 
@@ -177,7 +178,7 @@
                 <button class="sys-btn-save" onclick="document.getElementById('import-xls-input').click()" style="background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1;" title="Importar XLSForm: Carrega uma planilha de pesquisa externa, apagando o formulário atual e substituindo pelas perguntas do arquivo."><i class="fa-solid fa-file-import"></i> Importar XLS</button>
                 <input type="file" id="import-xls-input" accept=".xls,.xlsx" style="display:none;" onchange="importXLSForm(event)" />
                 <button class="sys-btn-save" onclick="exportXLSForm()" style="background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1;" title="Baixar XLSForm: Exporta o formulário atual para um arquivo Excel contendo as abas 'survey' e 'choices', ideal para edições em massa ou backup."><i class="fa-solid fa-file-export"></i> Baixar XLS</button>
-                <select id="form-edit-status" style="border:1px solid #ccc; border-radius:4px; padding:4px; font-size:12px; height:32px;" title="Status de Publicação: Defina como 'Rascunho' para testes e 'Publicado' quando quiser enviar para coleta de campo."><option value="draft">Rascunho</option><option value="published">Publicado</option></select>
+                <select id="form-edit-status" onchange="toggleOdkPanel(this.value)" style="border:1px solid #ccc; border-radius:4px; padding:4px; font-size:12px; height:32px;" title="Status de Publicação: Defina como 'Rascunho' para testes e 'Publicado' quando quiser enviar para coleta de campo."><option value="draft">Rascunho</option><option value="published">Publicado</option></select>
                 <button class="sys-btn-save" id="btn-save-form" title="Salvar Projeto: Armazena o questionário no banco de dados. Salve sempre antes de sair da página!">SALVAR</button>
                 <button class="sys-btn-close" onclick="closeFormBuilder()" title="Fechar Construtor: Retorna para o menu principal de projetos"><i class="fa-solid fa-xmark"></i></button>
               </div>
@@ -195,6 +196,23 @@
               </div>
             </div>
             
+            <!-- ODK Status Panel -->
+            <div id="odk-status-panel" style="display:none; background-color:#f0fdf4; border:1px solid #bbf7d0; margin:1rem 1rem 0 1rem; padding:1rem; border-radius:8px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                  <h4 style="margin:0 0 0.5rem 0; color:#166534;"><i class="fa-solid fa-satellite-dish"></i> Status ODK: Publicado</h4>
+                  <p style="margin:0 0 0.5rem 0; font-size:0.9rem; color:#15803d;">Para coletar respostas, configure o aplicativo ODK Collect com o endereço abaixo.</p>
+                  <code style="background:#dcfce7; padding:4px 8px; border-radius:4px; color:#166534; font-weight:bold; user-select:all;" id="odk-server-url">http://.../api</code>
+                  <p style="margin:0.5rem 0 0 0; font-size:0.8rem; color:#16a34a;"><strong>Instrução no ODK Collect:</strong> Menu > Configurações > Servidor > URL</p>
+                </div>
+                <div>
+                  <button class="btn" style="background:#16a34a; color:white; border:none;" onclick="testOdkConnection()"><i class="fa-solid fa-network-wired"></i> Testar Conexão</button>
+                  <div id="odk-test-result" style="margin-top:0.5rem; font-size:0.85rem; text-align:right;"></div>
+                </div>
+              </div>
+            </div>
+            
+
             <div id="skip-logic-errors" class="validation-banner" style="margin:1rem;"></div>
             <div class="sys-workspace-body" style="padding: 2rem; overflow-y:auto; flex:1; background:#ffffff;">
               <div id="builder-questions-list" class="sys-questions-container"></div>
@@ -213,20 +231,44 @@
             
             <div style="display:flex; flex-direction:column; gap:0.5rem; max-height:400px; overflow-y:auto; padding-right:0.5rem;">
               <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
-                <div><h4 style="margin:0; font-size:0.95rem;">Qual a sua idade?</h4><span style="font-size:0.8rem;color:#64748b;">Numérico Inteiro</span></div>
-                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('age')"><i class="fa-solid fa-plus"></i></button>
+                <div><h4 style="margin:0; font-size:0.95rem;">Gênero</h4><span style="font-size:0.8rem;color:#64748b;">Seleção Única</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('genero')"><i class="fa-solid fa-plus"></i></button>
               </div>
               <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
-                <div><h4 style="margin:0; font-size:0.95rem;">Qual o seu gênero?</h4><span style="font-size:0.8rem;color:#64748b;">Múltipla Escolha (Masculino, Feminino, Outro)</span></div>
-                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('gender')"><i class="fa-solid fa-plus"></i></button>
+                <div><h4 style="margin:0; font-size:0.95rem;">Faixa Etária</h4><span style="font-size:0.8rem;color:#64748b;">Seleção Única</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('faixa_etaria')"><i class="fa-solid fa-plus"></i></button>
               </div>
               <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
-                <div><h4 style="margin:0; font-size:0.95rem;">Qual a sua renda familiar mensal?</h4><span style="font-size:0.8rem;color:#64748b;">Decimal (R$)</span></div>
-                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('income')"><i class="fa-solid fa-plus"></i></button>
+                <div><h4 style="margin:0; font-size:0.95rem;">Grau de Instrução</h4><span style="font-size:0.8rem;color:#64748b;">Seleção Única</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('instrucao')"><i class="fa-solid fa-plus"></i></button>
               </div>
               <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
-                <div><h4 style="margin:0; font-size:0.95rem;">Capturar Coordenadas GPS</h4><span style="font-size:0.8rem;color:#64748b;">Geolocalização Automática</span></div>
-                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('gps')"><i class="fa-solid fa-plus"></i></button>
+                <div><h4 style="margin:0; font-size:0.95rem;">Renda Familiar</h4><span style="font-size:0.8rem;color:#64748b;">Seleção Única</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('renda')"><i class="fa-solid fa-plus"></i></button>
+              </div>
+              <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><h4 style="margin:0; font-size:0.95rem;">Avaliação NPS (0 a 10)</h4><span style="font-size:0.8rem;color:#64748b;">Seleção Única</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('nps')"><i class="fa-solid fa-plus"></i></button>
+              </div>
+              <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><h4 style="margin:0; font-size:0.95rem;">Concordância (Escala Likert)</h4><span style="font-size:0.8rem;color:#64748b;">Seleção Única</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('likert')"><i class="fa-solid fa-plus"></i></button>
+              </div>
+              <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><h4 style="margin:0; font-size:0.95rem;">Estado Civil</h4><span style="font-size:0.8rem;color:#64748b;">Seleção Única</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('estado_civil')"><i class="fa-solid fa-plus"></i></button>
+              </div>
+              <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><h4 style="margin:0; font-size:0.95rem;">Região/Estado</h4><span style="font-size:0.8rem;color:#64748b;">Seleção Única</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('estado')"><i class="fa-solid fa-plus"></i></button>
+              </div>
+              <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><h4 style="margin:0; font-size:0.95rem;">Domicílio (Urbano/Rural)</h4><span style="font-size:0.8rem;color:#64748b;">Seleção Única</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('domicilio')"><i class="fa-solid fa-plus"></i></button>
+              </div>
+              <div style="border:1px solid #dbe2e8; padding:1rem; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><h4 style="margin:0; font-size:0.95rem;">Religião</h4><span style="font-size:0.8rem;color:#64748b;">Seleção Única</span></div>
+                <button class="btn btn-primary btn-sm" onclick="addLibraryQuestion('religiao')"><i class="fa-solid fa-plus"></i></button>
               </div>
             </div>
 
@@ -357,6 +399,12 @@
               <input type="text" class="form-input" id="form-settings-id" readonly style="background:#f1f5f9; color:#64748b;" />
               <div class="form-hint">O ID não pode ser alterado após a criação.</div>
             </div>
+            
+            <div class="form-group">
+              <label class="form-label">Nome da Instância (ODK) - `instance_name`</label>
+              <input type="text" class="form-input" id="form-settings-instance-name" placeholder="Ex: concat(${nome}, ' - ', format-date(today(), '%d/%m/%Y'))" />
+              <div class="form-hint">Expressão opcional para dar nome legível a cada entrevista preenchida no aplicativo.</div>
+            </div>
 
             <div class="modal-actions" style="margin-top:2rem; justify-content: flex-end; gap:0.5rem;">
               <button class="btn" onclick="document.getElementById('form-settings-modal').classList.remove('active')">Cancelar</button>
@@ -400,14 +448,37 @@
               <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('file')"><i class="fa-solid fa-file-arrow-up fa-2x"></i> Arquivo</button>
               <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem;" onclick="addNewQuestion('range')"><i class="fa-solid fa-sliders fa-2x"></i> Intervalo</button>
 
-              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem; border-color:var(--primary); color:var(--primary);" onclick="addNewQuestion('begin_group')"><i class="fa-solid fa-folder-open fa-2x"></i> Abrir Grupo</button>
-              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem; border-color:var(--primary); color:var(--primary);" onclick="addNewQuestion('end_group')"><i class="fa-solid fa-folder-closed fa-2x"></i> Fechar Grupo</button>
-              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem; border-color:var(--primary); color:var(--primary);" onclick="addNewQuestion('begin_repeat')"><i class="fa-solid fa-repeat fa-2x"></i> Abrir Repetição</button>
-              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem; border-color:var(--primary); color:var(--primary);" onclick="addNewQuestion('end_repeat')"><i class="fa-solid fa-ban fa-2x"></i> Fechar Repet.</button>
+              <button class="btn btn-outline" style="flex-direction:column; padding:1rem; gap:0.5rem; border-color:var(--primary); color:var(--primary); grid-column: span 2;" onclick="openGroupModal()"><i class="fa-solid fa-layer-group fa-2x"></i> Criar Seção / Grupo</button>
             </div>
             
             <div class="modal-actions" style="justify-content: flex-end;">
               <button class="btn" onclick="document.getElementById('question-type-modal').classList.remove('active')">Cancelar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Group / Section Modal -->
+        <div class="modal-overlay" id="group-modal">
+          <div class="modal-box" style="max-width: 400px;">
+            <div class="modal-title"><i class="fa-solid fa-layer-group" style="color:var(--primary);"></i> Criar Seção / Grupo</div>
+            <p class="modal-message" style="margin-bottom:1rem;">Agrupe perguntas relacionadas na mesma tela (Grupo) ou permita que o usuário preencha várias vezes (Repetição).</p>
+            
+            <div class="form-group">
+              <label class="form-label">Nome da Seção</label>
+              <input type="text" class="form-input" id="group-modal-name" placeholder="Ex: Dados Demográficos" />
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Tipo de Agrupamento</label>
+              <select class="form-select" id="group-modal-type">
+                <option value="group">Grupo Simples (Mesma Tela)</option>
+                <option value="repeat">Repetição (Adicionar Múltiplos)</option>
+              </select>
+            </div>
+            
+            <div class="modal-actions" style="margin-top:1.5rem; justify-content: flex-end; gap:0.5rem;">
+              <button class="btn" onclick="document.getElementById('group-modal').classList.remove('active')">Cancelar</button>
+              <button class="btn btn-primary" onclick="confirmCreateGroup()">Criar Seção</button>
             </div>
           </div>
         </div>

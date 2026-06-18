@@ -9,7 +9,7 @@ const { checkPermission, PERMISSIONS, ROLES } = require('../core/rules/rbac');
 const { saveForm } = require('../orchestration/formFlow');
 const { evaluateCommand } = require('../orchestration/commandGuard');
 const { uploadAudioMock } = require('../services/audioStorage');
-const { convertToXForm } = require('../core/rules/xformSerializer');
+const { convertToXForm, validateXForm } = require('../core/rules/xformSerializer');
 const jsonLogger = require('../infrastructure/logger/jsonLogger');
 const xlsx = require('xlsx');
 
@@ -325,7 +325,15 @@ router.post('/forms', async (req, res) => {
   }
 
   try {
-    const result = await saveForm(req.body);
+    const formData = req.body;
+    if (formData.status === 'published') {
+      const validation = validateXForm(formData);
+      if (!validation.valid) {
+        return res.status(400).json({ error: 'Erro de Validação XForm:\n' + validation.errors.join('\n') });
+      }
+    }
+    
+    const result = await saveForm(formData);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
